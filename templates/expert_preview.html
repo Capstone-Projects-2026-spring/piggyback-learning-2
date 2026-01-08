@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -1285,43 +1285,6 @@ select {
             margin-top: 20px;
         }
         
-        .accordion-header.approved {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
-        }
-        
-        .accordion-header.approved .segment-index::after {
-            content: " ?";
-            color: #28a745;
-            font-weight: bold;
-        }
-        
-        .segment-approve-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #e2e8f0;
-            text-align: center;
-        }
-        
-        .btn-approve-segment {
-            background: #28a745;
-            color: white;
-            padding: 10px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-        
-        .btn-approve-segment:hover {
-            background: #218838;
-        }
-        
-        .btn-approve-segment:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-        
         .expert-question-display {
             background: white;
             padding: 12px;
@@ -1699,73 +1662,86 @@ select {
         .llm-accordion {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
         }
 
-        .llm-accordion-item {
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            background: #ffffff;
-            overflow: hidden;
+        .llm-review-card {
+            border: 1px solid rgba(213, 223, 243, 0.7);
+            border-radius: 16px;
+            background: var(--color-surface);
+            padding: 18px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
         }
 
-        .llm-accordion-item.trashed {
+        .llm-review-card:not(.trashed) {
+            cursor: pointer;
+        }
+
+        .llm-review-card.open {
+            cursor: default;
+        }
+
+        .llm-review-card.open {
+            border-color: var(--color-secondary);
+            box-shadow: 0 14px 32px rgba(85, 72, 160, 0.15);
+        }
+
+        .llm-review-card.trashed {
             border-color: #fc8181;
             background: #fff5f5;
         }
 
-        .llm-accordion-header {
-            width: 100%;
-            background: transparent;
-            border: none;
+        .llm-review-top {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 14px 18px;
-            text-align: left;
-            cursor: pointer;
-            font-size: 1rem;
+            justify-content: space-between;
+            gap: 10px;
         }
 
-        .llm-accordion-item.open .llm-accordion-header {
-            background: #ebf8ff;
+        .llm-review-status {
+            display: flex;
+            gap: 8px;
         }
 
-        .llm-accordion-title {
+        .llm-review-block {
+            border-radius: 12px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 8px;
         }
 
-        .llm-accordion-panel {
-            display: none;
-            padding: 18px;
-            border-top: 1px solid #e2e8f0;
+        .llm-review-question {
+            background: #f2ecff;
         }
 
-        .llm-accordion-item.open .llm-accordion-panel {
-            display: block;
+        .llm-review-answer {
+            background: #e4fbf4;
         }
 
-        .llm-answer-display {
-            padding: 12px 14px;
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-        }
-
-        .llm-answer-display strong {
-            display: block;
-            font-size: 0.8rem;
-            color: #4a5568;
+        .llm-review-label {
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 6px;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            color: var(--color-muted);
         }
 
-        .llm-answer-text {
-            color: #2d3748;
+        .llm-review-text {
+            color: var(--color-text);
+            line-height: 1.55;
             white-space: pre-wrap;
+        }
+
+        .llm-review-question .llm-review-text {
+            color: var(--color-secondary-dark);
+        }
+
+        .llm-review-answer .llm-review-text {
+            color: var(--color-accent-dark);
         }
 
         .llm-answer-empty {
@@ -1773,42 +1749,57 @@ select {
             font-style: italic;
         }
 
-        .llm-accordion-actions {
-            margin-top: 14px;
+        .llm-review-actions {
             display: flex;
             justify-content: flex-end;
-            gap: 10px;
-        }
-
-        .llm-edit-form {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            flex-direction: column;
             gap: 12px;
         }
 
+        .llm-edit-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            background: var(--color-surface-muted);
+            border: 1px solid rgba(213, 223, 243, 0.7);
+            border-radius: 14px;
+            padding: 18px;
+        }
+        
         .llm-modal-field label {
             display: block;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            color: var(--color-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
         }
-
+        
         .llm-modal-field textarea {
             width: 100%;
-            min-height: 80px;
-            border: 1px solid #cbd5e0;
-            border-radius: 8px;
-            padding: 10px;
+            min-height: 110px;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            padding: 12px;
             font-size: 0.95rem;
             resize: vertical;
+            background: var(--color-surface);
+            box-shadow: inset 0 2px 4px rgba(17, 17, 26, 0.05);
         }
-
+        
+        .llm-modal-field textarea:focus {
+            outline: 2px solid rgba(107, 95, 181, 0.35);
+            outline-offset: 2px;
+        }
+        
         .llm-edit-actions {
+            grid-column: 1 / -1;
             display: flex;
             justify-content: flex-end;
-            gap: 10px;
+            gap: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed rgba(213, 223, 243, 0.8);
+            margin-top: 4px;
         }
 
         @media (max-width: 900px) {
@@ -2054,7 +2045,7 @@ select {
                 </div>
                 <div class="llm-modal-feedback" id="llm-modal-feedback"></div>
                 <div class="llm-step-content active" id="llm-step-1">
-                    <p class="llm-step-instructions"><span class="llm-instruction-icon" aria-hidden="true">i</span><span class="llm-instruction-text"><strong><em>Review the AI generated questions, mark the inappropriate ones, and optionally leave a note.</em></strong></span></p>
+                    <p class="llm-step-instructions"><span class="llm-instruction-icon" aria-hidden="true">i</span><span class="llm-instruction-text"><strong><em>Review the AI generated questions, mark the inappropriate ones by clicking on the trash icon, and optionally leave a note.</em></strong></span></p>
                     <div class="llm-step-stack">
                         <div class="llm-section-box">
                             <h4 class="llm-section-title">Questions</h4>
@@ -2087,7 +2078,7 @@ select {
                             <div class="llm-ranking-empty" id="llm-ranking-empty">No questions available to rank.</div>
                         </div>
                         <div class="llm-section-box llm-inline-trash" id="llm-trash-dropzone">
-                            <h4 class="llm-section-title">Trashed Questions</h4>
+                            <h4 class="llm-section-title">Inappropriate Questions</h4>
                             <p class="llm-section-help">Drop a question here to remove it from the ranked list. Drag it back above to restore.</p>
                             <ul class="llm-trash-list" id="llm-ranking-trash-list"></ul>
                             <div class="llm-trash-empty" id="llm-ranking-trash-empty">No questions in trash.</div>
@@ -2144,8 +2135,7 @@ select {
         let expertSaveInProgress = false;
         let pendingSegmentIndices = [];
         let llmQuestionEdits = {}; // Store edits made to LLM questions
-        let segmentApprovals = {}; // Store which segments have been approved
-        let manualQuestionTimestamp = null; // Store timestamp for manual questions
+                 let manualQuestionTimestamp = null; // Store timestamp for manual questions
         const REVIEW_TOLERANCE_BEFORE = 0.25;
 
         let llmModalState = {
@@ -4326,238 +4316,148 @@ select {
 
 
                 const item = document.createElement('div');
-
-                item.className = 'llm-accordion-item';
+                item.className = 'llm-review-card';
 
                 if (llmModalState.openQuestionKey === questionKey) {
-
                     item.classList.add('open');
-
                 }
 
                 if (entry.trashed) {
-
                     item.classList.add('trashed');
-
                 }
 
+                if (!entry.trashed) {
+                    item.addEventListener('click', event => {
+                        if (event.target.closest('button') || llmModalState.editingKey === questionKey) {
+                            return;
+                        }
+                        llmModalState.openQuestionKey = questionKey;
+                        renderLLMAccordion();
+                    });
+                }
 
+                const questionBlock = document.createElement('div');
+                questionBlock.className = 'llm-review-block llm-review-question';
 
-                const header = document.createElement('button');
+                const questionTop = document.createElement('div');
+                questionTop.className = 'llm-review-top';
 
-                header.type = 'button';
+                const typeLabel = document.createElement('span');
+                typeLabel.className = 'llm-review-label';
+                typeLabel.textContent = entry.type;
+                questionTop.appendChild(typeLabel);
 
-                header.className = 'llm-accordion-header';
-
-                header.addEventListener('click', () => toggleLLMAccordion(questionKey));
-
-                header.innerHTML = `
-
-            <div class="llm-accordion-title">
-
-                <span class="llm-item-type">${entry.type}</span>
-
-                <span class="llm-item-question">${entry.question || '(empty question)'}</span>
-
-            </div>
-
-            <div class="llm-accordion-status">
-
-                ${entry.trashed ? '<span class="llm-badge trashed">Trashed</span>' : ''}
-
-            </div>
-
-                `;
-
-                item.appendChild(header);
-
-
-
-                const panel = document.createElement('div');
-
-                panel.className = 'llm-accordion-panel';
-
-
-
-                const answerDisplay = document.createElement('div');
-
-                answerDisplay.className = 'llm-answer-display';
-
-                answerDisplay.innerHTML = `
-
-            <strong>Answer</strong>
-
-            <div class="llm-answer-text">${entry.answer ? entry.answer : '<span class="llm-answer-empty">(empty answer)</span>'}</div>
-
-                `;
-
-                panel.appendChild(answerDisplay);
-
-
-
-                const actions = document.createElement('div');
-
-                actions.className = 'llm-accordion-actions';
-
-
-
-                const editButton = document.createElement('button');
-
-                editButton.type = 'button';
-
-                editButton.className = 'btn btn-secondary btn-icon';
-
-                editButton.innerHTML = '<span aria-hidden="true">&#9998;</span>';
-
-                editButton.title = 'Edit question and answer';
-
-                editButton.disabled = entry.trashed;
-
-                editButton.addEventListener('click', () => startLLMModalEdit(questionKey));
-
-                actions.appendChild(editButton);
-
-
-
+                const statusContainer = document.createElement('div');
+                statusContainer.className = 'llm-review-status';
                 if (entry.trashed) {
-
-                    const restoreButton = document.createElement('button');
-
-                    restoreButton.type = 'button';
-
-                    restoreButton.className = 'btn btn-light btn-sm';
-
-                    restoreButton.textContent = 'Restore';
-
-                    restoreButton.addEventListener('click', () => moveLLMQuestionToRanking(questionKey));
-
-                    actions.appendChild(restoreButton);
-
+                    const trashedBadge = document.createElement('span');
+                    trashedBadge.className = 'llm-badge trashed';
+                    trashedBadge.textContent = 'Trashed';
+                    statusContainer.appendChild(trashedBadge);
                 }
+                questionTop.appendChild(statusContainer);
 
+                questionBlock.appendChild(questionTop);
 
+                const questionText = document.createElement('div');
+                questionText.className = 'llm-review-text';
+                questionText.textContent = entry.question || '(empty question)';
+                questionBlock.appendChild(questionText);
 
-                panel.appendChild(actions);
+                item.appendChild(questionBlock);
 
+                const answerBlock = document.createElement('div');
+                answerBlock.className = 'llm-review-block llm-review-answer';
 
+                const answerLabel = document.createElement('span');
+                answerLabel.className = 'llm-review-label';
+                answerLabel.textContent = 'Answer';
+                answerBlock.appendChild(answerLabel);
+
+                const answerText = document.createElement('div');
+                answerText.className = 'llm-review-text';
+                if (entry.answer) {
+                    answerText.textContent = entry.answer;
+                } else {
+                    answerText.innerHTML = '<span class="llm-answer-empty">(empty answer)</span>';
+                }
+                answerBlock.appendChild(answerText);
+
+                item.appendChild(answerBlock);
 
                 if (llmModalState.editingKey === questionKey && !entry.trashed) {
-
                     const editWrapper = document.createElement('div');
-
                     editWrapper.className = 'llm-edit-form';
 
-
-
                     const questionField = document.createElement('div');
-
                     questionField.className = 'llm-modal-field';
-
                     const qLabel = document.createElement('label');
-
                     qLabel.textContent = 'Question';
-
                     const qInput = document.createElement('textarea');
-
                     qInput.value = entry.question || '';
-
                     qInput.dataset.role = 'question';
-
                     questionField.appendChild(qLabel);
-
                     questionField.appendChild(qInput);
 
-
-
                     const answerField = document.createElement('div');
-
                     answerField.className = 'llm-modal-field';
-
                     const aLabel = document.createElement('label');
-
                     aLabel.textContent = 'Answer';
-
                     const aInput = document.createElement('textarea');
-
                     aInput.value = entry.answer || '';
-
                     aInput.dataset.role = 'answer';
-
                     answerField.appendChild(aLabel);
-
                     answerField.appendChild(aInput);
 
-
-
                     const editActions = document.createElement('div');
-
                     editActions.className = 'llm-edit-actions';
-
                     const saveButton = document.createElement('button');
-
                     saveButton.type = 'button';
-
                     saveButton.className = 'btn btn-success btn-sm';
-
                     saveButton.textContent = 'Save';
-
                     saveButton.addEventListener('click', () => saveLLMModalQuestion(questionKey, editWrapper));
-
                     const cancelButton = document.createElement('button');
-
                     cancelButton.type = 'button';
-
                     cancelButton.className = 'btn btn-secondary btn-sm';
-
                     cancelButton.textContent = 'Cancel';
-
                     cancelButton.addEventListener('click', cancelLLMModalEdit);
 
-
-
                     editActions.appendChild(saveButton);
-
                     editActions.appendChild(cancelButton);
 
-
-
                     editWrapper.appendChild(questionField);
-
                     editWrapper.appendChild(answerField);
-
                     editWrapper.appendChild(editActions);
 
-
-
-                    panel.appendChild(editWrapper);
-
+                    item.appendChild(editWrapper);
                 }
 
+                const actions = document.createElement('div');
+                actions.className = 'llm-review-actions';
 
+                const editButton = document.createElement('button');
+                editButton.type = 'button';
+                editButton.className = 'btn btn-secondary btn-icon';
+                editButton.innerHTML = '<span aria-hidden="true">&#9998;</span>';
+                editButton.title = 'Edit question and answer';
+                editButton.disabled = entry.trashed || llmModalState.editingKey === questionKey;
+                editButton.addEventListener('click', () => startLLMModalEdit(questionKey));
+                actions.appendChild(editButton);
 
-                item.appendChild(panel);
+                if (entry.trashed) {
+                    const restoreButton = document.createElement('button');
+                    restoreButton.type = 'button';
+                    restoreButton.className = 'btn btn-light btn-sm';
+                    restoreButton.textContent = 'Restore';
+                    restoreButton.addEventListener('click', () => moveLLMQuestionToRanking(questionKey));
+                    actions.appendChild(restoreButton);
+                }
+
+                item.appendChild(actions);
 
                 accordion.appendChild(item);
 
             });
-
-        }
-
-
-
-        function toggleLLMAccordion(questionKey) {
-
-            if (llmModalState.openQuestionKey === questionKey) {
-
-                llmModalState.openQuestionKey = null;
-
-            } else {
-
-                llmModalState.openQuestionKey = questionKey;
-
-            }
-
-            renderLLMAccordion();
 
         }
 
@@ -5141,13 +5041,10 @@ select {
 
             reviewList.innerHTML = '';
 
-            // Initialize llmQuestionEdits and segmentApprovals if needed
+            // Initialize llmQuestionEdits if needed
             if (!llmQuestionEdits[currentVideoId]) {
                 llmQuestionEdits[currentVideoId] = {};
-            }
-            if (!segmentApprovals[currentVideoId]) {
-                segmentApprovals[currentVideoId] = {};
-            }
+            } 
 
             // Create accordion for each segment
             for (let index = 0; index < currentSegments.length; index++) {
@@ -5161,15 +5058,11 @@ select {
                 // Create accordion header
                 const header = document.createElement('div');
                 header.className = 'accordion-header';
-                if (index === 0 && !segmentApprovals[currentVideoId][segmentKey]) {
+                if (index === 0) {
                     header.classList.add('active');
                 }
                 
-                // Add approved class if segment is approved
-                if (segmentApprovals[currentVideoId][segmentKey]) {
-                    header.classList.add('approved');
-                }
-                
+
                 const title = document.createElement('div');
                 title.className = 'accordion-title';
                 title.innerHTML = `
@@ -5187,7 +5080,7 @@ select {
                 // Create accordion content
                 const content = document.createElement('div');
                 content.className = 'accordion-content';
-                if (index === 0 && !segmentApprovals[currentVideoId][segmentKey]) {
+                if (index === 0) {
                     content.classList.add('active');
                 }
                 
@@ -5338,23 +5231,6 @@ select {
                 inner.appendChild(llmColumn);
                 content.appendChild(inner);
                 
-                // Add approve segment button for ALL segments
-                const approveSection = document.createElement('div');
-                approveSection.className = 'segment-approve-section';
-                approveSection.style.gridColumn = '2';
-                approveSection.style.marginTop = '0';
-                
-                // Show approve button regardless of AI questions
-                approveSection.innerHTML = `
-                    <button class="btn-approve-segment" 
-                            onclick="approveSegment('${segmentKey}', ${index})"
-                            ${segmentApprovals[currentVideoId][segmentKey] ? 'disabled' : ''}>
-                        ${segmentApprovals[currentVideoId][segmentKey] ? 'Segment Approved ?' : 'Approve Segment'}
-                    </button>
-                `;
-                
-                llmColumn.appendChild(approveSection);
-                
                 // Add header click handler
                 header.addEventListener('click', () => toggleAccordion(index));
                 
@@ -5370,38 +5246,6 @@ select {
                 <button class="btn-save-changes" onclick="saveAllLLMEdits()">Finalize questions and submit</button>
             `;
             reviewList.appendChild(saveSection);
-        }
-        
-        function approveSegment(segmentKey, segmentIndex) {
-            if (!segmentApprovals[currentVideoId]) {
-                segmentApprovals[currentVideoId] = {};
-            }
-            
-            // Mark segment as approved (no validation required)
-            segmentApprovals[currentVideoId][segmentKey] = true;
-            
-            // Close current accordion
-            const headers = document.querySelectorAll('.accordion-header');
-            const contents = document.querySelectorAll('.accordion-content');
-            
-            if (headers[segmentIndex]) {
-                headers[segmentIndex].classList.remove('active');
-                headers[segmentIndex].classList.add('approved');
-                contents[segmentIndex].classList.remove('active');
-            }
-            
-            // Open next unapproved segment
-            for (let i = segmentIndex + 1; i < currentSegments.length; i++) {
-                const nextSegmentKey = getSegmentKey(currentSegments[i]);
-                if (!segmentApprovals[currentVideoId][nextSegmentKey]) {
-                    headers[i].classList.add('active');
-                    contents[i].classList.add('active');
-                    break;
-                }
-            }
-            
-            // Re-render to update UI
-            renderReviewQuestions();
         }
 
         function toggleAccordion(index) {
@@ -5522,23 +5366,7 @@ select {
                 return;
             }
 
-            // Ensure all segments are approved
-            let allApproved = true;
-            for (let index = 0; index < currentSegments.length; index++) {
-                const segment = currentSegments[index];
-                const segmentKey = getSegmentKey(segment);
-                if (!segmentApprovals[currentVideoId] || !segmentApprovals[currentVideoId][segmentKey]) {
-                    allApproved = false;
-                    break;
-                }
-            }
-
-            if (!allApproved) {
-                showStatus('Please approve all segments before saving changes', 'error');
-                return;
-            }
-
-            // Build final JSON payload
+            // Ensure all segments are approved            // Build final JSON payload
             const finalQuestions = {
                 videoId: currentVideoId,
                 timestamp: new Date().toISOString(),

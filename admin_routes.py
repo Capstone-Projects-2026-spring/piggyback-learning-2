@@ -23,6 +23,7 @@ load_dotenv()
 # ----- Local paths (keep consistent with main.py) -----
 BASE_DIR = Path(__file__).parent.resolve()
 TEMPLATES_DIR = BASE_DIR / "templates"
+DOWNLOADS_DIR = BASE_DIR / "downloads"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
@@ -59,6 +60,81 @@ def format_hhmmss(total_seconds: int) -> str:
     if h > 0:
         return f"{h:02d}:{m:02d}:{s:02d}"
     return f"{m:02d}:{s:02d}"
+
+
+def _collect_downloaded_videos(include_without_frames: bool = False) -> List[Dict[str, Any]]:
+    """
+    Enumerate downloads/<video_id> folders so the admin UI can reuse existing assets.
+    """
+    entries: List[Dict[str, Any]] = []
+    if not DOWNLOADS_DIR.exists():
+        return entries
+
+    for folder in sorted(DOWNLOADS_DIR.iterdir()):
+        if not folder.is_dir():
+            continue
+
+        video_id = folder.name
+        meta_path = folder / "meta.json"
+        title = video_id
+        duration_seconds: Optional[int] = None
+        if meta_path.exists():
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                title = meta.get("title") or title
+                duration_seconds = meta.get("duration")
+            except Exception:
+                pass
+
+        frames_dir = folder / "extracted_frames"
+        frames_json = frames_dir / "frame_data.json"
+        has_frames = frames_json.exists()
+        frame_count = None
+        if frames_json.exists():
+            try:
+                frame_payload = json.loads(frames_json.read_text(encoding="utf-8"))
+                frame_count = frame_payload.get("video_info", {}).get("extracted_frames")
+            except Exception:
+                frame_count = None
+
+        questions_path = folder / "questions" / f"{video_id}.json"
+        has_questions = questions_path.exists()
+        if not include_without_frames and not has_frames:
+            continue
+
+        duration_label = None
+        if duration_seconds:
+            try:
+                duration_label = format_hhmmss(int(float(duration_seconds)))
+            except Exception:
+                duration_label = None
+
+        entry: Dict[str, Any] = {
+            "video_id": video_id,
+            "title": title,
+            "duration_seconds": duration_seconds,
+            "duration_formatted": duration_label,
+            "has_frames": has_frames,
+            "frame_count": frame_count,
+            "has_questions": has_questions,
+        }
+        if has_frames:
+            try:
+                entry["frames_dir"] = (
+                    f"/downloads/{frames_dir.relative_to(DOWNLOADS_DIR).as_posix()}"
+                )
+            except ValueError:
+                entry["frames_dir"] = None
+        if has_questions:
+            try:
+                entry["question_file"] = (
+                    f"/downloads/{questions_path.relative_to(DOWNLOADS_DIR).as_posix()}"
+                )
+            except ValueError:
+                entry["question_file"] = None
+        entries.append(entry)
+
+    return entries
 
 
 # =========================================================
@@ -236,6 +312,24 @@ async def api_extract_frames(video_id: str):
     return extract_frames_per_second_for_video(video_id)
 
 
+@router_admin_api.get("/admin/videos")
+def admin_list_downloaded_videos(include_without_frames: bool = False):
+    """
+    Provide a lightweight manifest of downloaded videos so admins can reuse them.
+    """
+    videos = _collect_downloaded_videos(include_without_frames=include_without_frames)
+    return {
+        "success": True,
+        "count": len(videos),
+        "videos": videos,
+        "message": (
+            "Videos with extracted frames ready for question generation."
+            if not include_without_frames
+            else "All downloaded videos."
+        ),
+    }
+
+
 @router_admin_api.post("/submit-questions")
 async def submit_questions(payload: Dict[str, Any] = Body(...)):
     """
@@ -247,11 +341,8 @@ async def submit_questions(payload: Dict[str, Any] = Body(...)):
     if not video_id or not questions_data:
         raise HTTPException(status_code=400, detail="Missing video_id or questions")
 
-    from pathlib import Path
-    import json
     from datetime import datetime
 
-    DOWNLOADS_DIR = Path(__file__).parent.resolve() / "downloads"
     questions_dir = DOWNLOADS_DIR / video_id / "questions"
     questions_dir.mkdir(parents=True, exist_ok=True)
     out_path = questions_dir / f"{video_id}.json"
@@ -296,10 +387,6 @@ async def ws_questions(websocket: WebSocket, video_id: str):
             build_segments_from_duration,
             _maybe_parse_json,
         )
-        from pathlib import Path
-        import json
-
-        DOWNLOADS_DIR = Path(__file__).parent.resolve() / "downloads"
         frames_dir = DOWNLOADS_DIR / video_id / "extracted_frames"
         if not frames_dir.exists():
             await websocket.send_json(

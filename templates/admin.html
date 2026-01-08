@@ -155,6 +155,132 @@
             border-radius: 12px;
             margin-bottom: 25px;
         }
+
+        .step-tabs {
+            margin-top: 10px;
+        }
+
+        .tab-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 18px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            background: #fff;
+            color: #007bff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            border: 2px solid #007bff;
+        }
+
+        .tab-panels {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            padding: 25px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .existing-download-panel {
+            border: 1px solid #ffe8a1;
+            background: #fffdf5;
+        }
+
+        .existing-video-controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .existing-video-controls select {
+            flex: 1;
+            min-width: 240px;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .existing-download-info {
+            background: #fff;
+            border: 1px dashed #f0ad4e;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .existing-video-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 6px;
+        }
+
+        .existing-video-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+
+        .existing-video-flags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .badge-secondary {
+            background: #e2e3e5;
+            color: #41464b;
+        }
         
         .search-form {
             display: flex;
@@ -348,6 +474,19 @@
             padding: 25px;
             margin-bottom: 20px;
             border-left: 4px solid #007bff;
+        }
+
+        .video-info-details {
+            color: #495057;
+            font-size: 0.9rem;
+            margin-top: 6px;
+        }
+
+        .video-info-flags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
         }
         
         .process-step h3 {
@@ -732,72 +871,103 @@
             <div id="step-1" class="step-content active">
                 <h2 class="step-title">Step 1: Search & Download Video</h2>
                 
-                <div class="search-container">
-                    <h3>Option 1: Search YouTube (Kid-Safe Videos)</h3>
-                    <div class="search-form">
-                        <div class="form-group flex-1">
-                            <label for="yt_query">Search Query</label>
-                            <input type="text" id="yt_query" placeholder="Search for educational videos..." />
+                <div class="step-tabs">
+                    <div class="tab-controls">
+                        <button type="button" class="tab-button active" data-tab-target="tab-download-new">Download New Video</button>
+                        <button type="button" class="tab-button" data-tab-target="tab-use-existing">Use Existing Download</button>
+                    </div>
+                    <div class="tab-panels">
+                        <div class="tab-panel active" id="tab-download-new">
+                            <div class="search-container">
+                                <h3>Option 1: Search YouTube (Kid-Safe Videos)</h3>
+                                <div class="search-form">
+                                    <div class="form-group flex-1">
+                                        <label for="yt_query">Search Query</label>
+                                        <input type="text" id="yt_query" placeholder="Search for educational videos..." />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="min_minutes">Min (minutes)</label>
+                                        <input type="number" id="min_minutes" value="10" min="0" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="max_minutes">Max (minutes)</label>
+                                        <input type="number" id="max_minutes" value="60" min="1" />
+                                    </div>
+                                    <div class="form-group">
+                                        <button type="button" class="btn" id="search-btn">Search</button>
+                                    </div>
+                                </div>
+                                
+                                <div id="search-status" class="status-message status-info" style="display: none;"></div>
+                            </div>
+                            
+                            <div class="search-container">
+                                <h3>Option 2: Direct YouTube URL</h3>
+                                <form id="download-form" class="search-form">
+                                    <div class="form-group flex-1">
+                                        <label for="youtube_url">YouTube URL</label>
+                                        <input type="url" id="youtube_url" placeholder="https://www.youtube.com/watch?v=..." required />
+                                    </div>
+                                    <div class="form-group">
+                                        <button type="submit" class="btn btn-success">Download</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="loading" id="search-loading">
+                                <div class="spinner"></div>
+                                <p>Searching for videos...</p>
+                            </div>
+                            
+                            <div class="loading" id="download-loading" style="display: none;">
+                                <div class="spinner"></div>
+                                <p>Downloading video...</p>
+                            </div>
+                            
+                            <div id="search-results">
+                                <div class="results-grid" id="results-grid"></div>
+                                <div class="pagination-container">
+                                    <button id="load-more-btn" class="btn btn-outline" style="display: none;">Load More Videos</button>
+                                </div>
+                            </div>
+                            
+                            <div id="download-result" style="display: none;">
+                                <div class="status-message" id="download-status"></div>
+                                <div class="download-progress" id="download-progress">
+                                    <div class="progress-text" id="progress-text">0% Complete</div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar" id="progress-bar"></div>
+                                    </div>
+                                    <div class="progress-details" id="progress-details">
+                                        <span>Preparing download...</span>
+                                        <span>Calculating...</span>
+                                    </div>
+                                </div>
+                                <div id="video-preview"></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="min_minutes">Min (minutes)</label>
-                            <input type="number" id="min_minutes" value="10" min="0" />
-                        </div>
-                        <div class="form-group">
-                            <label for="max_minutes">Max (minutes)</label>
-                            <input type="number" id="max_minutes" value="60" min="1" />
-                        </div>
-                        <div class="form-group">
-                            <button type="button" class="btn" id="search-btn">Search</button>
+                        <div class="tab-panel" id="tab-use-existing">
+                            <div class="search-container existing-download-panel">
+                                <h3>Option 3: Use Existing Download</h3>
+                                <p style="margin-bottom: 15px; color: #6c757d;">
+                                    Reuse a video that already lives in the downloads folder. When you submit fresh questions, the previous JSON (if any) will be overwritten.
+                                </p>
+                                <div class="existing-video-controls">
+                                    <select id="existing-download-select">
+                                        <option value="">Loading downloads...</option>
+                                    </select>
+                                    <button type="button" class="btn" id="use-existing-download-btn" disabled>Use This Video</button>
+                                    <button type="button" class="btn btn-outline" id="refresh-existing-downloads-btn">Refresh</button>
+                                </div>
+                                <div class="loading" id="existing-download-loading" style="display: none;">
+                                    <div class="spinner"></div>
+                                    <p>Scanning existing downloads...</p>
+                                </div>
+                                <div id="existing-download-status" class="status-message status-info" style="display: none;"></div>
+                                <div class="existing-download-info" id="existing-download-info" style="display: none;"></div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div id="search-status" class="status-message status-info" style="display: none;"></div>
-                </div>
-                
-                <div class="search-container">
-                    <h3>Option 2: Direct YouTube URL</h3>
-                    <form id="download-form" class="search-form">
-                        <div class="form-group flex-1">
-                            <label for="youtube_url">YouTube URL</label>
-                            <input type="url" id="youtube_url" placeholder="https://www.youtube.com/watch?v=..." required />
-                        </div>
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-success">Download</button>
-                        </div>
-                    </form>
-                </div>
-                
-                <div class="loading" id="search-loading">
-                    <div class="spinner"></div>
-                    <p>Searching for videos...</p>
-                </div>
-                
-                <div class="loading" id="download-loading" style="display: none;">
-                    <div class="spinner"></div>
-                    <p>Downloading video...</p>
-                </div>
-                
-                <div id="search-results">
-                    <div class="results-grid" id="results-grid"></div>
-                    <div class="pagination-container">
-                        <button id="load-more-btn" class="btn btn-outline" style="display: none;">Load More Videos</button>
-                    </div>
-                </div>
-                
-                <div id="download-result" style="display: none;">
-                    <div class="status-message" id="download-status"></div>
-                    <div class="download-progress" id="download-progress">
-                        <div class="progress-text" id="progress-text">0% Complete</div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar" id="progress-bar"></div>
-                        </div>
-                        <div class="progress-details" id="progress-details">
-                            <span>Preparing download...</span>
-                            <span>Calculating...</span>
-                        </div>
-                    </div>
-                    <div id="video-preview"></div>
                 </div>
             </div>
             
@@ -810,7 +980,12 @@
                     <p>This process will extract one frame per second from your downloaded video. These frames will be used for generating comprehension questions.</p>
                     
                     <div id="video-info" style="margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 8px; display: none;">
-                        <strong>Selected Video:</strong> <span id="current-video-id"></span>
+                        <div><strong>Selected Video:</strong> <span id="current-video-id"></span></div>
+                        <div id="current-video-details" class="video-info-details"></div>
+                        <div class="video-info-flags">
+                            <span id="current-video-frame-status" class="badge badge-warning">Frames needed</span>
+                            <span id="current-video-questions-status" class="badge badge-secondary">No questions saved yet</span>
+                        </div>
                     </div>
                     
                     <button type="button" class="btn btn-success" id="extract-frames-btn" disabled>
@@ -910,11 +1085,16 @@
         let currentMaxMinutes = 60;
         let generatedQuestions = [];
         let segmentCount = 0;
+        let existingDownloads = [];
+        let currentVideoMeta = null;
+        let currentVideoHasFrames = false;
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             updateStepDisplay();
             bindEventListeners();
+            initStepOneTabs();
+            loadExistingDownloads();
             
             // Load initial suggestions
             setTimeout(() => {
@@ -944,6 +1124,19 @@
             
             // Question generation
             document.getElementById('generate-questions-btn').addEventListener('click', generateQuestions);
+
+            const existingSelect = document.getElementById('existing-download-select');
+            if (existingSelect) {
+                existingSelect.addEventListener('change', handleExistingDownloadChange);
+            }
+            const useExistingBtn = document.getElementById('use-existing-download-btn');
+            if (useExistingBtn) {
+                useExistingBtn.addEventListener('click', useExistingDownload);
+            }
+            const refreshExistingBtn = document.getElementById('refresh-existing-downloads-btn');
+            if (refreshExistingBtn) {
+                refreshExistingBtn.addEventListener('click', () => loadExistingDownloads(true));
+            }
         }
         
         function updateStepDisplay() {
@@ -991,19 +1184,15 @@
             const extractBtn = document.getElementById('extract-frames-btn');
             const generateBtn = document.getElementById('generate-questions-btn');
             
-            // Enable extraction if we have a video
-            extractBtn.disabled = !currentVideoId;
-            
-            // Enable generation if frames are extracted
-            generateBtn.disabled = !currentVideoId;
-            
-            // Update video info display
-            if (currentVideoId) {
-                const videoInfo = document.getElementById('video-info');
-                const videoIdSpan = document.getElementById('current-video-id');
-                videoInfo.style.display = 'block';
-                videoIdSpan.textContent = currentVideoId;
+            if (extractBtn) {
+                extractBtn.disabled = !currentVideoId;
             }
+            
+            if (generateBtn) {
+                generateBtn.disabled = !(currentVideoId && currentVideoHasFrames);
+            }
+
+            updateVideoInfoPanel();
         }
         
         function nextStep() {
@@ -1017,6 +1206,258 @@
             if (currentStep > 1) {
                 currentStep--;
                 updateStepDisplay();
+            }
+        }
+
+        function formatHumanDuration(seconds) {
+            if (seconds === undefined || seconds === null) {
+                return null;
+            }
+            const total = Math.max(0, Math.round(Number(seconds) || 0));
+            const hours = Math.floor(total / 3600);
+            const minutes = Math.floor((total % 3600) / 60);
+            const secs = total % 60;
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            }
+            if (minutes > 0) {
+                return `${minutes}m ${secs.toString().padStart(2, '0')}s`;
+            }
+            return `${secs}s`;
+        }
+
+        function initStepOneTabs() {
+            const tabWrapper = document.querySelector('.step-tabs');
+            if (!tabWrapper) return;
+            const buttons = tabWrapper.querySelectorAll('.tab-button');
+            const panels = tabWrapper.querySelectorAll('.tab-panel');
+            buttons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const targetId = button.getAttribute('data-tab-target');
+                    buttons.forEach((btn) => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    panels.forEach((panel) => {
+                        if (panel.id === targetId) {
+                            panel.classList.add('active');
+                        } else {
+                            panel.classList.remove('active');
+                        }
+                    });
+                });
+            });
+        }
+
+        async function loadExistingDownloads(showToast = false) {
+            const selectEl = document.getElementById('existing-download-select');
+            const statusEl = document.getElementById('existing-download-status');
+            const loadingEl = document.getElementById('existing-download-loading');
+            if (!selectEl) return;
+
+            if (loadingEl) {
+                loadingEl.style.display = 'flex';
+            }
+            if (statusEl && !showToast) {
+                statusEl.style.display = 'none';
+            }
+
+            try {
+                const response = await fetch('/api/admin/videos?include_without_frames=true');
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message || 'Unable to load downloads');
+                }
+                existingDownloads = data.videos || [];
+                selectEl.innerHTML = '';
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = existingDownloads.length
+                    ? 'Select a downloaded video...'
+                    : 'No downloaded videos found yet';
+                placeholder.disabled = !existingDownloads.length;
+                placeholder.selected = true;
+                selectEl.appendChild(placeholder);
+
+                existingDownloads.forEach((video) => {
+                    const option = document.createElement('option');
+                    const durationLabel = video.duration_formatted ? ` (${video.duration_formatted})` : '';
+                    const framesLabel = video.has_frames ? ' • frames ready' : ' • frames missing';
+                    option.value = video.video_id;
+                    option.textContent = `${video.title || video.video_id}${durationLabel}${framesLabel}`;
+                    selectEl.appendChild(option);
+                });
+
+                const useBtn = document.getElementById('use-existing-download-btn');
+                if (useBtn) {
+                    useBtn.disabled = true;
+                }
+                renderExistingDownloadInfo(null);
+
+                if (statusEl) {
+                    if (!existingDownloads.length || showToast) {
+                        statusEl.style.display = 'block';
+                        statusEl.className = 'status-message status-info';
+                        statusEl.textContent = existingDownloads.length
+                            ? 'Download list refreshed.'
+                            : 'No downloads found yet. Use the search or direct URL options first.';
+                    } else {
+                        statusEl.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.className = 'status-message status-error';
+                    statusEl.textContent = `Unable to load downloads: ${error.message}`;
+                }
+            } finally {
+                if (loadingEl) {
+                    loadingEl.style.display = 'none';
+                }
+            }
+        }
+
+        function handleExistingDownloadChange() {
+            const selectEl = document.getElementById('existing-download-select');
+            if (!selectEl) return;
+            const selected = existingDownloads.find(video => video.video_id === selectEl.value);
+            const useBtn = document.getElementById('use-existing-download-btn');
+            if (useBtn) {
+                useBtn.disabled = !selected;
+            }
+            renderExistingDownloadInfo(selected || null);
+        }
+
+        function renderExistingDownloadInfo(video) {
+            const infoEl = document.getElementById('existing-download-info');
+            if (!infoEl) return;
+            if (!video) {
+                infoEl.style.display = 'none';
+                infoEl.innerHTML = '';
+                return;
+            }
+            const framesBadge = video.has_frames ? 'badge badge-success' : 'badge badge-warning';
+            const questionsBadge = video.has_questions ? 'badge badge-info' : 'badge badge-secondary';
+            infoEl.innerHTML = `
+                <div class="existing-video-title">${video.title || video.video_id}</div>
+                <div class="existing-video-meta">
+                    <span>ID: ${video.video_id}</span>
+                    ${video.duration_formatted ? `<span>Duration: ${video.duration_formatted}</span>` : ''}
+                </div>
+                <div class="existing-video-flags">
+                    <span class="${framesBadge}">${video.has_frames ? 'Frames ready' : 'Frames missing (run Step 2)'}</span>
+                    <span class="${questionsBadge}">${video.has_questions ? 'Existing questions stored' : 'No saved questions yet'}</span>
+                </div>
+                ${video.frame_count ? `<div class="existing-video-meta">Frames extracted: ${video.frame_count}</div>` : ''}
+            `;
+            infoEl.style.display = 'block';
+        }
+
+        function useExistingDownload() {
+            const selectEl = document.getElementById('existing-download-select');
+            const statusEl = document.getElementById('existing-download-status');
+            if (!selectEl) return;
+
+            const video = existingDownloads.find(item => item.video_id === selectEl.value);
+            if (!video) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.className = 'status-message status-error';
+                    statusEl.textContent = 'Please pick a video from the dropdown.';
+                }
+                return;
+            }
+
+            currentVideoId = video.video_id;
+            currentVideoMeta = { ...video };
+            currentVideoHasFrames = Boolean(video.has_frames);
+
+            prepareQuestionsUiForNewVideo();
+            updateButtonStates();
+
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.className = 'status-message status-success';
+                statusEl.textContent = currentVideoHasFrames
+                    ? 'Selected video has frames. Jumping to question generation.'
+                    : 'Video selected. Please extract frames in Step 2.';
+            }
+
+            currentStep = currentVideoHasFrames ? 3 : 2;
+            updateStepDisplay();
+        }
+
+        function prepareQuestionsUiForNewVideo() {
+            generatedQuestions = [];
+            segmentCount = 0;
+
+            const resultsTbody = document.getElementById('questions-results-tbody');
+            if (resultsTbody) {
+                resultsTbody.innerHTML = '';
+            }
+            const resultsWrapper = document.querySelector('.questions-results');
+            if (resultsWrapper) {
+                resultsWrapper.style.display = 'none';
+            }
+            const noResults = document.getElementById('questions-no-results');
+            if (noResults) {
+                noResults.style.display = 'block';
+            }
+            const generationDetails = document.getElementById('generation-details');
+            if (generationDetails) {
+                generationDetails.innerHTML = '';
+            }
+            const generationStatus = document.getElementById('generation-status');
+            if (generationStatus) {
+                generationStatus.style.display = 'none';
+            }
+        }
+
+        function updateVideoInfoPanel() {
+            const videoInfo = document.getElementById('video-info');
+            const videoIdSpan = document.getElementById('current-video-id');
+            if (!videoInfo || !videoIdSpan) return;
+
+            if (!currentVideoId) {
+                videoInfo.style.display = 'none';
+                return;
+            }
+
+            videoInfo.style.display = 'block';
+            if (currentVideoMeta && currentVideoMeta.title) {
+                videoIdSpan.textContent = `${currentVideoMeta.title} (${currentVideoId})`;
+            } else {
+                videoIdSpan.textContent = currentVideoId;
+            }
+
+            const detailsEl = document.getElementById('current-video-details');
+            if (detailsEl) {
+                const detailParts = [];
+                if (currentVideoMeta && currentVideoMeta.duration_formatted) {
+                    detailParts.push(`Duration: ${currentVideoMeta.duration_formatted}`);
+                } else if (currentVideoMeta && currentVideoMeta.duration_seconds) {
+                    detailParts.push(`Duration: ${formatHumanDuration(currentVideoMeta.duration_seconds)}`);
+                }
+                if (currentVideoMeta && currentVideoMeta.frame_count) {
+                    detailParts.push(`Frames: ${currentVideoMeta.frame_count}`);
+                } else if (currentVideoHasFrames) {
+                    detailParts.push('Frames detected');
+                }
+                detailsEl.textContent = detailParts.join(' • ');
+            }
+
+            const frameStatus = document.getElementById('current-video-frame-status');
+            if (frameStatus) {
+                frameStatus.textContent = currentVideoHasFrames ? 'Frames ready' : 'Frames needed';
+                frameStatus.className = `badge ${currentVideoHasFrames ? 'badge-success' : 'badge-warning'}`;
+            }
+
+            const questionStatus = document.getElementById('current-video-questions-status');
+            if (questionStatus) {
+                const hasQuestions = Boolean(currentVideoMeta && currentVideoMeta.has_questions);
+                questionStatus.textContent = hasQuestions
+                    ? 'Existing questions will be overwritten'
+                    : 'No saved questions yet';
+                questionStatus.className = `badge ${hasQuestions ? 'badge-info' : 'badge-secondary'}`;
             }
         }
         
@@ -1137,8 +1578,19 @@
                     
                     if (data.success) {
                         currentVideoId = data.video_id;
+                        currentVideoMeta = {
+                            video_id: data.video_id,
+                            title: data.title || data.video_id,
+                            duration_seconds: data.duration,
+                            duration_formatted: data.duration ? formatHumanDuration(data.duration) : null,
+                            has_frames: false,
+                            has_questions: false
+                        };
+                        currentVideoHasFrames = false;
+                        prepareQuestionsUiForNewVideo();
                         showStatus('download-status', 'Video downloaded successfully!', 'success', 'download-result');
                         updateButtonStates();
+                        loadExistingDownloads(true);
                         setTimeout(() => { nextStep(); }, 1500);
                     } else {
                         showStatus('download-status', data.message || 'Download failed. Please try again.', 'error', 'download-result');
@@ -1170,6 +1622,13 @@
                     showStatus('extraction-status', 'Frames extracted successfully!', 'success', 'extraction-result');
                     const detailsDiv = document.getElementById('extraction-details');
                     detailsDiv.innerHTML = createExtractionDetails(data);
+                    currentVideoHasFrames = true;
+                    currentVideoMeta = currentVideoMeta || { video_id: currentVideoId };
+                    currentVideoMeta.has_frames = true;
+                    currentVideoMeta.frame_count = data.count;
+                    currentVideoMeta.frames_dir = data.output_dir;
+                    updateButtonStates();
+                    loadExistingDownloads(true);
                     setTimeout(() => { nextStep(); }, 2500);
                 } else {
                     showStatus('extraction-status', data.message || 'Frame extraction failed. Please try again.', 'error', 'extraction-result');
@@ -1216,7 +1675,15 @@
         }
         
         async function generateQuestions() {
-            if (!currentVideoId) return;
+            if (!currentVideoId) {
+                showStatus('generation-status', 'Select or download a video first.', 'error', 'generation-result');
+                return;
+            }
+
+            if (!currentVideoHasFrames) {
+                showStatus('generation-status', 'Frames not found. Please extract frames in Step 2.', 'error', 'generation-result');
+                return;
+            }
             
             const startSeconds = document.getElementById('start_seconds').value;
             const intervalSeconds = document.getElementById('interval_seconds').value;
@@ -1275,9 +1742,9 @@
                     detailsDiv.innerHTML = `
                         <div style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
                             <h4 style="color: #495057; margin-bottom: 15px;">Ready to Submit</h4>
-                            <p style="color: #6c757d; margin-bottom: 20px;">Review the generated questions above. Click submit to save them permanently.</p>
+                            <p style="color: #6c757d; margin-bottom: 20px;">Review the generated questions above. Submitting will overwrite any previously saved JSON for this video.</p>
                             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                                <button class="btn btn-success" onclick="submitQuestions()">Submit & Save Questions</button>
+                                <button class="btn btn-success" onclick="submitQuestions(event)">Submit & Save Questions</button>
                                 <button class="btn btn-outline" onclick="previewQuestions()">Preview Questions</button>
                                 <button class="btn btn-outline" onclick="resetQuestions()" style="background: #dc3545; color: white; border-color: #dc3545;">Reset & Regenerate</button>
                             </div>
@@ -1296,57 +1763,78 @@
             };
         }
         
-       async function submitQuestions() {
-    if (!currentVideoId || generatedQuestions.length === 0) {
-        alert('No questions to submit');
-        return;
-    }
-    
-    const submitButton = event.target;
-    submitButton.disabled = true;
-    submitButton.textContent = 'Submitting...';
-    
-    try {
-        const payload = {
-            video_id: currentVideoId,
-            questions: generatedQuestions
-        };
-        
-        const response = await fetch('/api/submit-questions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            const videoTitle = result.video_title || currentVideoId;
-            showStatus('generation-status', `Questions saved as "${videoTitle}" successfully!`, 'success', 'generation-result');
-            
-            // Update the details section
-            const detailsDiv = document.getElementById('generation-details');
-            detailsDiv.innerHTML = `
-                <div style="margin-top: 20px; padding: 20px; background: #d4edda; border-radius: 8px; border: 1px solid #c3e6cb;">
-                    <h4 style="color: #155724; margin-bottom: 15px;">Questions Submitted Successfully!</h4>
-                    <p style="color: #155724; margin-bottom: 10px;">Video: <strong>${videoTitle}</strong></p>
-                    <p style="color: #155724; margin-bottom: 20px;">Your questions have been saved and are ready for use.</p>
-                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                        <a href="${result.file_url}" class="btn btn-success" download>Download Questions JSON</a>
-                        <a href="/expert-preview?video=${currentVideoId}" class="btn btn-outline" target="_blank">Expert Preview</a>
-                        <button class="btn btn-outline" onclick="generateMoreQuestions()">Generate More</button>
-                    </div>
-                </div>
-            `;
-        } else {
-            throw new Error(result.message || 'Submission failed');
+        async function submitQuestions(evt) {
+            if (!currentVideoId || generatedQuestions.length === 0) {
+                alert('No questions to submit');
+                return;
+            }
+
+            const submitButton = evt ? evt.target : null;
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Submitting...';
+            }
+
+            try {
+                const payload = {
+                    video_id: currentVideoId,
+                    questions: generatedQuestions
+                };
+
+                const response = await fetch('/api/submit-questions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.message || 'Submission failed');
+                }
+
+                const previouslySaved = Boolean(currentVideoMeta && currentVideoMeta.has_questions);
+                const videoTitle = result.video_title || currentVideoMeta?.title || currentVideoId;
+
+                if (!currentVideoMeta) {
+                    currentVideoMeta = { video_id: currentVideoId };
+                }
+                currentVideoMeta.has_questions = true;
+                currentVideoMeta.question_file = result.file_url;
+                updateVideoInfoPanel();
+                await loadExistingDownloads(true);
+
+                const overwriteNote = previouslySaved ? ' (existing file overwritten)' : '';
+                showStatus(
+                    'generation-status',
+                    `Questions saved as "${videoTitle}"${overwriteNote}.`,
+                    'success',
+                    'generation-result'
+                );
+
+                const detailsDiv = document.getElementById('generation-details');
+                if (detailsDiv) {
+                    detailsDiv.innerHTML = `
+                        <div style="margin-top: 20px; padding: 20px; background: #d4edda; border-radius: 8px; border: 1px solid #c3e6cb;">
+                            <h4 style="color: #155724; margin-bottom: 15px;">Questions Submitted Successfully!</h4>
+                            <p style="color: #155724; margin-bottom: 10px;">Video: <strong>${videoTitle}</strong></p>
+                            <p style="color: #155724; margin-bottom: 20px;">Your questions have been saved${previouslySaved ? ' and replaced the prior file' : ''}.</p>
+                            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                                <a href="${result.file_url}" class="btn btn-success" download>Download Questions JSON</a>
+                                <a href="/expert-preview?video=${currentVideoId}" class="btn btn-outline" target="_blank">Expert Preview</a>
+                                <button class="btn btn-outline" onclick="generateMoreQuestions()">Generate More</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                showStatus('generation-status', 'Submission failed: ' + error.message, 'error', 'generation-result');
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Submit & Save Questions';
+                }
+            }
         }
-    } catch (error) {
-        showStatus('generation-status', 'Submission failed: ' + error.message, 'error', 'generation-result');
-        submitButton.disabled = false;
-        submitButton.textContent = 'Submit & Save Questions';
-    }
-}
         function previewQuestions() {
             const preview = {
                 video_id: currentVideoId,
@@ -1368,12 +1856,7 @@
         
         function resetQuestions() {
             if (confirm('Are you sure you want to reset and regenerate all questions? This will discard current progress.')) {
-                generatedQuestions = [];
-                segmentCount = 0;
-                const resultsTbody = document.getElementById('questions-results-tbody');
-                resultsTbody.innerHTML = '';
-                document.querySelector('.questions-results').style.display = 'none';
-                document.getElementById('generation-details').innerHTML = '';
+                prepareQuestionsUiForNewVideo();
                 showStatus('generation-status', 'Ready to generate questions again.', 'info', 'generation-result');
             }
         }

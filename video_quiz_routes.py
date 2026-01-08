@@ -5,6 +5,7 @@ from config import GRADING_CONFIG
 from rapidfuzz import fuzz
 from openai import OpenAI
 from typing import cast, Any, Dict
+from functools import lru_cache
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -455,6 +456,23 @@ def normalize_text(text: str) -> str:
     return " ".join(normalized)
 
 
+@lru_cache(maxsize=2048)
+def prepare_text_for_scoring(text: str) -> str:
+    """
+    Cached normalizer that also appends numeric hints so answers like "three dogs"
+    match "3 dogs" without re-tokenizing every time.
+    """
+    if not text:
+        return ""
+    normalized = normalize_text(text)
+    number_tokens = words_to_numbers(text)
+    if number_tokens:
+        unique_numbers = " ".join(str(n) for n in sorted(set(number_tokens)))
+        combined = f"{normalized} {unique_numbers}".strip()
+        return combined
+    return normalized
+
+
 def keyword_overlap(expected: str, user: str) -> float:
     exp_words = set(expected.split())
     usr_words = set(user.split())
@@ -533,8 +551,8 @@ async def check_answer(payload: dict = Body(...)):
         }
 
     # --- Quick RapidFuzz similarity ---
-    exp_clean = normalize_text(expected)
-    usr_clean = normalize_text(user)
+    exp_clean = prepare_text_for_scoring(expected)
+    usr_clean = prepare_text_for_scoring(user)
 
     pr = fuzz.partial_ratio(exp_clean, usr_clean) / 100.0
     tsr = fuzz.token_set_ratio(exp_clean, usr_clean) / 100.0
