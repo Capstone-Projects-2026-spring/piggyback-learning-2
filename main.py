@@ -8,6 +8,7 @@ import json
 import asyncio
 import time
 import random
+import shutil
 from datetime import datetime
 from urllib.parse import quote
 
@@ -97,7 +98,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-VIDEO_EXTENSIONS = {".mp4", ".mkv", ".webm", ".mov"}
+VIDEO_EXTENSIONS = (".mp4", ".webm", ".mkv", ".mov")
 EXPERT_QUESTION_TYPES = [
     ("character", "Character"),
     ("setting", "Setting"),
@@ -116,6 +117,15 @@ def normalize_segment_value(value: Any) -> float:
         return round(float(value), 3)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _looks_like_mp4(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(64)
+        return b"ftyp" in header
+    except Exception:
+        return False
 
 
 def _parse_rank_value(value: Any) -> Optional[int]:
@@ -225,6 +235,8 @@ def download_youtube(url: str) -> Dict[str, Any]:
         video_dir = DOWNLOADS_DIR / video_id
         video_dir.mkdir(parents=True, exist_ok=True)
 
+        has_ffmpeg = shutil.which("ffmpeg") is not None
+
         # Step 2: Download actual video (best quality <=720p)
         ydl_opts = {
             # Force MP4 output and prefer H.264 (avc1) to avoid AV1-only downloads.
@@ -259,6 +271,15 @@ def download_youtube(url: str) -> Dict[str, Any]:
             ],
         }
 
+        if not has_ffmpeg:
+            ydl_opts["compat_opts"] = ["no-sabr"]
+            ydl_opts["format"] = (
+                "bv*[ext=mp4][vcodec^=avc1][height<=720][protocol^=https]+"
+                "ba[ext=m4a][protocol^=https]"
+                "/b[ext=mp4][vcodec^=avc1][height<=720][protocol^=https]"
+                "/best[ext=mp4][protocol^=https]"
+            )
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
             ydl.download([url])
 
@@ -269,13 +290,27 @@ def download_youtube(url: str) -> Dict[str, Any]:
                 rel = p.relative_to(DOWNLOADS_DIR).as_posix()
                 created.append(rel)
 
+        video_path = find_primary_video_file(video_dir)
+        if not video_path:
+            result["message"] = "Download completed but no video file was found."
+            result["files"] = created
+            return result
+
+        if video_path.suffix.lower() == ".mp4" and not _looks_like_mp4(video_path):
+            result["message"] = (
+                "Downloaded file is not a valid MP4 container (likely HLS/TS). "
+                "Install ffmpeg or re-download with a non-SABR format."
+            )
+            result["files"] = created
+            return result
+
         # Step 4: Save metadata file
         meta = {
             "video_id": video_id,
             "title": title,
             "thumbnail": thumbnail,
             "duration": duration,
-            "local_path": f"/downloads/{video_id}/{video_id}.mp4",
+            "local_path": f"/downloads/{video_path.relative_to(DOWNLOADS_DIR).as_posix()}",
         }
 
         meta_path = video_dir / "meta.json"
@@ -377,17 +412,13 @@ def extract_frames_per_second_for_video(video_id: str) -> Dict[str, Any]:
             "files": [],
         }
 
-    video_files = []
-    for ext in ("*.mp4", "*.webm", "*.mkv"):
-        video_files.extend(folder_path.glob(ext))
-    if not video_files:
+    video_file = find_primary_video_file(folder_path)
+    if not video_file:
         return {
             "success": False,
             "message": f"No video files found in '{video_id}'.",
             "files": [],
         }
-
-    video_file = video_files[0]
     output_dir = folder_path / "extracted_frames"
     output_dir.mkdir(exist_ok=True)
 
@@ -1341,9 +1372,10 @@ def list_question_json_files() -> List[Dict[str, str]]:
 def find_primary_video_file(video_dir: Path) -> Optional[Path]:
     if not video_dir.exists() or not video_dir.is_dir():
         return None
-    for candidate in sorted(video_dir.iterdir()):
-        if candidate.is_file() and candidate.suffix.lower() in VIDEO_EXTENSIONS:
-            return candidate
+    for ext in VIDEO_EXTENSIONS:
+        matches = sorted(video_dir.glob(f"*{ext}"))
+        if matches:
+            return matches[0]
     return None
 
 
@@ -1440,14 +1472,7 @@ async def list_videos():
             thumbnail = meta_data.get("thumbnail", "")
             duration = meta_data.get("duration", 0)
 
-            # Find video file
-            video_file = None
-            for ext in ("*.mp4", "*.webm", "*.mkv"):
-                video_files = list(video_dir.glob(ext))
-                if video_files:
-                    video_file = video_files[0]
-                    break
-
+            video_file = find_primary_video_file(video_dir)
             if not video_file:
                 continue
 

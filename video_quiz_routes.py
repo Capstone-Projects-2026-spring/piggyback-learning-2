@@ -536,6 +536,14 @@ async def check_answer(payload: dict = Body(...)):
     user = cast(str, payload.get("user") or "").strip().lower()
     question = cast(str, payload.get("question") or "").strip().lower()
 
+    expected_numbers = words_to_numbers(expected)
+    user_numbers = words_to_numbers(user)
+    is_numeric = bool(expected_numbers)
+    numeric_question = bool(
+        re.search(r"\bhow many\b|\bnumber of\b|\bhow much\b|\bcount\b", question)
+    )
+    expected_text = normalize_text(expected)
+
     print(
         f"🔎 Checking answers | Q='{question}' | Expected='{expected}' | User='{user}'"
     )
@@ -545,10 +553,41 @@ async def check_answer(payload: dict = Body(...)):
             "similarity": 0.0,
             "expected": expected,
             "user": user,
-            "is_numeric": False,
+            "is_numeric": is_numeric,
             "status": "wrong",
             "reason": "Empty input",
         }
+
+    if expected_numbers:
+        expected_set = set(expected_numbers)
+        user_set = set(user_numbers)
+        if user_numbers and not (expected_set & user_set):
+            return {
+                "similarity": 0.0,
+                "expected": expected,
+                "user": user,
+                "is_numeric": True,
+                "status": "wrong",
+                "reason": "Numeric mismatch",
+            }
+        if user_numbers and not expected_text and expected_set == user_set:
+            return {
+                "similarity": 1.0,
+                "expected": expected,
+                "user": user,
+                "is_numeric": True,
+                "status": "correct",
+                "reason": "Numeric answer matched",
+            }
+        if not user_numbers and (not expected_text or numeric_question):
+            return {
+                "similarity": 0.0,
+                "expected": expected,
+                "user": user,
+                "is_numeric": True,
+                "status": "wrong",
+                "reason": "Missing numeric answer",
+            }
 
     # --- Quick RapidFuzz similarity ---
     exp_clean = prepare_text_for_scoring(expected)
@@ -558,6 +597,30 @@ async def check_answer(payload: dict = Body(...)):
     tsr = fuzz.token_set_ratio(exp_clean, usr_clean) / 100.0
     score = max(pr, tsr)
 
+    items = extract_items(expected)
+    if len(items) > 1:
+        matched_count, total_count, _matched_items = list_match(expected, user)
+        required = required_items_from_question(question, expected)
+        if total_count > 0:
+            if matched_count >= required:
+                return {
+                    "similarity": round(score, 3),
+                    "expected": expected,
+                    "user": user,
+                    "is_numeric": is_numeric,
+                    "status": "correct",
+                    "reason": f"Matched {matched_count} of {total_count} items (need {required})",
+                }
+            if matched_count > 0:
+                return {
+                    "similarity": round(score, 3),
+                    "expected": expected,
+                    "user": user,
+                    "is_numeric": is_numeric,
+                    "status": "almost",
+                    "reason": f"Matched {matched_count} of {total_count} items",
+                }
+
     print(f"  RapidFuzz → pr={pr:.3f}, tsr={tsr:.3f}, final={score:.3f}")
 
     if score >= GRADING_CONFIG["rapidfuzz_correct"]:
@@ -565,7 +628,7 @@ async def check_answer(payload: dict = Body(...)):
             "similarity": round(score, 3),
             "expected": expected,
             "user": user,
-            "is_numeric": False,
+            "is_numeric": is_numeric,
             "status": "correct",
             "reason": f"High RapidFuzz score {score:.2f}",
         }
@@ -575,7 +638,7 @@ async def check_answer(payload: dict = Body(...)):
             "similarity": round(score, 3),
             "expected": expected,
             "user": user,
-            "is_numeric": False,
+            "is_numeric": is_numeric,
             "status": "wrong",
             "reason": f"Low RapidFuzz score {score:.2f}",
         }
@@ -607,7 +670,7 @@ async def check_answer(payload: dict = Body(...)):
                 "similarity": round(score, 3),
                 "expected": expected,
                 "user": user,
-                "is_numeric": False,
+                "is_numeric": is_numeric,
                 "status": ai_label,
                 "reason": f"AI judged borderline case (RapidFuzz={score:.2f})",
             }
@@ -619,7 +682,7 @@ async def check_answer(payload: dict = Body(...)):
         "similarity": round(score, 3),
         "expected": expected,
         "user": user,
-        "is_numeric": False,
+        "is_numeric": is_numeric,
         "status": "almost",
         "reason": f"Borderline case defaulted (RapidFuzz={score:.2f})",
     }

@@ -815,7 +815,7 @@
     // ===============================
     const DEV_MODE = true; // set false to hide sidebar & toggle in production
 
-    const THRESHOLDS = {
+    let THRESHOLDS = {
       phrase: { correct: 0.6, borderline: 0.5 },
       number: { correct: 0.7, borderline: 0.6 }
     };
@@ -825,13 +825,18 @@
       speed: 0.9,
       format: "mp3"
     };
+    const TTS_PREFETCH_AHEAD = 3;
+    const TTS_CACHE_LIMIT = 12;
 
     const MIN_FEEDBACK_DISPLAY_MS = 1100;
     const LISTEN_RETRY_DELAY_MS = 1400;
     const MAX_LISTEN_RETRIES = 2;
     const SILENCE_THRESHOLD = 0.015;
-    const SILENCE_DURATION_MS = 2000;
-    const SPEECH_FRAMES_REQUIRED = 6;
+    const SILENCE_DURATION_MS = 1400;
+    const SPEECH_FRAMES_REQUIRED = 4;
+    const MAX_LISTEN_DURATION_MS = 9000;
+    const AMBIENT_SAMPLE_FRAMES = 20;
+    const SILENCE_THRESHOLD_MULTIPLIER = 2.5;
     const VOICE_PRIORITY_PATTERNS = [
       /child/i,
       /kid/i,
@@ -1349,6 +1354,18 @@
     // ===============================
     // Load Videos for Library
     // ===============================
+    async function loadConfig() {
+      try {
+        const res = await fetch("/api/config");
+        const cfg = await res.json();
+        if (cfg && cfg.thresholds) {
+          THRESHOLDS = cfg.thresholds;
+        }
+      } catch (err) {
+        console.error("[Warning] Failed to load config, using defaults.", err);
+      }
+    }
+
     async function loadVideos() {
       try {
         const res = await fetch("/api/kids_videos?nocache=" + Date.now());
@@ -1421,6 +1438,9 @@
             throw new Error("No eligible questions found in final_questions.json");
           }
 
+          lastPrefetchedIndex = -1;
+          prefetchUpcomingQuestions(0);
+
           populateSidebar();
           startMonitoring();
         })
@@ -1482,6 +1502,69 @@
       question: { audio: null, resolve: null, reject: null },
       feedback: { audio: null, resolve: null, reject: null }
     };
+    const ttsCache = new Map();
+    const ttsPending = new Map();
+    let lastPrefetchedIndex = -1;
+
+    function normalizeTtsKey(text) {
+      return (text || "").trim();
+    }
+
+    function enforceTtsCacheLimit() {
+      while (ttsCache.size > TTS_CACHE_LIMIT) {
+        const oldestKey = ttsCache.keys().next().value;
+        if (!oldestKey) break;
+        ttsCache.delete(oldestKey);
+      }
+    }
+
+    async function getTTSData(text) {
+      const trimmed = (text || "").trim();
+      if (!trimmed) {
+        throw new Error("No text provided for TTS.");
+      }
+      const key = normalizeTtsKey(trimmed);
+      if (ttsCache.has(key)) {
+        return ttsCache.get(key);
+      }
+      if (ttsPending.has(key)) {
+        return await ttsPending.get(key);
+      }
+      const pending = requestTTS(trimmed)
+        .then(data => {
+          ttsCache.set(key, data);
+          enforceTtsCacheLimit();
+          return data;
+        })
+        .finally(() => {
+          ttsPending.delete(key);
+        });
+      ttsPending.set(key, pending);
+      return await pending;
+    }
+
+    async function prefetchQuestionAudio(text) {
+      const trimmed = (text || "").trim();
+      if (!trimmed) return;
+      try {
+        await getTTSData(trimmed);
+      } catch (err) {
+        console.warn("Question audio prefetch failed:", err);
+      }
+    }
+
+    function prefetchUpcomingQuestions(startIndex) {
+      if (!Array.isArray(segments) || segments.length === 0) return;
+      const start = Math.max(0, startIndex || 0);
+      const end = Math.min(segments.length - 1, start + TTS_PREFETCH_AHEAD - 1);
+      if (end <= lastPrefetchedIndex) return;
+      const from = Math.max(start, lastPrefetchedIndex + 1);
+      for (let i = from; i <= end; i++) {
+        const text = segments[i]?.question;
+        prefetchQuestionAudio(text);
+      }
+      lastPrefetchedIndex = Math.max(lastPrefetchedIndex, end);
+    }
 
     function cleanupAudioChannel(channel) {
       const entry = ttsPlayback[channel];
@@ -1580,7 +1663,7 @@
     }
 
     async function playTTSChannel(channel, text) {
-      const { format, audio } = await requestTTS(text);
+      const { format, audio } = await getTTSData(text);
       const audioElement = new Audio(`data:audio/${format};base64,${audio}`);
       audioElement.preload = "auto";
       audioElement.crossOrigin = "anonymous";
@@ -1813,6 +1896,10 @@
       currentQuestionContext = { q, segStart, segEnd };
       currentListenAttempt = 0;
       hideQuestionActions();
+      const currentIndex = segments.indexOf(q);
+      if (currentIndex >= 0) {
+        prefetchUpcomingQuestions(currentIndex + 1);
+      }
 
       document.getElementById("question-box").style.display = "flex";
       document.getElementById("question").innerText = q.question;
@@ -1850,7 +1937,14 @@
 
       let stream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 44100
+          }
+        });
       } catch (err) {
         console.error("Mic access denied or unavailable:", err);
         return handleListeningFailure(q, segStart, segEnd, attempt, {
@@ -1883,6 +1977,9 @@
       let silenceStart = null;
       let recognizedSpeech = false;
       let speechFrameCount = 0;
+      let adaptiveSilenceThreshold = SILENCE_THRESHOLD;
+      let ambientSampleCount = 0;
+      let ambientRmsTotal = 0;
       let stopRequested = false;
       let autoStopTimeout = null;
 
@@ -1955,7 +2052,19 @@
         }
         const rms = Math.sqrt(sumSquares / analyserData.length);
 
-        if (rms > SILENCE_THRESHOLD) {
+        if (!recognizedSpeech && ambientSampleCount < AMBIENT_SAMPLE_FRAMES) {
+          ambientRmsTotal += rms;
+          ambientSampleCount++;
+          if (ambientSampleCount === AMBIENT_SAMPLE_FRAMES) {
+            const avgRms = ambientRmsTotal / ambientSampleCount;
+            adaptiveSilenceThreshold = Math.max(
+              SILENCE_THRESHOLD,
+              avgRms * SILENCE_THRESHOLD_MULTIPLIER
+            );
+          }
+        }
+
+        if (rms > adaptiveSilenceThreshold) {
           if (speechFrameCount < SPEECH_FRAMES_REQUIRED) {
             speechFrameCount++;
             if (speechFrameCount >= SPEECH_FRAMES_REQUIRED) {
@@ -1986,6 +2095,9 @@
         silenceStart = null;
         speechFrameCount = 0;
         recognizedSpeech = false;
+        adaptiveSilenceThreshold = SILENCE_THRESHOLD;
+        ambientSampleCount = 0;
+        ambientRmsTotal = 0;
         cancelSilenceMonitor();
         silenceMonitorId = requestAnimationFrame(monitorSilence);
       };
@@ -2001,7 +2113,7 @@
         autoStopTimeout = setTimeout(() => {
           console.log("Auto-stopping recorder after max duration");
           requestStop("timeout");
-        }, 12000);
+        }, MAX_LISTEN_DURATION_MS);
       };
 
       recorder.ondataavailable = (e) => {
@@ -2120,15 +2232,25 @@
         const response = await fetch("/api/check_answer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ expected: q.answer, user: spoken })
+          body: JSON.stringify({ expected: q.answer, user: spoken, question: q.question })
         });
         const data = await response.json();
         console.log("Local check response:", data);
 
-        const sim = parseFloat(data.similarity);
-        const t = data.is_numeric ? THRESHOLDS.number : THRESHOLDS.phrase;
+        const sim = parseFloat(data.similarity || 0);
+        let status = typeof data.status === "string" ? data.status.toLowerCase() : "";
+        if (!status) {
+          const t = data.is_numeric ? THRESHOLDS.number : THRESHOLDS.phrase;
+          if (sim >= t.correct) {
+            status = "correct";
+          } else if (sim >= t.borderline) {
+            status = "almost";
+          } else {
+            status = "wrong";
+          }
+        }
 
-        if (sim >= t.correct) {
+        if (status === "correct") {
           const celebrationMessage = pickRandomCelebration();
           asked.add(quesSec);
 
@@ -2151,7 +2273,7 @@
           ? Math.max(...askedInSegment) + 1
           : segStart;
 
-        if (sim >= t.borderline) {
+        if (status === "almost") {
           const almostMessage = BORDERLINE_FEEDBACK[0] || "Almost! Let's watch it again.";
 
           await deliverFeedback({
@@ -2287,6 +2409,7 @@
 
 
     // Init
+    loadConfig();
     loadVideos();
 
 

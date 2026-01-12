@@ -1815,7 +1815,7 @@ select {
 
     </style>
 </head>
-<body>
+<body data-selected-video-id="{{ (selected_video_id or '') | e }}">
     <div class="container">
         <div class="page-header">
             <h1>Expert Preview - Video Question Review</h1>
@@ -2130,6 +2130,8 @@ select {
         let maxAvailableStep = 1;
         let availableVideos = [];
         let currentVideoLabel = '';
+        const presetVideoId = (document.body.dataset.selectedVideoId || '').trim() || null;
+        let initialVideoLoadAttempted = false;
         let isLoadingVideo = false;
         let expertQuestions = {};
         let expertSaveInProgress = false;
@@ -2316,10 +2318,19 @@ select {
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             initFullscreenSupport();
             initStepNavigation();
-            loadVideoList();
+            await loadVideoList();
+            if (presetVideoId && !initialVideoLoadAttempted) {
+                initialVideoLoadAttempted = true;
+                const presetMeta = findVideoById(presetVideoId);
+                if (presetMeta) {
+                    await loadVideo(presetMeta.id, presetMeta.title);
+                } else {
+                    showStatus(`Selected video "${presetVideoId}" not found in downloads.`, 'error');
+                }
+            }
             resetReviewPanel();
             updateReviewButtonState();
 
@@ -5606,6 +5617,9 @@ select {
             }
 
             const videoMeta = findVideoById(videoId);
+            const resolvedVideoUrl = (videoMeta && videoMeta.videoUrl)
+                ? videoMeta.videoUrl
+                : `/downloads/${videoId}/${videoId}.mp4`;
 
             if (!displayLabel) {
                 if (videoMeta) {
@@ -5689,7 +5703,7 @@ select {
             let loadSucceeded = false;
 
             try {
-                await loadVideoPlayer(videoId);
+                await loadVideoPlayer(videoId, resolvedVideoUrl);
                 await loadSegments(videoId);
                 await loadExpertQuestionFiles(videoId);
 
@@ -5716,7 +5730,7 @@ select {
             }
         }
 
-        async function loadVideoPlayer(videoId) {
+        async function loadVideoPlayer(videoId, videoUrl) {
             const container = document.getElementById('video-container');
             
             // Create video element
@@ -5725,8 +5739,10 @@ select {
             video.controls = true;
             video.preload = 'metadata';
             
+            const resolvedVideoUrl = videoUrl || `/downloads/${videoId}/${videoId}.mp4`;
+
             // Set video source - adjust path as needed
-            video.src = `/downloads/${videoId}/${videoId}.mp4`;
+            video.src = resolvedVideoUrl;
             
             // Add event listeners
             video.addEventListener('timeupdate', onVideoTimeUpdate);
