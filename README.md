@@ -4,11 +4,11 @@ A FastAPI-based web application that downloads YouTube videos, extracts frames, 
 
 
 ## Collaborators
--Jerry Lin
--Anujin Ikhbayar
--Jayden Lupold
--Irene Joyce Simtoco
--Adriel Alquiros
+
+<p align="center">
+Jerry Lin • Anujin Ikhbayar • Jayden Lupold • Irene Joyce Simtoco • Adriel Alquiros
+</p>
+
 
 
 ## Features
