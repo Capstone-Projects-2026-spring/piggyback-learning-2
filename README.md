@@ -64,6 +64,7 @@ aiofiles>=23.0.0
 ```
 
 Then install with:
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -106,180 +107,220 @@ your-project/
 You'll need to create the following HTML template files in the `templates/` directory. Here are basic examples:
 
 ### templates/download.html
+
 ```html
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>YouTube Downloader</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>YouTube Video Downloader</h1>
     <form action="/download" method="post">
-        <label for="url">YouTube URL:</label>
-        <input type="text" id="url" name="url" required style="width: 400px;">
-        <button type="submit">Download</button>
+      <label for="url">YouTube URL:</label>
+      <input type="text" id="url" name="url" required style="width: 400px;" />
+      <button type="submit">Download</button>
     </form>
-</body>
+  </body>
 </html>
 ```
 
 ### templates/preview.html
+
 ```html
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Download Result</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Download Result</h1>
     {% if success %}
-        <p style="color: green;">{{ message }}</p>
-        <p>Video ID: {{ video_id }}</p>
-        
-        {% if current_video_url %}
-        <video width="640" height="360" controls>
-            <source src="{{ current_video_url }}" type="video/mp4">
-            {% if current_sub_url %}
-            <track src="{{ current_sub_url }}" kind="subtitles" srclang="en" label="English">
-            {% endif %}
-        </video>
-        {% endif %}
-        
-        <p><a href="/frames/{{ video_id }}">Extract Frames</a></p>
-    {% else %}
-        <p style="color: red;">{{ message }}</p>
+    <p style="color: green;">{{ message }}</p>
+    <p>Video ID: {{ video_id }}</p>
+
+    {% if current_video_url %}
+    <video width="640" height="360" controls>
+      <source src="{{ current_video_url }}" type="video/mp4" />
+      {% if current_sub_url %}
+      <track
+        src="{{ current_sub_url }}"
+        kind="subtitles"
+        srclang="en"
+        label="English"
+      />
+      {% endif %}
+    </video>
     {% endif %}
-    
+
+    <p><a href="/frames/{{ video_id }}">Extract Frames</a></p>
+    {% else %}
+    <p style="color: red;">{{ message }}</p>
+    {% endif %}
+
     <p><a href="/">Download Another Video</a></p>
-</body>
+  </body>
 </html>
 ```
 
 ### templates/frames.html
+
 ```html
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Frame Extraction</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Frame Extraction - {{ video_id }}</h1>
-    
+
     {% if not ran %}
     <form method="post">
-        <button type="submit">Extract Frames (1 per second)</button>
+      <button type="submit">Extract Frames (1 per second)</button>
     </form>
+    {% else %} {% if success %}
+    <p style="color: green;">{{ message }}</p>
+    <p>Extracted {{ count }} frames</p>
+    <p><a href="/questions/{{ video_id }}">Generate Questions</a></p>
     {% else %}
-        {% if success %}
-            <p style="color: green;">{{ message }}</p>
-            <p>Extracted {{ count }} frames</p>
-            <p><a href="/questions/{{ video_id }}">Generate Questions</a></p>
-        {% else %}
-            <p style="color: red;">{{ message }}</p>
-        {% endif %}
-    {% endif %}
-    
+    <p style="color: red;">{{ message }}</p>
+    {% endif %} {% endif %}
+
     <p><a href="/">Back to Home</a></p>
-</body>
+  </body>
 </html>
 ```
 
 ### templates/questions.html
+
 ```html
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Question Generation</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Generate Questions - {{ video_id }}</h1>
-    
+
     {% if duration_seconds %}
     <p>Video Duration: {{ duration_seconds }} seconds</p>
     {% endif %}
-    
+
     <form method="post" id="questionForm">
-        <div>
-            <label for="start_seconds">Start Time (seconds):</label>
-            <input type="number" id="start_seconds" name="start_seconds" value="{{ start_seconds or 0 }}" min="0">
-        </div>
-        
-        <div>
-            <label for="interval_seconds">Interval Length (seconds):</label>
-            <input type="number" id="interval_seconds" name="interval_seconds" value="{{ interval_seconds or 60 }}" min="1" required>
-        </div>
-        
-        <div>
-            <label for="full_duration">
-                <input type="checkbox" id="full_duration" name="full_duration" {% if full_duration %}checked{% endif %}>
-                Generate for entire video duration
-            </label>
-        </div>
-        
-        <div>
-            <label for="api_key">OpenAI API Key (optional if set as environment variable):</label>
-            <input type="password" id="api_key" name="api_key" style="width: 400px;">
-        </div>
-        
-        <button type="submit">Generate Questions</button>
-        <button type="button" onclick="startWebSocket()">Stream Results</button>
+      <div>
+        <label for="start_seconds">Start Time (seconds):</label>
+        <input
+          type="number"
+          id="start_seconds"
+          name="start_seconds"
+          value="{{ start_seconds or 0 }}"
+          min="0"
+        />
+      </div>
+
+      <div>
+        <label for="interval_seconds">Interval Length (seconds):</label>
+        <input
+          type="number"
+          id="interval_seconds"
+          name="interval_seconds"
+          value="{{ interval_seconds or 60 }}"
+          min="1"
+          required
+        />
+      </div>
+
+      <div>
+        <label for="full_duration">
+          <input
+            type="checkbox"
+            id="full_duration"
+            name="full_duration"
+            {%
+            if
+            full_duration
+            %}checked{%
+            endif
+            %}
+          />
+          Generate for entire video duration
+        </label>
+      </div>
+
+      <div>
+        <label for="api_key"
+          >OpenAI API Key (optional if set as environment variable):</label
+        >
+        <input
+          type="password"
+          id="api_key"
+          name="api_key"
+          style="width: 400px;"
+        />
+      </div>
+
+      <button type="submit">Generate Questions</button>
+      <button type="button" onclick="startWebSocket()">Stream Results</button>
     </form>
-    
+
     <div id="progress" style="margin-top: 20px;"></div>
-    
+
     {% if error %}
     <div style="color: red; margin-top: 20px;">
-        <h3>Error:</h3>
-        <p>{{ error }}</p>
+      <h3>Error:</h3>
+      <p>{{ error }}</p>
     </div>
-    {% endif %}
-    
-    {% if result %}
+    {% endif %} {% if result %}
     <div style="margin-top: 20px;">
-        <h3>Generated Questions:</h3>
-        <pre>{{ result }}</pre>
+      <h3>Generated Questions:</h3>
+      <pre>{{ result }}</pre>
     </div>
     {% endif %}
-    
+
     <p><a href="/">Back to Home</a></p>
-    
+
     <script>
-        function startWebSocket() {
-            const form = document.getElementById('questionForm');
-            const formData = new FormData(form);
-            const progressDiv = document.getElementById('progress');
-            
-            const ws = new WebSocket(`ws://localhost:8000/ws/questions/{{ video_id }}`);
-            
-            ws.onopen = function() {
-                progressDiv.innerHTML = '<p>Connected to server...</p>';
-                ws.send(JSON.stringify({
-                    start_seconds: parseInt(formData.get('start_seconds') || '0'),
-                    interval_seconds: parseInt(formData.get('interval_seconds')),
-                    full_duration: formData.get('full_duration') === 'on',
-                    api_key: formData.get('api_key') || null
-                }));
-            };
-            
-            ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                if (data.type === 'status') {
-                    progressDiv.innerHTML += `<p>${data.message}</p>`;
-                } else if (data.type === 'segment_result') {
-                    progressDiv.innerHTML += `<div><strong>Segment ${data.start}-${data.end}s:</strong><pre>${JSON.stringify(data.result, null, 2)}</pre></div>`;
-                } else if (data.type === 'done') {
-                    progressDiv.innerHTML += '<p><strong>Generation complete!</strong></p>';
-                } else if (data.type === 'error') {
-                    progressDiv.innerHTML += `<p style="color: red;">Error: ${data.message}</p>`;
-                }
-            };
-            
-            ws.onclose = function() {
-                progressDiv.innerHTML += '<p>Connection closed.</p>';
-            };
-        }
+      function startWebSocket() {
+        const form = document.getElementById("questionForm");
+        const formData = new FormData(form);
+        const progressDiv = document.getElementById("progress");
+
+        const ws = new WebSocket(
+          `ws://localhost:8000/ws/questions/{{ video_id }}`,
+        );
+
+        ws.onopen = function () {
+          progressDiv.innerHTML = "<p>Connected to server...</p>";
+          ws.send(
+            JSON.stringify({
+              start_seconds: parseInt(formData.get("start_seconds") || "0"),
+              interval_seconds: parseInt(formData.get("interval_seconds")),
+              full_duration: formData.get("full_duration") === "on",
+              api_key: formData.get("api_key") || null,
+            }),
+          );
+        };
+
+        ws.onmessage = function (event) {
+          const data = JSON.parse(event.data);
+          if (data.type === "status") {
+            progressDiv.innerHTML += `<p>${data.message}</p>`;
+          } else if (data.type === "segment_result") {
+            progressDiv.innerHTML += `<div><strong>Segment ${data.start}-${data.end}s:</strong><pre>${JSON.stringify(data.result, null, 2)}</pre></div>`;
+          } else if (data.type === "done") {
+            progressDiv.innerHTML +=
+              "<p><strong>Generation complete!</strong></p>";
+          } else if (data.type === "error") {
+            progressDiv.innerHTML += `<p style="color: red;">Error: ${data.message}</p>`;
+          }
+        };
+
+        ws.onclose = function () {
+          progressDiv.innerHTML += "<p>Connection closed.</p>";
+        };
+      }
     </script>
-</body>
+  </body>
 </html>
 ```
 
@@ -355,6 +396,7 @@ your-project/
 ### Common Issues
 
 1. **"No module named 'cv2'"**
+
    ```bash
    pip install opencv-python
    ```
@@ -388,9 +430,12 @@ This project is for educational purposes. Please respect YouTube's Terms of Serv
 ## Support
 
 For issues related to:
+
 - **yt-dlp**: Check [yt-dlp documentation](https://github.com/yt-dlp/yt-dlp)
 - **OpenAI API**: Check [OpenAI documentation](https://platform.openai.com/docs)
 - **FastAPI**: Check [FastAPI documentation](https://fastapi.tiangolo.com)
 
 ## Collaborators
+
 Ayush Gupta
+Riju Pant
