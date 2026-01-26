@@ -162,4 +162,14 @@ readme.md
 
 ## License
 
-Educational use only. Respect YouTube's Terms of Service and copyright laws.
+This project is for educational purposes. Please respect YouTube's Terms of Service and copyright laws when downloading content.
+
+## Support
+
+For issues related to:
+- **yt-dlp**: Check [yt-dlp documentation](https://github.com/yt-dlp/yt-dlp)
+- **OpenAI API**: Check [OpenAI documentation](https://platform.openai.com/docs)
+- **FastAPI**: Check [FastAPI documentation](https://fastapi.tiangolo.com)
+
+## Collaborators
+Ayush Gupta
