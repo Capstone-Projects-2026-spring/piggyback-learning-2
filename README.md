@@ -2,6 +2,15 @@
 
 A FastAPI-based web application that downloads YouTube videos, extracts frames, and generates educational comprehension questions for children ages 4-7 using OpenAI's GPT-4 Vision API.
 
+
+## Collaborators
+-Jerry Lin
+-Anujin Ikhbayar
+-Jayden Lupold
+-Irene Joyce Simtoco
+-Adriel Alquiros
+
+
 ## Features
 
 - **YouTube Video Download**: Download videos in best quality with English subtitles
