@@ -437,5 +437,5 @@ For issues related to:
 
 ## Collaborators
 
-Ayush Gupta
-Riju Pant
+- Ayush Gupta
+- Riju Pant
