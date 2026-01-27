@@ -398,6 +398,6 @@ For issues related to:
 ## Collaborators
 
 <p align="center">
-Jerry Lin • Anujin Ikhbayar • Jayden Lupold • Irene Simtoco • Adriel Alquiros
+Jerry Lin • Anujin Ikhbayar • Jayden Lupold • Irene Simtoco • Adriel Alquiros 
 </p>
 
