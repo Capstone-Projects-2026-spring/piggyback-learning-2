@@ -1,11 +1,8 @@
 # admin_routes.py
-import os
 import json
-import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import httpx
 from fastapi import (
     APIRouter,
     Body,
@@ -17,8 +14,6 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from dotenv import load_dotenv
-load_dotenv()
 
 # ----- Local paths (keep consistent with main.py) -----
 BASE_DIR = Path(__file__).parent.resolve()
@@ -35,24 +30,7 @@ router_admin_pages = APIRouter()
 router_admin_api = APIRouter()
 router_admin_ws = APIRouter()
 
-# ----- Env -----
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-
-
 # ===== Helpers duplicated here (tiny / no circulars) =====
-def parse_iso8601_duration_to_seconds(duration: str) -> int:
-    """Parse ISO8601 duration like PT1H2M3S -> seconds."""
-    if not duration:
-        return 0
-    m = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", duration)
-    if not m:
-        return 0
-    h = int(m.group(1) or 0)
-    mins = int(m.group(2) or 0)
-    s = int(m.group(3) or 0)
-    return h * 3600 + mins * 60 + s
-
-
 def format_hhmmss(total_seconds: int) -> str:
     h = total_seconds // 3600
     m = (total_seconds % 3600) // 60
@@ -149,153 +127,6 @@ def admin_page(request: Request):
 # =========================================================
 # Admin API
 # =========================================================
-@router_admin_api.get("/yt_search")
-async def yt_search(
-    request: Request,
-    q: str,
-    min_minutes: int = 5,
-    max_minutes: int = 120,
-    max_results: int = 50,
-    page_token: Optional[str] = None,
-    page_size: Optional[int] = 20,
-):
-    """
-    Search YouTube for videos with permissive filtering (admin use).
-    """
-    if not YOUTUBE_API_KEY:
-        return {
-            "success": False,
-            "message": "Missing YOUTUBE_API_KEY on server.",
-            "items": [],
-        }
-
-    q = (q or "").strip()
-    if not q:
-        # default seed for admin search
-        q = "educational kids learning children"
-
-    min_seconds = max(0, int(min_minutes)) * 60
-    max_seconds = max(0, int(max_minutes)) * 60
-    if max_seconds and max_seconds < min_seconds:
-        min_seconds, max_seconds = max_seconds, min_seconds
-
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            size = int(page_size or 20)
-            size = max(1, min(size, 50))
-
-            # 1) Search
-            search_params = {
-                "part": "snippet",
-                "q": q + " educational kids children learning",
-                "type": "video",
-                "maxResults": min(size * 2, 50),  # fetch more to filter
-                "safeSearch": "strict",
-                "videoEmbeddable": "true",
-                "order": "relevance",
-                "key": YOUTUBE_API_KEY,
-            }
-            if page_token:
-                search_params["pageToken"] = page_token
-
-            search_resp = await client.get(
-                "https://www.googleapis.com/youtube/v3/search", params=search_params
-            )
-            search_resp.raise_for_status()
-            search_data = search_resp.json()
-
-            video_ids = [
-                item.get("id", {}).get("videoId")
-                for item in search_data.get("items", [])
-                if item.get("id", {}).get("kind") == "youtube#video"
-                and item.get("id", {}).get("videoId")
-            ]
-            if not video_ids:
-                return {"success": True, "items": [], "message": "No results found."}
-
-            # 2) Details
-            videos_params = {
-                "part": "snippet,contentDetails,status",
-                "id": ",".join(video_ids),
-                "key": YOUTUBE_API_KEY,
-                "maxResults": 50,
-            }
-            videos_resp = await client.get(
-                "https://www.googleapis.com/youtube/v3/videos", params=videos_params
-            )
-            videos_resp.raise_for_status()
-            videos_data = videos_resp.json()
-
-            items_out: List[Dict[str, Any]] = []
-            for v in videos_data.get("items", []):
-                vid = v.get("id")
-                snippet = v.get("snippet", {})
-                content_details = v.get("contentDetails", {})
-
-                duration_iso = content_details.get("duration")
-                duration_seconds = parse_iso8601_duration_to_seconds(duration_iso)
-                if duration_seconds <= 0:
-                    continue
-
-                # flexible duration window (80% variance)
-                variance = 0.8
-                adjusted_min = max(0, min_seconds * variance)
-                adjusted_max = (
-                    max_seconds * (1 + variance) if max_seconds else float("inf")
-                )
-                if duration_seconds < adjusted_min:
-                    continue
-                if max_seconds and duration_seconds > adjusted_max:
-                    continue
-
-                # only block obviously age-restricted
-                content_rating = content_details.get("contentRating", {})
-                if content_rating.get("ytRating") == "ytAgeRestricted":
-                    continue
-
-                title_lower = snippet.get("title", "").lower()
-                description_lower = snippet.get("description", "").lower()
-                if any(
-                    k in title_lower or k in description_lower
-                    for k in ["violence", "horror", "adult", "mature"]
-                ):
-                    continue
-
-                thumbs = snippet.get("thumbnails", {})
-                thumb = (
-                    thumbs.get("medium", {}).get("url")
-                    or thumbs.get("high", {}).get("url")
-                    or thumbs.get("default", {}).get("url")
-                )
-
-                items_out.append(
-                    {
-                        "videoId": vid,
-                        "title": snippet.get("title"),
-                        "channel": snippet.get("channelTitle"),
-                        "durationSeconds": duration_seconds,
-                        "durationFormatted": format_hhmmss(duration_seconds),
-                        "thumbnail": thumb,
-                        "url": f"https://www.youtube.com/watch?v={vid}",
-                    }
-                )
-
-            return {
-                "success": True,
-                "items": items_out[:size],
-                "count": len(items_out[:size]),
-                "page_size": size,
-                "nextPageToken": search_data.get("nextPageToken"),
-                "searchTotal": search_data.get("pageInfo", {}).get("totalResults"),
-                "message": f"Showing up to {size} results ordered by relevance.",
-            }
-
-    except httpx.HTTPStatusError as e:
-        return {"success": False, "message": f"YouTube API error: {e}"}
-    except Exception as e:
-        return {"success": False, "message": f"Server error: {e}"}
-
-
 @router_admin_api.post("/download")
 async def api_download(url: str = Form(...)):
     # Lazy import to avoid circular dependency
