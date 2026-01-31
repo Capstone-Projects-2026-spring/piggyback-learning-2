@@ -96,8 +96,6 @@ if PUBLIC_ASSETS_DIR.exists():
     )
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
-
 VIDEO_EXTENSIONS = (".mp4", ".webm", ".mkv", ".mov")
 EXPERT_QUESTION_TYPES = [
     ("character", "Character"),
@@ -236,19 +234,18 @@ def download_youtube(url: str) -> Dict[str, Any]:
         video_dir.mkdir(parents=True, exist_ok=True)
 
         has_ffmpeg = shutil.which("ffmpeg") is not None
+        has_node = shutil.which("node") is not None
 
-        # Step 2: Download actual video (best quality <=720p)
+        # Step 2: Download actual video (prefer 720p on the first attempt)
         ydl_opts = {
-            # Force MP4 output and prefer H.264 (avc1) to avoid AV1-only downloads.
+            # Prefer highest-quality H.264 MP4 + M4A (avoid re-encode quality loss).
             "format": (
-                "bv*[ext=mp4][vcodec^=avc1][height<=720]+ba[ext=m4a]"
-                "/b[ext=mp4][vcodec^=avc1][height<=720]"
-                "/bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]"
-                "/mp4"
+                "bv*[vcodec^=avc1][ext=mp4][height<=?720]+ba[acodec^=mp4a]/"
+                "b[ext=mp4][height<=?720]/b[height<=?720]/b"
             ),
-            "format_sort": ["codec:avc", "res:720", "fps"],
-            "format_sort_force": True,
             "merge_output_format": "mp4",
+            # Try to proceed even if some formats look unplayable
+            "allow_unplayable_formats": True,
             # Output path
             "outtmpl": str(video_dir / f"{video_id}.%(ext)s"),
             # Optional: keep captions if available
@@ -259,29 +256,82 @@ def download_youtube(url: str) -> Dict[str, Any]:
             # Quiet mode + warnings suppressed
             "quiet": False,
             "no_warnings": True,
+            # Avoid progress rendering issues on some Windows terminals
+            "noprogress": True,
             # Prevent playlists
             "noplaylist": True,
             # Save thumbnail + metadata (for kids panel)
             "writethumbnail": True,
             "writeinfojson": True,
-            # Force ffmpeg to do proper muxing/conversion
+            # Force ffmpeg to do proper muxing/remuxing (no re-encode).
             "prefer_ffmpeg": True,
-            "postprocessors": [
-                {"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}
-            ],
+            "postprocessors": [{"key": "FFmpegVideoRemuxer", "preferedformat": "mp4"}],
         }
+
+        if has_node:
+            # Enable JS runtime to improve YouTube extraction reliability
+            ydl_opts["js_runtimes"] = {"node": {}}
+            # Fetch remote EJS components for tougher JS challenges
+            ydl_opts["external_deps"] = {"ejs": "github"}
+
+        cookies_file = (os.getenv("YTDLP_COOKIEFILE") or os.getenv("YTDLP_COOKIES_FILE") or "").strip()
+        if cookies_file:
+            ydl_opts["cookiefile"] = cookies_file
 
         if not has_ffmpeg:
             ydl_opts["compat_opts"] = ["no-sabr"]
-            ydl_opts["format"] = (
-                "bv*[ext=mp4][vcodec^=avc1][height<=720][protocol^=https]+"
-                "ba[ext=m4a][protocol^=https]"
-                "/b[ext=mp4][vcodec^=avc1][height<=720][protocol^=https]"
-                "/best[ext=mp4][protocol^=https]"
-            )
+            ydl_opts["format"] = "best[ext=mp4]/best"
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
-            ydl.download([url])
+        def _download_with_format_fallback(opts: Dict[str, Any]) -> None:
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:  # type: ignore
+                    ydl.download([url])
+            except yt_dlp.utils.DownloadError as e:  # type: ignore
+                message = str(e)
+                if "Requested format is not available" in message:
+                    fallback_opts = dict(opts)
+                    if has_ffmpeg:
+                        # Fall back to highest quality in native container if MP4/H.264 isn't available.
+                        fallback_opts["format"] = "bestvideo+bestaudio/best"
+                        fallback_opts.pop("merge_output_format", None)
+                    else:
+                        # No ffmpeg: keep it single-file to avoid merge failures.
+                        fallback_opts["format"] = "best"
+                        fallback_opts.pop("merge_output_format", None)
+                    fallback_opts.pop("postprocessors", None)
+                    # Let yt-dlp choose the most compatible client for fallback.
+                    fallback_opts.pop("extractor_args", None)
+                    with yt_dlp.YoutubeDL(fallback_opts) as ydl:  # type: ignore
+                        ydl.download([url])
+                else:
+                    raise
+
+        player_client_candidates = [
+            ["android", "web"],
+            ["tv", "web"],
+            ["ios", "web"],
+            ["web"],
+        ]
+
+        last_error = None
+        for player_client in player_client_candidates:
+            attempt_opts = dict(ydl_opts)
+            attempt_opts["extractor_args"] = {
+                "youtube": {"player_client": player_client}
+            }
+            try:
+                _download_with_format_fallback(attempt_opts)
+                last_error = None
+                break
+            except yt_dlp.utils.DownloadError as e:  # type: ignore
+                message = str(e)
+                if "HTTP Error 403" in message or "403" in message:
+                    last_error = e
+                    continue
+                raise
+
+        if last_error is not None:
+            raise last_error
 
         # Step 3: Collect downloaded files
         created = []
