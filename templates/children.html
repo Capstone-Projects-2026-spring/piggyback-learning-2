@@ -297,20 +297,125 @@
 
     #player {
       width: 100%;
-      height: auto;
+      aspect-ratio: 16 / 9;
       display: block;
       margin: 0 auto;
       border-radius: 24px;
+      overflow: hidden;
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
       transition: border-radius 0.2s ease;
     }
 
-    #player::-webkit-media-controls-fullscreen-button {
-      display: none !important;
+    #player iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      position: relative;
+      z-index: 1;
     }
 
-    #player::-moz-fullscreen-button {
-      display: none !important;
+    #yt-logo-blocker {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 72px;
+      height: 42px;
+      z-index: 30;
+      pointer-events: auto;
+      background: transparent;
+    }
+
+    #yt-logo-blocker-left {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 72px;
+      height: 42px;
+      z-index: 30;
+      pointer-events: auto;
+      background: transparent;
+    }
+
+    #yt-logo-blocker-bottom {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      width: 150px;
+      height: 72px;
+      z-index: 23;
+      pointer-events: auto;
+      background: transparent;
+    }
+
+    #yt-end-blocker {
+      position: absolute;
+      inset: 0;
+      z-index: 31;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8, 16, 32, 0.55);
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.1rem;
+      text-align: center;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    #yt-pause-blocker {
+      position: absolute;
+      inset: 0;
+      z-index: 26;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8, 16, 32, 0.45);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 1.05rem;
+      text-align: center;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    #local-player {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #000;
+    }
+
+    .embed-fallback {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 12px 28px rgba(41, 86, 160, 0.18);
+      z-index: 24;
+      font-weight: 600;
+      color: #394b7b;
+    }
+
+    .embed-fallback button {
+      background: #1d4ed8;
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .embed-fallback button:hover {
+      background: #1e40af;
     }
 
     /* Question box overlay */
@@ -491,10 +596,32 @@
       object-fit: contain;
     }
 
+    #video-container:fullscreen #player iframe,
+    #video-container:-webkit-full-screen #player iframe {
+      width: 100%;
+      height: 100%;
+    }
+
     #video-container:fullscreen #question-box,
     #video-container:-webkit-full-screen #question-box {
       width: clamp(280px, 60vw, 720px);
       max-width: 80vw;
+    }
+
+    #video-container:fullscreen #yt-logo-blocker-bottom,
+    #video-container:-webkit-full-screen #yt-logo-blocker-bottom {
+      width: 200px;
+      height: 120px;
+      bottom: 10px;
+      right: 10px;
+    }
+
+    #video-container:fullscreen .video-fullscreen-hitbox,
+    #video-container:-webkit-full-screen .video-fullscreen-hitbox {
+      width: 220px;
+      height: 120px;
+      bottom: 10px;
+      right: 10px;
     }
 
     #video-container:fullscreen .video-floating-controls,
@@ -507,10 +634,13 @@
       position: absolute;
       bottom: 12px;
       right: 12px;
-      width: 48px;
-      height: 48px;
+      width: 160px;
+      height: 80px;
       z-index: 25;
-      pointer-events: none;
+      pointer-events: auto;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
     }
 
     #question-overlay {
@@ -527,8 +657,9 @@
 
     .video-fullscreen-hitbox button {
       pointer-events: auto;
-      width: 100%;
-      height: 100%;
+      width: 48px;
+      height: 48px;
+      margin: 8px;
       border: none;
       border-radius: 50%;
       background: rgba(0, 0, 0, 0.45);
@@ -770,35 +901,44 @@
     <div id="player-container">
       <div id="video-wrapper">
         <!-- Video on the left -->
-        <div id="video-container">
-        <video id="player" controls playsinline controlslist="nodownload noremoteplayback"></video>
-        <div id="question-overlay" aria-hidden="true"></div>
-        <div id="blocker" aria-hidden="true"></div>
-        <div id="question-box" role="dialog" aria-live="assertive" aria-labelledby="question" aria-describedby="timestamp feedback">
-          <div class="question-character">
-            <video src="/assets/asking_question.webm" autoplay loop muted playsinline></video>
+        <div id="video-container" tabindex="0" aria-label="Video player">
+          <div id="player" aria-label="YouTube video player"></div>
+          <div id="yt-logo-blocker" aria-hidden="true"></div>
+          <div id="yt-logo-blocker-left" aria-hidden="true"></div>
+          <div id="yt-logo-blocker-bottom" aria-hidden="true"></div>
+          <div id="yt-end-blocker" role="button" aria-label="Replay video">Tap to replay</div>
+          <div id="yt-pause-blocker" role="button" aria-label="Resume video">Tap to continue</div>
+          <div id="embed-fallback" class="embed-fallback" role="status" aria-live="polite">
+            <span>Having trouble playing the embed?</span>
+            <button id="use-local-video-btn" type="button">Play downloaded video</button>
           </div>
-          <div class="question-bubble">
-            <h3 id="question"></h3>
-            <p id="timestamp"></p>
-            <p id="feedback"></p>
-            <div id="question-actions" class="question-actions">
-              <button id="retry-answer-btn" class="retry-btn" type="button">Try again</button>
-              <button id="skip-answer-btn" class="skip-btn" type="button">Skip for now</button>
+          <div id="question-overlay" aria-hidden="true"></div>
+          <div id="blocker" aria-hidden="true"></div>
+          <div id="question-box" role="dialog" aria-live="assertive" aria-labelledby="question" aria-describedby="timestamp feedback">
+            <div class="question-character">
+              <video src="/assets/asking_question.webm" autoplay loop muted playsinline></video>
+            </div>
+            <div class="question-bubble">
+              <h3 id="question"></h3>
+              <p id="timestamp"></p>
+              <p id="feedback"></p>
+              <div id="question-actions" class="question-actions">
+                <button id="retry-answer-btn" class="retry-btn" type="button">Try again</button>
+                <button id="skip-answer-btn" class="skip-btn" type="button">Skip for now</button>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="video-floating-controls">
-          <button id="toggle-sidebar" type="button" title="Toggle question list" aria-label="Toggle question list">&#128472;</button>
-        </div>
-        <div class="video-fullscreen-hitbox">
-          <button id="custom-fullscreen-btn" type="button" aria-label="Toggle fullscreen">
-            <span class="icon-enter">&#x26F6;</span>
-            <span class="icon-exit">&#x2715;</span>
-          </button>
+          <div class="video-floating-controls">
+            <button id="toggle-sidebar" type="button" title="Toggle question list" aria-label="Toggle question list">&#128472;</button>
+          </div>
+          <div class="video-fullscreen-hitbox">
+            <button id="custom-fullscreen-btn" type="button" aria-label="Toggle fullscreen">
+              <span class="icon-enter">&#x26F6;</span>
+              <span class="icon-exit">&#x2715;</span>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
       <!-- Sidebar -->
       <div id="sidebar" class="hidden">
@@ -903,6 +1043,13 @@
     let currentListenAttempt = 0;
     let currentQuestionContext = null;
     let preferredSpeechVoice = null;
+    let playerMode = "youtube";
+    let localVideoElement = null;
+    let currentVideoMeta = null;
+    const END_SCREEN_BLOCK_SECONDS = 15;
+    let ytPlayer = null;
+    let ytApiPromise = null;
+    let ytPlayerReady = false;
 
     function setQuestionOverlay(active) {
       if (!questionOverlay) return;
@@ -1080,13 +1227,16 @@
     }
 
 
-    const player = document.getElementById("player");
     const videoContainer = document.getElementById("video-container");
     const fullscreenBtn = document.getElementById("custom-fullscreen-btn");
     const questionActionsEl = document.getElementById("question-actions");
     const retryAnswerBtn = document.getElementById("retry-answer-btn");
     const skipAnswerBtn = document.getElementById("skip-answer-btn");
     const questionOverlay = document.getElementById("question-overlay");
+    const embedFallback = document.getElementById("embed-fallback");
+    const useLocalVideoBtn = document.getElementById("use-local-video-btn");
+    const ytEndBlocker = document.getElementById("yt-end-blocker");
+    const ytPauseBlocker = document.getElementById("yt-pause-blocker");
     hideQuestionActions();
     const fullscreenAPI = {
       element() {
@@ -1130,6 +1280,283 @@
         return Promise.resolve();
       }
     };
+
+    function showEmbedFallback(message) {
+      if (!embedFallback) return;
+      const textEl = embedFallback.querySelector("span");
+      if (message && textEl) {
+        textEl.textContent = message;
+      }
+      if (useLocalVideoBtn) {
+        useLocalVideoBtn.disabled = !(currentVideoMeta && currentVideoMeta.local_path);
+      }
+      embedFallback.style.display = "flex";
+    }
+
+    function hideEmbedFallback() {
+      if (!embedFallback) return;
+      embedFallback.style.display = "none";
+    }
+
+    function clearLocalPlayer() {
+      if (localVideoElement) {
+        try {
+          localVideoElement.pause();
+        } catch (err) {
+          console.warn("Failed to pause local video:", err);
+        }
+      }
+      localVideoElement = null;
+      const host = document.getElementById("player");
+      if (host && host.querySelector("#local-player")) {
+        host.innerHTML = "";
+      }
+    }
+
+    function switchToLocalVideo() {
+      if (!currentVideoMeta || !currentVideoMeta.local_path) {
+        alert("No downloaded video available for this item.");
+        return;
+      }
+
+      if (ytPlayer && typeof ytPlayer.destroy === "function") {
+        ytPlayer.destroy();
+        ytPlayer = null;
+        ytPlayerReady = false;
+      }
+
+      hidePauseBlocker();
+      playerMode = "local";
+      const host = document.getElementById("player");
+      if (!host) return;
+      host.innerHTML = "";
+
+      const video = document.createElement("video");
+      video.id = "local-player";
+      video.src = currentVideoMeta.local_path;
+      video.controls = true;
+      video.preload = "metadata";
+      video.setAttribute("playsinline", "");
+      video.setAttribute("controlslist", "nodownload noremoteplayback");
+      video.addEventListener("play", () => {
+        if (activeQuestion) {
+          pauseVideo();
+        }
+      });
+
+      host.appendChild(video);
+      localVideoElement = video;
+      hideEmbedFallback();
+      if (ytEndBlocker) {
+        ytEndBlocker.style.display = "none";
+      }
+      playVideo();
+    }
+
+    function loadYouTubeApi() {
+      if (window.YT && window.YT.Player) {
+        return Promise.resolve();
+      }
+      if (ytApiPromise) {
+        return ytApiPromise;
+      }
+      ytApiPromise = new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-yt-iframe-api="true"]');
+        if (existing) {
+          if (window.YT && window.YT.Player) {
+            resolve();
+          } else {
+            window.onYouTubeIframeAPIReady = () => resolve();
+          }
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        script.async = true;
+        script.dataset.ytIframeApi = "true";
+        script.onerror = () => reject(new Error("Failed to load YouTube API"));
+        window.onYouTubeIframeAPIReady = () => resolve();
+        document.body.appendChild(script);
+      });
+      return ytApiPromise;
+    }
+
+    function getVideoId(url) {
+      if (!url || typeof url !== "string") return null;
+      const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = url.match(regExp);
+      return match && match[2] && match[2].length === 11 ? match[2] : null;
+    }
+
+    function resolveVideoId(video) {
+      if (!video) return null;
+      const raw = (video.video_id || video.youtube_url || video.url || "").trim();
+      if (!raw) return null;
+      if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw;
+      return getVideoId(raw);
+    }
+
+    function handlePlayerStateChange(event) {
+      if (!event) return;
+      if (event.data === YT.PlayerState.PLAYING) {
+        hidePauseBlocker();
+        if (ytEndBlocker) {
+          ytEndBlocker.style.display = "none";
+        }
+        if (activeQuestion) {
+          ytPlayer?.pauseVideo();
+        }
+      }
+      if (event.data === YT.PlayerState.PAUSED) {
+        if (!activeQuestion) {
+          showPauseBlocker();
+        } else {
+          hidePauseBlocker();
+        }
+      }
+      if (event.data === YT.PlayerState.ENDED) {
+        hidePauseBlocker();
+        if (ytEndBlocker) {
+          ytEndBlocker.style.display = "flex";
+        }
+      }
+    }
+
+    function updateEndscreenBlocker() {
+      if (!ytEndBlocker) return;
+      const duration = getPlayerDuration();
+      if (!duration || duration <= 0) {
+        ytEndBlocker.style.display = "none";
+        return;
+      }
+      const remaining = duration - getPlayerTime();
+      if (remaining <= END_SCREEN_BLOCK_SECONDS && remaining >= 0) {
+        ytEndBlocker.style.display = "flex";
+      } else if (remaining > END_SCREEN_BLOCK_SECONDS && ytEndBlocker.style.display !== "none") {
+        ytEndBlocker.style.display = "none";
+      }
+    }
+
+    function showPauseBlocker() {
+      if (!ytPauseBlocker || playerMode !== "youtube" || activeQuestion) return;
+      ytPauseBlocker.style.display = "flex";
+    }
+
+    function hidePauseBlocker() {
+      if (!ytPauseBlocker) return;
+      ytPauseBlocker.style.display = "none";
+    }
+
+    function handleEmbedError(event) {
+      console.warn("YouTube embed error:", event?.data);
+      showEmbedFallback("YouTube embed unavailable.");
+    }
+
+    async function ensureYouTubePlayer(videoId) {
+      await loadYouTubeApi();
+      playerMode = "youtube";
+      hidePauseBlocker();
+      clearLocalPlayer();
+      if (ytEndBlocker) {
+        ytEndBlocker.style.display = "none";
+      }
+      if (ytPlayer) {
+        ytPlayer.loadVideoById(videoId);
+        ytPlayerReady = true;
+        return;
+      }
+      ytPlayer = new YT.Player("player", {
+        videoId,
+        width: "100%",
+        height: "100%",
+        playerVars: {
+          autoplay: 1,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          controls: 1,
+          fs: 0,
+          disablekb: 1,
+          iv_load_policy: 3,
+          origin: window.location.origin
+        },
+        events: {
+          onReady: () => {
+            ytPlayerReady = true;
+          },
+          onStateChange: handlePlayerStateChange,
+          onError: handleEmbedError
+        }
+      });
+      await new Promise((resolve) => {
+        const readyCheck = () => {
+          if (ytPlayerReady) {
+            resolve();
+          } else {
+            setTimeout(readyCheck, 50);
+          }
+        };
+        readyCheck();
+      });
+    }
+
+    function getPlayerTime() {
+      if (playerMode === "local" && localVideoElement) {
+        return Number(localVideoElement.currentTime) || 0;
+      }
+      if (!ytPlayer) return 0;
+      try {
+        return Number(ytPlayer.getCurrentTime()) || 0;
+      } catch (err) {
+        return 0;
+      }
+    }
+
+    function setPlayerTime(seconds) {
+      const safe = Math.max(0, Number(seconds) || 0);
+      if (playerMode === "local" && localVideoElement) {
+        localVideoElement.currentTime = safe;
+        return;
+      }
+      if (!ytPlayer) return;
+      ytPlayer.seekTo(safe, true);
+    }
+
+    function getPlayerDuration() {
+      if (playerMode === "local" && localVideoElement) {
+        return Number(localVideoElement.duration) || 0;
+      }
+      if (!ytPlayer) return 0;
+      try {
+        return Number(ytPlayer.getDuration()) || 0;
+      } catch (err) {
+        return 0;
+      }
+    }
+
+    function playVideo() {
+      hidePauseBlocker();
+      if (playerMode === "local" && localVideoElement) {
+        localVideoElement.play();
+        return;
+      }
+      if (ytPlayer) {
+        ytPlayer.playVideo();
+      }
+    }
+
+    function pauseVideo() {
+      if (playerMode === "local" && localVideoElement) {
+        localVideoElement.pause();
+        return;
+      }
+      if (ytPlayer) {
+        ytPlayer.pauseVideo();
+        if (!activeQuestion) {
+          showPauseBlocker();
+        }
+      }
+    }
 
     function hideQuestionActions(options = {}) {
       const { keepOverlay = false } = options;
@@ -1232,9 +1659,33 @@
       skipAnswerBtn.addEventListener("click", () => {
         hideQuestionActions();
         if (currentQuestionContext) {
-          player.currentTime = currentQuestionContext.segStart;
+          setPlayerTime(currentQuestionContext.segStart);
         }
         resumeVideo();
+      });
+    }
+
+    if (useLocalVideoBtn) {
+      useLocalVideoBtn.addEventListener("click", () => {
+        switchToLocalVideo();
+      });
+    }
+
+    if (ytEndBlocker) {
+      ytEndBlocker.addEventListener("click", () => {
+        setPlayerTime(0);
+        playVideo();
+        ytEndBlocker.style.display = "none";
+      });
+    }
+
+    if (ytPauseBlocker) {
+      ytPauseBlocker.addEventListener("click", (evt) => {
+        evt.preventDefault();
+        evt.stopPropagation();
+        if (activeQuestion) return;
+        hidePauseBlocker();
+        playVideo();
       });
     }
 
@@ -1244,23 +1695,20 @@
       toggleFullscreen();
     });
 
-    player.addEventListener("dblclick", (evt) => {
+    videoContainer.addEventListener("dblclick", (evt) => {
       evt.preventDefault();
       toggleFullscreen();
     });
 
-    player.addEventListener("keydown", (evt) => {
+    videoContainer.addEventListener("contextmenu", (evt) => {
+      evt.preventDefault();
+    });
+
+    document.addEventListener("keydown", (evt) => {
       const key = typeof evt.key === "string" ? evt.key.toLowerCase() : "";
-      if (key === "f") {
+      if (key === "f" && document.body.classList.contains("watching-video")) {
         evt.preventDefault();
         toggleFullscreen();
-      }
-    });
-    // If anything triggers play while a question is active, immediately pause again
-    player.addEventListener("play", (e) => {
-      if (activeQuestion) {
-        e.preventDefault?.();
-        player.pause();
       }
     });
 
@@ -1383,17 +1831,28 @@
     // ===============================
     // Start Quiz for Selected Video
     // ===============================
-    function startQuiz(video) {
+    async function startQuiz(video) {
       // Hide library, show quiz player
       videoGrid.style.display = "none";
       document.getElementById("player-container").style.display = "flex";
       backButton.style.display = "inline-flex";
       document.body.classList.add("watching-video");
+      currentVideoMeta = video;
+      hideEmbedFallback();
 
-
-      // Load video file
-      player.src = video.local_path;
-      player.play();
+      // Load YouTube video
+      try {
+        const resolvedId = resolveVideoId(video);
+        if (!resolvedId) {
+          showEmbedFallback("Invalid YouTube link. Use the downloaded video.");
+          return;
+        }
+        await ensureYouTubePlayer(resolvedId);
+        playVideo();
+      } catch (err) {
+        console.error("[Error] Failed to load YouTube player:", err);
+        showEmbedFallback("YouTube embed failed.");
+      }
 
       asked.clear();
       previousTime = 0;
@@ -1460,12 +1919,13 @@
     function startMonitoring() {
       clearInterval(checkInterval);
       checkInterval = setInterval(() => {
-        let currentTime = Math.floor(player.currentTime);
+        let currentTime = Math.floor(getPlayerTime());
+        updateEndscreenBlocker();
 
         // --- Skip-lock ---
         if (!skipLockBypass && currentTime > maxAllowedTime + 2) {
           console.warn("Skip attempt detected!");
-          player.currentTime = maxAllowedTime;
+          setPlayerTime(maxAllowedTime);
           return;
         }
         skipLockBypass = false;
@@ -1891,7 +2351,7 @@
     function askQuestion(q, segStart, segEnd) {
       activeQuestion = true;
       lockVideoControls();
-      player.pause();
+      pauseVideo();
 
       currentQuestionContext = { q, segStart, segEnd };
       currentListenAttempt = 0;
@@ -2282,7 +2742,7 @@
             minVisibleMs: MIN_FEEDBACK_DISPLAY_MS
           });
 
-          player.currentTime = rewindTo;
+          setPlayerTime(rewindTo);
           await wait(200);
           resumeVideo();
           return;
@@ -2294,7 +2754,7 @@
           minVisibleMs: MIN_FEEDBACK_DISPLAY_MS
         });
 
-        player.currentTime = rewindTo;
+        setPlayerTime(rewindTo);
         await wait(200);
         resumeVideo();
       } catch (err) {
@@ -2314,7 +2774,7 @@
       currentQuestionContext = null;
       currentListenAttempt = 0;
       unlockVideoControls();          // unlock here
-      player.play();
+      playVideo();
     }
 
     // ===============================
@@ -2336,19 +2796,22 @@
     }
     function seekWithBypass(seconds) {
       skipLockBypass = true;
-      player.currentTime = seconds;
+      setPlayerTime(seconds);
     }
 
     // ===============================
     // Back Button
     // ===============================
     backButton.onclick = () => {
-      player.pause();
+      pauseVideo();
       clearInterval(checkInterval);
       document.getElementById("player-container").style.display = "none";
       videoGrid.style.display = "grid";
       backButton.style.display = "none";
       document.body.classList.remove("watching-video");
+      hideEmbedFallback();
+      hidePauseBlocker();
+      currentVideoMeta = null;
     };
 
     // ===============================
@@ -2396,14 +2859,12 @@
     function lockVideoControls() {
       const blocker = document.getElementById("blocker");
       blocker.style.display = "block";
-      player.controls = false;          // hide native controls
-      player.pause();                   // ensure paused
+      pauseVideo();                   // ensure paused
     }
 
     function unlockVideoControls() {
       const blocker = document.getElementById("blocker");
       blocker.style.display = "none";
-      player.controls = true;           // restore controls
     }
 
 

@@ -128,7 +128,7 @@ select {
         }
         
         .video-player.qs-fullscreen-video,
-        .qs-fullscreen video {
+        .qs-fullscreen iframe {
             width: 100%;
             height: 100%;
         }
@@ -142,6 +142,13 @@ select {
             height: 500px;
             border-radius: 8px;
             background: #000;
+        }
+
+        .video-player iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
         }
         
         .video-loading {
@@ -1921,6 +1928,7 @@ select {
                             <button class="btn btn-secondary btn-sm" onclick="jumpToSegment(1)">Next</button>
                             <button class="btn btn-secondary btn-sm" onclick="seekVideo(-10)">-10s</button>
                             <button class="btn btn-secondary btn-sm" onclick="seekVideo(10)">+10s</button>
+                            <button class="btn btn-secondary btn-sm" id="use-local-video-btn" type="button">Use downloaded video</button>
                         </div>
                     </div>
                     <div class="questions-panel">
@@ -2122,6 +2130,13 @@ select {
     <script>
         let currentVideoId = null;
         let videoElement = null;
+        let ytPlayer = null;
+        let ytPlayerReady = false;
+        let ytApiPromise = null;
+        let ytTimeUpdateTimer = null;
+        let playerMode = 'youtube';
+        let localVideoElement = null;
+        let currentVideoUrl = null;
         let currentSegments = [];
         let currentSegmentIndex = 0;
         let isVideoPaused = false;
@@ -2280,22 +2295,22 @@ select {
 
 
         function acquireModalPlaybackLock() {
-            if (!videoElement) {
+            if (!hasActivePlayer()) {
                 return;
             }
 
             if (modalPlaybackLockCount === 0) {
-                modalPlaybackWasPlaying = !videoElement.paused;
+                modalPlaybackWasPlaying = !isPlaybackPaused();
             }
 
             modalPlaybackLockCount += 1;
-            videoElement.pause();
+            pauseVideo();
         }
 
         function releaseModalPlaybackLock(options = {}) {
             const resume = options && typeof options.resume === 'boolean' ? options.resume : false;
 
-            if (!videoElement) {
+            if (!hasActivePlayer()) {
                 modalPlaybackLockCount = Math.max(0, modalPlaybackLockCount - 1);
                 modalPlaybackWasPlaying = false;
                 return;
@@ -2307,7 +2322,7 @@ select {
 
             if (modalPlaybackLockCount === 0) {
                 if (resume && modalPlaybackWasPlaying) {
-                    videoElement.play();
+                    playVideo();
                 }
                 modalPlaybackWasPlaying = false;
             }
@@ -2354,6 +2369,12 @@ select {
             if (manualButton) {
                 manualButton.addEventListener('click', openAddQuestionModal);
             }
+
+            const localVideoBtn = document.getElementById('use-local-video-btn');
+            if (localVideoBtn) {
+                localVideoBtn.addEventListener('click', switchToLocalVideo);
+            }
+            updateLocalFallbackButtonState();
 
             const llmNextButton = document.getElementById('llm-step-next-btn');
             if (llmNextButton) {
@@ -2418,8 +2439,8 @@ select {
 
         function showStep(step) {
             // Pause video if leaving step 2
-            if (currentStep === 2 && step !== 2 && videoElement) {
-                videoElement.pause();
+            if (currentStep === 2 && step !== 2 && hasActivePlayer()) {
+                pauseVideo();
             }
             
             currentStep = step;
@@ -2434,11 +2455,11 @@ select {
             });
             
             // Resume video if returning to step 2 and it was playing before
-            if (step === 2 && videoElement && !isVideoPaused) {
+            if (step === 2 && hasActivePlayer() && !isVideoPaused) {
                 // Only resume if we're not in a pause overlay
                 const pauseOverlay = document.getElementById('pause-overlay');
                 if (!pauseOverlay || !pauseOverlay.classList.contains('active')) {
-                    videoElement.play();
+                    playVideo();
                 }
             }
         }
@@ -5001,7 +5022,7 @@ select {
                 return;
             }
 
-            const enable = Boolean(currentVideoId && videoElement);
+            const enable = Boolean(currentVideoId && hasActivePlayer());
             manualButton.disabled = !enable;
         }
 
@@ -5563,6 +5584,266 @@ select {
             return null;
         }
 
+        function loadYouTubeApi() {
+            if (window.YT && window.YT.Player) {
+                return Promise.resolve();
+            }
+            if (ytApiPromise) {
+                return ytApiPromise;
+            }
+            ytApiPromise = new Promise((resolve, reject) => {
+                const existing = document.querySelector('script[data-yt-iframe-api="true"]');
+                if (existing) {
+                    if (window.YT && window.YT.Player) {
+                        resolve();
+                    } else {
+                        window.onYouTubeIframeAPIReady = () => resolve();
+                    }
+                    return;
+                }
+                const tag = document.createElement('script');
+                tag.src = 'https://www.youtube.com/iframe_api';
+                tag.async = true;
+                tag.dataset.ytIframeApi = 'true';
+                tag.onerror = () => reject(new Error('Failed to load YouTube API'));
+                window.onYouTubeIframeAPIReady = () => resolve();
+                document.head.appendChild(tag);
+            });
+            return ytApiPromise;
+        }
+
+        function hasActivePlayer() {
+            return (playerMode === 'youtube' && ytPlayer) || (playerMode === 'local' && localVideoElement);
+        }
+
+        function updateLocalFallbackButtonState() {
+            const btn = document.getElementById('use-local-video-btn');
+            if (!btn) {
+                return;
+            }
+            btn.disabled = !(currentVideoUrl && currentVideoUrl.length > 0);
+        }
+
+        function clearLocalPlayer() {
+            if (localVideoElement) {
+                try {
+                    localVideoElement.pause();
+                    localVideoElement.removeAttribute('src');
+                    localVideoElement.load();
+                } catch (err) {
+                    console.warn('Failed to reset local player:', err);
+                }
+            }
+            localVideoElement = null;
+        }
+
+        function switchToLocalVideo() {
+            if (!currentVideoUrl) {
+                showStatus('No downloaded video available for this selection.', 'warning');
+                return;
+            }
+
+            stopVideoTimePolling();
+
+            if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+                ytPlayer.destroy();
+                ytPlayer = null;
+                ytPlayerReady = false;
+            }
+
+            playerMode = 'local';
+
+            const container = document.getElementById('video-container');
+            if (!container) {
+                return;
+            }
+
+            container.innerHTML = '';
+
+            const video = document.createElement('video');
+            video.id = 'local-player';
+            video.className = 'video-player';
+            video.controls = true;
+            video.preload = 'metadata';
+            video.src = currentVideoUrl;
+            video.setAttribute('playsinline', '');
+
+            video.addEventListener('timeupdate', onVideoTimeUpdate);
+            video.addEventListener('loadedmetadata', onVideoLoaded);
+            video.addEventListener('play', onVideoPlay);
+            video.addEventListener('pause', onVideoPause);
+
+            container.appendChild(video);
+
+            localVideoElement = video;
+            videoElement = video;
+            updateManualQuestionButtonState();
+            updateTimeDisplay();
+        }
+
+        function startVideoTimePolling() {
+            stopVideoTimePolling();
+            ytTimeUpdateTimer = setInterval(() => {
+                onVideoTimeUpdate();
+            }, 250);
+        }
+
+        function stopVideoTimePolling() {
+            if (ytTimeUpdateTimer) {
+                clearInterval(ytTimeUpdateTimer);
+                ytTimeUpdateTimer = null;
+            }
+        }
+
+        function handlePlayerStateChange(event) {
+            if (playerMode !== 'youtube') return;
+            if (!event) return;
+            if (event.data === YT.PlayerState.PLAYING) {
+                onVideoPlay();
+                startVideoTimePolling();
+                return;
+            }
+
+            if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+                onVideoPause();
+                stopVideoTimePolling();
+            }
+        }
+
+        function handleEmbedError(event) {
+            console.warn('YouTube embed error:', event?.data);
+            showStatus('YouTube embed unavailable. Use the downloaded video instead.', 'warning');
+            updateLocalFallbackButtonState();
+        }
+
+        async function ensureYouTubePlayer(videoId) {
+            await loadYouTubeApi();
+            playerMode = 'youtube';
+            clearLocalPlayer();
+            updateLocalFallbackButtonState();
+
+            const existingHost = document.getElementById('youtube-player');
+            if (ytPlayer && !existingHost && typeof ytPlayer.destroy === 'function') {
+                ytPlayer.destroy();
+                ytPlayer = null;
+                ytPlayerReady = false;
+            }
+
+            if (ytPlayer) {
+                ytPlayer.loadVideoById(videoId);
+                ytPlayerReady = true;
+                return;
+            }
+
+            const playerHost = document.createElement('div');
+            playerHost.id = 'youtube-player';
+            playerHost.className = 'video-player';
+
+            const container = document.getElementById('video-container');
+            if (container) {
+                container.innerHTML = '';
+                container.appendChild(playerHost);
+            }
+
+            videoElement = playerHost;
+            ytPlayerReady = false;
+
+            ytPlayer = new YT.Player('youtube-player', {
+                videoId,
+                playerVars: {
+                    rel: 0,
+                    modestbranding: 1,
+                    playsinline: 1,
+                    controls: 1,
+                    fs: 0,
+                    disablekb: 1
+                },
+                events: {
+                    onReady: () => {
+                        ytPlayerReady = true;
+                    },
+                    onStateChange: handlePlayerStateChange,
+                    onError: handleEmbedError
+                }
+            });
+
+            await new Promise((resolve) => {
+                const readyCheck = () => {
+                    if (ytPlayerReady) {
+                        resolve();
+                    } else {
+                        setTimeout(readyCheck, 50);
+                    }
+                };
+                readyCheck();
+            });
+        }
+
+        function getVideoCurrentTime() {
+            if (playerMode === 'local' && localVideoElement) {
+                return Number(localVideoElement.currentTime) || 0;
+            }
+            if (!ytPlayer) return 0;
+            try {
+                return Number(ytPlayer.getCurrentTime()) || 0;
+            } catch (err) {
+                return 0;
+            }
+        }
+
+        function setVideoCurrentTime(seconds) {
+            const safe = Math.max(0, Number(seconds) || 0);
+            if (playerMode === 'local' && localVideoElement) {
+                localVideoElement.currentTime = safe;
+                return;
+            }
+            if (!ytPlayer) return;
+            ytPlayer.seekTo(safe, true);
+        }
+
+        function getVideoDuration() {
+            if (playerMode === 'local' && localVideoElement) {
+                return Number(localVideoElement.duration) || 0;
+            }
+            if (!ytPlayer) return 0;
+            try {
+                return Number(ytPlayer.getDuration()) || 0;
+            } catch (err) {
+                return 0;
+            }
+        }
+
+        function isPlaybackPaused() {
+            if (playerMode === 'local' && localVideoElement) {
+                return localVideoElement.paused;
+            }
+            if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') {
+                return true;
+            }
+            const state = ytPlayer.getPlayerState();
+            return state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING;
+        }
+
+        function playVideo() {
+            if (playerMode === 'local' && localVideoElement) {
+                localVideoElement.play();
+                return;
+            }
+            if (ytPlayer) {
+                ytPlayer.playVideo();
+            }
+        }
+
+        function pauseVideo() {
+            if (playerMode === 'local' && localVideoElement) {
+                localVideoElement.pause();
+                return;
+            }
+            if (ytPlayer) {
+                ytPlayer.pauseVideo();
+            }
+        }
+
         async function loadVideoList() {
             const list = document.getElementById('video-card-list');
             if (list) {
@@ -5617,9 +5898,9 @@ select {
             }
 
             const videoMeta = findVideoById(videoId);
-            const resolvedVideoUrl = (videoMeta && videoMeta.videoUrl)
-                ? videoMeta.videoUrl
-                : `/downloads/${videoId}/${videoId}.mp4`;
+            const resolvedVideoId = videoMeta ? videoMeta.id : videoId;
+            currentVideoUrl = videoMeta && videoMeta.videoUrl ? videoMeta.videoUrl : null;
+            updateLocalFallbackButtonState();
 
             if (!displayLabel) {
                 if (videoMeta) {
@@ -5703,7 +5984,7 @@ select {
             let loadSucceeded = false;
 
             try {
-                await loadVideoPlayer(videoId, resolvedVideoUrl);
+                await loadVideoPlayer(resolvedVideoId);
                 await loadSegments(videoId);
                 await loadExpertQuestionFiles(videoId);
 
@@ -5730,34 +6011,26 @@ select {
             }
         }
 
-        async function loadVideoPlayer(videoId, videoUrl) {
+        async function loadVideoPlayer(videoId) {
             const container = document.getElementById('video-container');
-            
-            // Create video element
-            const video = document.createElement('video');
-            video.className = 'video-player';
-            video.controls = true;
-            video.preload = 'metadata';
-            
-            const resolvedVideoUrl = videoUrl || `/downloads/${videoId}/${videoId}.mp4`;
+            if (!container) {
+                return;
+            }
 
-            // Set video source - adjust path as needed
-            video.src = resolvedVideoUrl;
-            
-            // Add event listeners
-            video.addEventListener('timeupdate', onVideoTimeUpdate);
-            video.addEventListener('loadedmetadata', onVideoLoaded);
-            video.addEventListener('play', onVideoPlay);
-            video.addEventListener('pause', onVideoPause);
-            
-            container.innerHTML = '';
-            container.appendChild(video);
-            
-            videoElement = video;
+            stopVideoTimePolling();
+            await ensureYouTubePlayer(videoId);
+            if (!videoElement) {
+                videoElement = document.getElementById('youtube-player');
+            }
+
             updateManualQuestionButtonState();
-            
-            // Show timeline annotations
-            document.getElementById('timeline-annotations').style.display = 'block';
+
+            const timeline = document.getElementById('timeline-annotations');
+            if (timeline) {
+                timeline.style.display = 'block';
+            }
+
+            onVideoLoaded();
         }
         
         async function loadSegments(videoId) {
@@ -5906,8 +6179,8 @@ select {
             updateTimeDisplay();
             createTimelinePausePoints();
 
-            if (videoElement) {
-                videoElement.play();
+            if (hasActivePlayer()) {
+                playVideo();
             }
 
             const segmentInfo = document.getElementById('segment-info');
@@ -5943,9 +6216,9 @@ select {
         }
         
         function checkForPausePoints() {
-            if (!videoElement || !autoAdvanceEnabled || currentSegments.length === 0) return;
+            if (!hasActivePlayer() || !autoAdvanceEnabled || currentSegments.length === 0) return;
 
-            const currentTime = videoElement.currentTime;
+            const currentTime = getVideoCurrentTime();
             const overlayActive = document.getElementById('pause-overlay').classList.contains('active');
 
             for (let index = 0; index < currentSegments.length; index++) {
@@ -5979,7 +6252,7 @@ select {
         
         
         function pauseForReview(targetIndex = currentSegmentIndex) {
-            if (!videoElement || targetIndex < 0 || targetIndex >= currentSegments.length) {
+            if (!hasActivePlayer() || targetIndex < 0 || targetIndex >= currentSegments.length) {
                 return;
             }
 
@@ -5990,11 +6263,11 @@ select {
                 return;
             }
 
-            videoElement.pause();
-            const targetTime = Number(currentSegment.end ?? videoElement.currentTime);
+            pauseVideo();
+            const targetTime = Number(currentSegment.end ?? getVideoCurrentTime());
             if (!Number.isNaN(targetTime) && targetTime >= 0) {
-                const duration = videoElement.duration || targetTime;
-                videoElement.currentTime = Math.min(targetTime, duration);
+                const duration = getVideoDuration() || targetTime;
+                setVideoCurrentTime(Math.min(targetTime, duration));
             }
 
             autoAdvanceEnabled = false;
@@ -6059,9 +6332,9 @@ select {
             const timelineContainer = document.getElementById('timeline-annotations');
             timelineContainer.innerHTML = '';
 
-            if (!videoElement || currentSegments.length === 0) return;
+            if (!hasActivePlayer() || currentSegments.length === 0) return;
 
-            const videoDuration = videoElement.duration || 600;
+            const videoDuration = getVideoDuration() || 600;
 
             currentSegments.forEach((segment, index) => {
                 const pausePoint = document.createElement('div');
@@ -6147,12 +6420,12 @@ select {
             const nextSegment = currentSegments[currentSegmentIndex] || null;
             updateExpertQuestionsPanel(nextSegment);
 
-            if (videoElement && nextSegment) {
+            if (hasActivePlayer() && nextSegment) {
                 const nextStart = Number(nextSegment.start ?? 0);
                 if (!Number.isNaN(nextStart) && nextStart >= 0) {
-                    videoElement.currentTime = Math.max(nextStart, 0);
+                    setVideoCurrentTime(Math.max(nextStart, 0));
                 }
-                videoElement.play();
+                playVideo();
             }
         }
         
@@ -6205,12 +6478,12 @@ select {
         }
         
         function togglePlayPause() {
-            if (!videoElement) return;
+            if (!hasActivePlayer()) return;
             
-            if (videoElement.paused) {
-                videoElement.play();
+            if (isPlaybackPaused()) {
+                playVideo();
             } else {
-                videoElement.pause();
+                pauseVideo();
             }
         }
         
@@ -6221,9 +6494,9 @@ select {
                 currentSegmentIndex = newIndex;
 
                 const segment = currentSegments[currentSegmentIndex];
-                if (videoElement && segment) {
+                if (hasActivePlayer() && segment) {
                     const nextStart = Number(segment.start ?? 0);
-                    videoElement.currentTime = Math.max(nextStart, 0);
+                    setVideoCurrentTime(Math.max(nextStart, 0));
                 }
 
                 autoAdvanceEnabled = true;
@@ -6236,15 +6509,15 @@ select {
 
         
         function seekVideo(seconds) {
-            if (!videoElement) return;
-            videoElement.currentTime = Math.max(0, videoElement.currentTime + seconds);
+            if (!hasActivePlayer()) return;
+            setVideoCurrentTime(getVideoCurrentTime() + seconds);
         }
         
         function updateTimeDisplay() {
-            if (!videoElement) return;
+            if (!hasActivePlayer()) return;
             
-            const current = formatTime(videoElement.currentTime);
-            const duration = formatTime(videoElement.duration || 0);
+            const current = formatTime(getVideoCurrentTime());
+            const duration = formatTime(getVideoDuration() || 0);
             document.getElementById('time-display').textContent = `${current} / ${duration}`;
         }
         
@@ -6318,19 +6591,22 @@ select {
         }
         
         function openAddQuestionModal() {
-            if (!videoElement || !currentVideoId) {
+            if (!hasActivePlayer() || !currentVideoId) {
+                return;
+            }
+            if (!videoElement) {
                 return;
             }
 
             // Pause the video and remember its state
-            const wasPlaying = !videoElement.paused;
-            videoElement.pause();
+            const wasPlaying = !isPlaybackPaused();
+            pauseVideo();
             
             // Store whether video was playing before modal opened
-            videoElement.dataset.wasPlaying = wasPlaying;
+            videoElement.dataset.wasPlaying = wasPlaying ? 'true' : 'false';
             
             // Store the current timestamp
-            manualQuestionTimestamp = videoElement.currentTime;
+            manualQuestionTimestamp = getVideoCurrentTime();
             
             // Update modal display
             const modal = document.getElementById('add-question-modal');
@@ -6378,7 +6654,7 @@ select {
             
             // Resume video if it was playing before modal opened
             if (videoElement && videoElement.dataset.wasPlaying === 'true') {
-                videoElement.play();
+                playVideo();
                 delete videoElement.dataset.wasPlaying;
             }
             
@@ -6426,8 +6702,9 @@ select {
             }
             
             // Validate timestamp is within video duration
-            if (timestamp < 0 || (videoElement && timestamp > videoElement.duration)) {
-                setManualFormFeedback(`Please enter a timestamp within the video duration (0:00 - ${formatSecondsToTimeString(videoElement.duration)}).`);
+            const videoDuration = getVideoDuration();
+            if (timestamp < 0 || (videoDuration && timestamp > videoDuration)) {
+                setManualFormFeedback(`Please enter a timestamp within the video duration (0:00 - ${formatSecondsToTimeString(videoDuration || 0)}).`);
                 timestampInput.focus();
                 return;
             }
