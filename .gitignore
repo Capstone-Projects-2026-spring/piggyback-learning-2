@@ -1,7 +1,7 @@
 .env
 .env.*
 .env.txt
-pycache/
+__pycache__/
 downloads/
 venv/
 .venv/
