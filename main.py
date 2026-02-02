@@ -236,6 +236,9 @@ def download_youtube(url: str) -> Dict[str, Any]:
         has_ffmpeg = shutil.which("ffmpeg") is not None
         has_node = shutil.which("node") is not None
 
+        def _clean_ytdlp_error(message: str) -> str:
+            return re.sub(r"\x1b\[[0-9;]*m", "", message).strip()
+
         # Step 2: Download actual video (prefer 720p on the first attempt)
         ydl_opts = {
             # Prefer highest-quality H.264 MP4 + M4A (avoid re-encode quality loss).
@@ -248,11 +251,6 @@ def download_youtube(url: str) -> Dict[str, Any]:
             "allow_unplayable_formats": True,
             # Output path
             "outtmpl": str(video_dir / f"{video_id}.%(ext)s"),
-            # Optional: keep captions if available
-            "writesubtitles": True,
-            "writeautomaticsub": True,
-            "subtitleslangs": ["en"],
-            "subtitlesformat": "vtt",
             # Quiet mode + warnings suppressed
             "quiet": False,
             "no_warnings": True,
@@ -314,6 +312,7 @@ def download_youtube(url: str) -> Dict[str, Any]:
         ]
 
         last_error = None
+        used_player_client = None
         for player_client in player_client_candidates:
             attempt_opts = dict(ydl_opts)
             attempt_opts["extractor_args"] = {
@@ -322,6 +321,7 @@ def download_youtube(url: str) -> Dict[str, Any]:
             try:
                 _download_with_format_fallback(attempt_opts)
                 last_error = None
+                used_player_client = player_client
                 break
             except yt_dlp.utils.DownloadError as e:  # type: ignore
                 message = str(e)
@@ -332,6 +332,38 @@ def download_youtube(url: str) -> Dict[str, Any]:
 
         if last_error is not None:
             raise last_error
+
+        subtitle_warning = None
+        subtitle_opts = {
+            "outtmpl": str(video_dir / f"{video_id}.%(ext)s"),
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": ["en"],
+            "subtitlesformat": "vtt",
+            "skip_download": True,
+            "quiet": True,
+            "no_warnings": True,
+            "noprogress": True,
+            "noplaylist": True,
+        }
+
+        if has_node:
+            subtitle_opts["js_runtimes"] = {"node": {}}
+            subtitle_opts["external_deps"] = {"ejs": "github"}
+
+        if cookies_file:
+            subtitle_opts["cookiefile"] = cookies_file
+
+        if used_player_client:
+            subtitle_opts["extractor_args"] = {
+                "youtube": {"player_client": used_player_client}
+            }
+
+        try:
+            with yt_dlp.YoutubeDL(subtitle_opts) as ydl:  # type: ignore
+                ydl.download([url])
+        except yt_dlp.utils.DownloadError as e:  # type: ignore
+            subtitle_warning = _clean_ytdlp_error(str(e))
 
         # Step 3: Collect downloaded files
         created = []
@@ -376,6 +408,8 @@ def download_youtube(url: str) -> Dict[str, Any]:
                 "local_path": meta["local_path"],
             }
         )
+        if subtitle_warning:
+            result["subtitle_warning"] = subtitle_warning
         return result
 
     except yt_dlp.utils.DownloadError as e:  # type: ignore
@@ -670,9 +704,23 @@ def generate_questions_for_segment(
         folder_name, start_time, end_time
     )
     if not frame_data:
-        return None
+        return json.dumps(
+            {
+                "error": {
+                    "reason": "no_frames_in_segment",
+                    "retryable": False,
+                }
+            }
+        )
 
     duration = end_time - start_time + 1  # inclusive window
+
+    system_message = (
+        "You are a safe, child-focused educational assistant. "
+        "The content is a children's educational video. "
+        "Follow all safety policies and avoid disallowed content. "
+        "Provide age-appropriate, neutral, factual responses only."
+    )
 
     # First attempt with standard prompt
     base_prompt = f"""You are an early childhood educator designing comprehension questions for children ages 6–8. 
@@ -716,7 +764,7 @@ Please do the following:
 """
 
     # Second attempt with more persuasive prompt
-    polite_prompt = f"""Please help me create educational questions for young children. This is a children's educational video with no violence or inappropriate content - it's designed to teach kids about nature and the environment.
+    polite_prompt = f"""You are helping create educational questions for young children. This is a children's educational video with no violence or inappropriate content, designed to teach kids in a safe, age-appropriate way.
 
 COMPLETE TRANSCRIPT:
 ==========================================
@@ -780,7 +828,14 @@ Return JSON only (no extra text) in this structure:
             successful_frames += 1
 
     if successful_frames == 0:
-        return None
+        return json.dumps(
+            {
+                "error": {
+                    "reason": "frame_encoding_failed",
+                    "retryable": False,
+                }
+            }
+        )
 
     # Try both prompts with retry logic. Reorder to emphasize polite tone after early failures.
     prompt_sequence = [
@@ -793,60 +848,100 @@ Return JSON only (no extra text) in this structure:
             ("standard", base_prompt),
         ]
 
-    for attempt_round, (prompt_label, prompt) in enumerate(prompt_sequence):
-        content_with_prompt = [{"type": "text", "text": prompt}] + content
+    last_error_payload: Optional[Dict[str, Any]] = None
 
-        # Retry logic with exponential backoff for rate limits
+    def _call_llm(content_with_prompt: List[Dict[str, Any]]) -> Optional[str]:
+        nonlocal last_error_payload
         max_retries = 3
         for attempt in range(max_retries):
             try:
                 resp = client.chat.completions.create(
                     model="gpt-4o",
-                    messages=[{"role": "user", "content": content_with_prompt}],  # type: ignore
+                    messages=[
+                        {"role": "system", "content": system_message},
+                        {"role": "user", "content": content_with_prompt},
+                    ],  # type: ignore
                     max_tokens=1500,
                     temperature=0.3,
+                    response_format={"type": "json_object"},
                 )
                 result_content = resp.choices[0].message.content
+                finish_reason = resp.choices[0].finish_reason
 
-                # Check if the response is a refusal
-                if result_content and not any(
-                    refusal in result_content.lower()
-                    for refusal in [
-                        "i'm sorry",
-                        "i can't",
-                        "i'm unable",
-                        "cannot assist",
-                        "can't assist",
-                    ]
-                ):
+                if finish_reason == "content_filter":
+                    last_error_payload = {
+                        "reason": "model_refusal",
+                        "retryable": False,
+                    }
+                    return None
+
+                if result_content:
                     return result_content
 
-                # If first prompt failed, try second prompt
-                if attempt_round == 0 and len(prompt_sequence) > 1:
-                    next_label = prompt_sequence[1][0]
-                    print(
-                        f"{prompt_label.capitalize()} prompt attempt failed for segment {start_time}-{end_time}s, trying {next_label} prompt next"
-                    )
-                    break
-
+                last_error_payload = {
+                    "reason": "empty_response",
+                    "retryable": True,
+                }
             except Exception as e:
                 if "rate_limit_exceeded" in str(e) and attempt < max_retries - 1:
-                    wait_time = (2**attempt) + random.uniform(
-                        0, 1
-                    )  # Exponential backoff
+                    wait_time = (2**attempt) + random.uniform(0, 1)
                     print(
                         f"Rate limit hit, waiting {wait_time:.1f} seconds before retry {attempt + 1}"
                     )
                     time.sleep(wait_time)
+                    last_error_payload = {
+                        "reason": "rate_limit_exceeded",
+                        "retryable": True,
+                        "message": str(e),
+                    }
                     continue
-                else:
-                    print(f"Error calling OpenAI API: {e}")
-                    if attempt_round == 0:
-                        break  # Try second prompt
-                    return None
+
+                print(f"Error calling OpenAI API: {e}")
+                last_error_payload = {
+                    "reason": "openai_error",
+                    "retryable": True,
+                    "message": str(e),
+                }
+                return None
+
+        return None
+
+    tried_transcript_only = False
+
+    for attempt_round, (prompt_label, prompt) in enumerate(prompt_sequence):
+        content_with_prompt = [{"type": "text", "text": prompt}] + content
+
+        result_content = _call_llm(content_with_prompt)
+        if result_content:
+            return result_content
+
+        # If refusal or empty, fall back to transcript-only once.
+        if (
+            not tried_transcript_only
+            and last_error_payload
+            and last_error_payload.get("reason") in {"model_refusal", "empty_response"}
+        ):
+            tried_transcript_only = True
+            transcript_only_prompt = (
+                prompt
+                + "\n\nIf visuals are unavailable, answer using the transcript only."
+            )
+            transcript_only_content = [{"type": "text", "text": transcript_only_prompt}]
+            result_content = _call_llm(transcript_only_content)
+            if result_content:
+                return result_content
+
+        # If first prompt failed, try second prompt
+        if attempt_round == 0 and len(prompt_sequence) > 1:
+            next_label = prompt_sequence[1][0]
+            print(
+                f"{prompt_label.capitalize()} prompt attempt failed for segment {start_time}-{end_time}s, trying {next_label} prompt next"
+            )
 
     print(f"Both prompt attempts failed for segment {start_time}-{end_time}s")
-    return None
+    if last_error_payload is None:
+        last_error_payload = {"reason": "generation_failed", "retryable": True}
+    return json.dumps({"error": last_error_payload})
 
 
 def generate_questions_for_segment_with_retry(
@@ -870,7 +965,16 @@ def generate_questions_for_segment_with_retry(
             video_id, start_time, end_time, polite_first=polite_first
         )
         if result_text:
-            return result_text
+            try:
+                parsed = json.loads(result_text)
+            except Exception:
+                parsed = None
+            if isinstance(parsed, dict) and "error" in parsed:
+                retryable = bool(parsed.get("error", {}).get("retryable"))
+                if not retryable:
+                    return result_text
+            else:
+                return result_text
 
         last_result = result_text
         if attempt < max_attempts:
