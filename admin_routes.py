@@ -1,5 +1,6 @@
 # admin_routes.py
 import json
+import csv
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -113,6 +114,117 @@ def _collect_downloaded_videos(include_without_frames: bool = False) -> List[Dic
         entries.append(entry)
 
     return entries
+
+
+def _segment_frame_debug(video_id: str, start: int, end: int) -> Dict[str, Any]:
+    """
+    Inspect extracted frame coverage for a segment to explain generation failures.
+    """
+    frames_dir = DOWNLOADS_DIR / video_id / "extracted_frames"
+    csv_path = frames_dir / "frame_data.csv"
+    debug: Dict[str, Any] = {"video_id": video_id, "start": start, "end": end}
+
+    if not frames_dir.exists():
+        debug["reason"] = "frames_dir_missing"
+        return debug
+    if not csv_path.exists():
+        debug["reason"] = "frame_data_csv_missing"
+        return debug
+
+    min_ts = None
+    max_ts = None
+    total_rows = 0
+    in_range = 0
+    missing_files = 0
+
+    try:
+        with csv_path.open("r", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                total_rows += 1
+                ts_raw = row.get("Timestamp") or row.get("Time_Seconds") or row.get("Time_Formatted")
+                try:
+                    if ts_raw is None:
+                        continue
+                    if isinstance(ts_raw, str) and ":" in ts_raw:
+                        parts = [int(p) for p in ts_raw.split(":") if p.strip()]
+                        if len(parts) == 3:
+                            ts = parts[0] * 3600 + parts[1] * 60 + parts[2]
+                        elif len(parts) == 2:
+                            ts = parts[0] * 60 + parts[1]
+                        else:
+                            ts = int(parts[0])
+                    else:
+                        ts = int(float(ts_raw))
+                except Exception:
+                    continue
+
+                if min_ts is None or ts < min_ts:
+                    min_ts = ts
+                if max_ts is None or ts > max_ts:
+                    max_ts = ts
+
+                if start <= ts <= end:
+                    in_range += 1
+                    filename = row.get("Filename") or ""
+                    if filename and not (frames_dir / filename).exists():
+                        missing_files += 1
+
+        debug.update(
+            {
+                "total_frames": total_rows,
+                "frames_in_range": in_range,
+                "min_timestamp": min_ts,
+                "max_timestamp": max_ts,
+                "missing_frame_files": missing_files,
+            }
+        )
+        if in_range == 0:
+            debug["reason"] = "no_frames_in_range"
+        elif missing_files > 0:
+            debug["reason"] = "missing_frame_files"
+        else:
+            debug["reason"] = "frames_present"
+    except Exception as exc:
+        debug["reason"] = "csv_parse_error"
+        debug["error"] = str(exc)
+
+    return debug
+
+
+def _wrap_segment_result(
+    video_id: str,
+    start: int,
+    end: int,
+    result_text: Optional[str],
+    result_obj: Any,
+) -> Any:
+    """
+    Normalize failed generations into a structured error payload.
+    """
+    if isinstance(result_obj, dict) and "error" in result_obj:
+        return result_obj
+
+    error_info: Optional[Dict[str, Any]] = None
+
+    if result_text is None:
+        error_info = {"reason": "generation_returned_none"}
+    elif isinstance(result_obj, str):
+        error_info = {
+            "reason": "invalid_json",
+            "raw_preview": result_obj[:300],
+        }
+    elif isinstance(result_obj, dict) and "questions" not in result_obj:
+        error_info = {
+            "reason": "missing_questions",
+            "keys": list(result_obj.keys()),
+        }
+
+    if error_info:
+        frame_debug = _segment_frame_debug(video_id, start, end)
+        return {"error": error_info, "frame_debug": frame_debug}
+
+    return result_obj
 
 
 # =========================================================
@@ -258,6 +370,9 @@ async def ws_questions(websocket: WebSocket, video_id: str):
                 generate_questions_for_segment_with_retry, video_id, start, end
             )
             result_obj = _maybe_parse_json(result_text)
+            result_obj = _wrap_segment_result(
+                video_id, start, end, result_text, result_obj
+            )
 
             await websocket.send_json(
                 {
@@ -311,6 +426,9 @@ async def ws_questions(websocket: WebSocket, video_id: str):
                 seg_end,
             )
             result_obj = _maybe_parse_json(result_text)
+            result_obj = _wrap_segment_result(
+                video_id, seg_start, seg_end, result_text, result_obj
+            )
             aggregated["segments"].append(
                 {"start": seg_start, "end": seg_end, "result": result_obj}
             )

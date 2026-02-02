@@ -523,6 +523,12 @@
             font-style: italic;
         }
 
+        .error-detail {
+            font-size: 0.8em;
+            color: #a94442;
+            margin-top: 4px;
+        }
+
         .no-results {
             text-align: center;
             padding: 40px 20px;
@@ -1448,9 +1454,9 @@
                     });
                     
                     if (data.result && data.result.questions) {
-                        addQuestionToTable(data.start, data.end, data.result.questions, data.result.best_question);
+                        addQuestionToTable(data.start, data.end, data.result.questions, data.result.best_question, null);
                     } else {
-                        addQuestionToTable(data.start, data.end, null, null);
+                        addQuestionToTable(data.start, data.end, null, null, data.result || null);
                     }
                     
                     updateQuestionsStats();
@@ -1587,7 +1593,7 @@
             resetQuestions();
         }
         
-        function addQuestionToTable(start, end, questions, bestQuestion) {
+        function addQuestionToTable(start, end, questions, bestQuestion, details = null) {
             const timeRange = formatTimeRange(start, end);
             const segmentKey = `${start}-${end}`;
             
@@ -1600,12 +1606,51 @@
             existingRows.forEach(row => row.remove());
             
             if (!questions || typeof questions !== 'object') {
+                if (details && details.error) {
+                    console.warn('Segment generation issue', { start, end, details });
+                }
+
+                const reasonLabels = {
+                    frames_dir_missing: 'Frames folder missing',
+                    frame_data_csv_missing: 'frame_data.csv missing',
+                    no_frames_in_range: 'No frames in this time range',
+                    missing_frame_files: 'Frame images missing',
+                    csv_parse_error: 'Could not read frame_data.csv',
+                    frames_present: 'Frames present, model/API issue',
+                    invalid_json: 'Model returned non-JSON',
+                    missing_questions: 'JSON missing questions',
+                    generation_returned_none: 'Model call failed'
+                };
+
+                const frameReason = details && details.frame_debug ? details.frame_debug.reason : null;
+                const errorReason = details && details.error ? details.error.reason : null;
+
+                let message = 'No questions generated';
+                if (frameReason && frameReason !== 'frames_present') {
+                    message = reasonLabels[frameReason] || message;
+                } else if (errorReason) {
+                    message = reasonLabels[errorReason] || message;
+                } else if (frameReason === 'frames_present') {
+                    message = reasonLabels.frames_present;
+                }
+
+                const detailParts = [];
+                if (details && details.frame_debug) {
+                    if (details.frame_debug.frames_in_range !== undefined) {
+                        detailParts.push(`${details.frame_debug.frames_in_range} frames in range`);
+                    }
+                    if (details.frame_debug.min_timestamp !== undefined && details.frame_debug.max_timestamp !== undefined) {
+                        detailParts.push(`available ${details.frame_debug.min_timestamp}-${details.frame_debug.max_timestamp}s`);
+                    }
+                }
+                const detailText = detailParts.length ? `<div class="error-detail">${detailParts.join(' / ')}</div>` : '';
+
                 const row = document.createElement('tr');
                 row.setAttribute('data-segment', segmentKey);
                 row.innerHTML = `
                     <td><span class="time-range">${timeRange}</span></td>
                     <td>-</td>
-                    <td class="status-error">No questions generated</td>
+                    <td class="status-error">${message}${detailText}</td>
                     <td>-</td>
                     <td><span class="status-error">Error</span></td>
                 `;
