@@ -296,9 +296,10 @@ select {
     background: var(--color-surface);
     padding: 32px;
     border-radius: 18px;
-    max-width: 600px;
-    width: 100%;
-    max-height: 90vh;
+    width: min(760px, 92vw);
+    max-width: 760px;
+    min-height: 70vh;
+    max-height: 92vh;
     overflow-y: auto;
     box-shadow: var(--shadow-soft);
 }
@@ -2098,14 +2099,6 @@ select {
                     </div>
                     <div class="llm-step-footer">
                         <button type="button" class="btn btn-secondary" id="llm-step-back-btn">Back</button>
-                        <button type="button" class="btn btn-success" id="llm-step-next-review-btn">Next: Edit Questions</button>
-                    </div>
-                </div>
-                <div class="llm-step-content" id="llm-step-3">
-                    <p class="llm-step-instructions"><span class="llm-instruction-icon" aria-hidden="true">i</span><span class="llm-instruction-text"><strong><em>Review answers & make final edits to both questions and answers</em></strong></span></p>
-                    <div class="llm-accordion" id="llm-accordion-list"></div>
-                    <div class="llm-step-footer">
-                        <button type="button" class="btn btn-secondary" id="llm-step-edit-back-btn">Back</button>
                         <button type="button" class="btn btn-success" id="llm-review-submit-btn">Submit &amp; Continue</button>
                     </div>
                 </div>
@@ -2151,7 +2144,7 @@ select {
         let expertQuestions = {};
         let expertSaveInProgress = false;
         let pendingSegmentIndices = [];
-        let llmQuestionEdits = {}; // Store edits made to LLM questions
+        let llmQuestionEdits = {}; // Store ranking/trash decisions for LLM questions
                  let manualQuestionTimestamp = null; // Store timestamp for manual questions
         const REVIEW_TOLERANCE_BEFORE = 0.25;
 
@@ -2381,19 +2374,9 @@ select {
                 llmNextButton.addEventListener('click', handleLLMStepNext);
             }
 
-            const llmNextReviewButton = document.getElementById('llm-step-next-review-btn');
-            if (llmNextReviewButton) {
-                llmNextReviewButton.addEventListener('click', handleLLMStepNext);
-            }
-
             const llmBackButton = document.getElementById('llm-step-back-btn');
             if (llmBackButton) {
                 llmBackButton.addEventListener('click', handleLLMStepBack);
-            }
-
-            const llmEditBackButton = document.getElementById('llm-step-edit-back-btn');
-            if (llmEditBackButton) {
-                llmEditBackButton.addEventListener('click', handleLLMStepBack);
             }
 
             const llmSubmitButton = document.getElementById('llm-review-submit-btn');
@@ -3197,13 +3180,9 @@ select {
 
                     type,
 
-                    originalQuestion: data.q || '',
+                    question: data.q || '',
 
-                    originalAnswer: data.a || '',
-
-                    question: edits.question !== undefined ? edits.question : (data.q || ''),
-
-                    answer: edits.answer !== undefined ? edits.answer : (data.a || ''),
+                    answer: data.a || '',
 
                     trashed: Boolean(edits.trashed),
 
@@ -3513,9 +3492,7 @@ select {
 
                     1: 'Review AI Questions',
 
-                    2: 'Review AI Questions',
-
-                    3: 'Review AI Questions'
+                    2: 'Rank AI Questions'
 
                 };
 
@@ -3556,19 +3533,6 @@ select {
                     rankingCommentInput.value = llmModalState.rankingComment || '';
 
                 }
-
-            } else if (step === 3) {
-
-                const combinedOrder = getCombinedLLMOrder();
-
-                if (!combinedOrder.includes(llmModalState.openQuestionKey)) {
-
-                    llmModalState.openQuestionKey = combinedOrder[0] || null;
-
-                }
-
-                renderLLMAccordion();
-
             }
 
         }
@@ -4360,7 +4324,7 @@ select {
 
                 if (!entry.trashed) {
                     item.addEventListener('click', event => {
-                        if (event.target.closest('button') || llmModalState.editingKey === questionKey) {
+                        if (event.target.closest('button')) {
                             return;
                         }
                         llmModalState.openQuestionKey = questionKey;
@@ -4417,64 +4381,8 @@ select {
 
                 item.appendChild(answerBlock);
 
-                if (llmModalState.editingKey === questionKey && !entry.trashed) {
-                    const editWrapper = document.createElement('div');
-                    editWrapper.className = 'llm-edit-form';
-
-                    const questionField = document.createElement('div');
-                    questionField.className = 'llm-modal-field';
-                    const qLabel = document.createElement('label');
-                    qLabel.textContent = 'Question';
-                    const qInput = document.createElement('textarea');
-                    qInput.value = entry.question || '';
-                    qInput.dataset.role = 'question';
-                    questionField.appendChild(qLabel);
-                    questionField.appendChild(qInput);
-
-                    const answerField = document.createElement('div');
-                    answerField.className = 'llm-modal-field';
-                    const aLabel = document.createElement('label');
-                    aLabel.textContent = 'Answer';
-                    const aInput = document.createElement('textarea');
-                    aInput.value = entry.answer || '';
-                    aInput.dataset.role = 'answer';
-                    answerField.appendChild(aLabel);
-                    answerField.appendChild(aInput);
-
-                    const editActions = document.createElement('div');
-                    editActions.className = 'llm-edit-actions';
-                    const saveButton = document.createElement('button');
-                    saveButton.type = 'button';
-                    saveButton.className = 'btn btn-success btn-sm';
-                    saveButton.textContent = 'Save';
-                    saveButton.addEventListener('click', () => saveLLMModalQuestion(questionKey, editWrapper));
-                    const cancelButton = document.createElement('button');
-                    cancelButton.type = 'button';
-                    cancelButton.className = 'btn btn-secondary btn-sm';
-                    cancelButton.textContent = 'Cancel';
-                    cancelButton.addEventListener('click', cancelLLMModalEdit);
-
-                    editActions.appendChild(saveButton);
-                    editActions.appendChild(cancelButton);
-
-                    editWrapper.appendChild(questionField);
-                    editWrapper.appendChild(answerField);
-                    editWrapper.appendChild(editActions);
-
-                    item.appendChild(editWrapper);
-                }
-
                 const actions = document.createElement('div');
                 actions.className = 'llm-review-actions';
-
-                const editButton = document.createElement('button');
-                editButton.type = 'button';
-                editButton.className = 'btn btn-secondary btn-icon';
-                editButton.innerHTML = '<span aria-hidden="true">&#9998;</span>';
-                editButton.title = 'Edit question and answer';
-                editButton.disabled = entry.trashed || llmModalState.editingKey === questionKey;
-                editButton.addEventListener('click', () => startLLMModalEdit(questionKey));
-                actions.appendChild(editButton);
 
                 if (entry.trashed) {
                     const restoreButton = document.createElement('button');
@@ -4484,8 +4392,9 @@ select {
                     restoreButton.addEventListener('click', () => moveLLMQuestionToRanking(questionKey));
                     actions.appendChild(restoreButton);
                 }
-
-                item.appendChild(actions);
+                if (actions.children.length) {
+                    item.appendChild(actions);
+                }
 
                 accordion.appendChild(item);
 
@@ -4773,7 +4682,7 @@ select {
 
                 llmModalState.rankingComment = comment;
 
-                setLLMStep(3);
+                handleLLMModalSubmit();
 
                 return;
 
@@ -4813,11 +4722,6 @@ select {
 
 
 
-            if (llmModalState.step === 3) {
-
-                setLLMStep(2);
-
-            }
 
         }
 
@@ -4847,17 +4751,9 @@ select {
 
 
 
-            if (llmModalState.step !== 3) {
+            if (llmModalState.step === 1) {
 
-                if (llmModalState.step === 1) {
-
-                    setLLMStep(2);
-
-                } else if (llmModalState.step === 2) {
-
-                    setLLMStep(3);
-
-                }
+                setLLMStep(2);
 
                 return;
 
@@ -5183,48 +5079,67 @@ select {
                     expertColumn.innerHTML += '<div style="color: #718096; text-align: center; padding: 20px;">No expert question added yet</div>';
                 }
                 
-                // Right column - LLM Questions (Editable)
+                // Right column - LLM Questions
                 const llmColumn = document.createElement('div');
                 llmColumn.className = 'question-column llm-column';
                 
                 const llmHeader = document.createElement('div');
                 llmHeader.className = 'column-header';
-                llmHeader.textContent = 'AI-Generated Questions (Editable)';
+                llmHeader.textContent = 'AI-Generated Questions';
                 llmColumn.appendChild(llmHeader);
-                
+
                 if (questions && typeof questions === 'object' && Object.keys(questions).length > 0) {
                     // First, identify the best question
                     let bestQuestionText = null;
                     if (segment.result && segment.result.best_question) {
                         bestQuestionText = segment.result.best_question;
                     }
-                    
+
                     // Check for expert-selected best question
                     const expertBestKey = llmQuestionEdits[currentVideoId] && 
                                          llmQuestionEdits[currentVideoId][`${segmentKey}_expertBest`];
-                    
-                    Object.entries(questions).forEach(([type, data]) => {
+
+                    const getAiRankValue = (data) => {
+                        if (!data) return Number.POSITIVE_INFINITY;
+                        const rawRank = data.rank ?? data.ranking ?? data.llm_ranking ?? data.llmRank;
+                        const parsed = Number(rawRank);
+                        if (!Number.isFinite(parsed) || parsed <= 0) {
+                            return Number.POSITIVE_INFINITY;
+                        }
+                        return parsed;
+                    };
+
+                    const sortedEntries = Object.entries(questions).sort((a, b) => {
+                        const rankA = getAiRankValue(a[1]);
+                        const rankB = getAiRankValue(b[1]);
+                        if (rankA !== rankB) {
+                            return rankA - rankB;
+                        }
+                        return String(a[0]).localeCompare(String(b[0]));
+                    });
+
+                    sortedEntries.forEach(([type, data]) => {
                         const questionKey = `${segmentKey}_${type}`;
                         
                         // Get any existing edits for this question
                         const edits = llmQuestionEdits[currentVideoId][questionKey] || {};
                         const isTrashed = edits.trashed || false;
-                        const currentQuestion = edits.question !== undefined ? edits.question : (data.q || '');
-                        const currentAnswer = edits.answer !== undefined ? edits.answer : (data.a || '');
+                        const currentQuestion = data.q || '';
+                        const currentAnswer = data.a || '';
                         
                         // Check if this is the best question
                         const isAIBestQuestion = bestQuestionText && (data.q === bestQuestionText);
                         const isExpertBestQuestion = expertBestKey === questionKey;
                         
                         const editableDiv = document.createElement('div');
-                        editableDiv.className = 'editable-question collapsed';
+                        editableDiv.className = 'editable-question';
                         editableDiv.id = `question-${questionKey}`;
                         if (isTrashed) editableDiv.classList.add('trashed');
                         if (isAIBestQuestion || isExpertBestQuestion) editableDiv.classList.add('best-question');
                         
                         editableDiv.innerHTML = `
                             <div class="question-header">
-                                <div class="question-summary" onclick="toggleEditMode('${questionKey}', false)">
+                                <div class="question-summary">
                                     <div>
                                         <span class="question-type-label">${type}</span>
                                         ${isAIBestQuestion ? '<span class="best-indicator">AI BEST</span>' : ''}
@@ -5232,23 +5147,6 @@ select {
                                     </div>
                                     <div class="question-preview">${currentQuestion}</div>
                                     <div class="answer-preview">${currentAnswer}</div>
-                                </div>
-                                <div class="question-actions">
-                                     <!-- Read-only view - no actions available -->
-                                </div>
-                            </div>
-                            <div class="question-field">
-                                <label>Question:</label>
-                                <textarea id="edit-question-${questionKey}" data-field="question" data-key="${questionKey}" ${isTrashed ? 'disabled' : ''}>${currentQuestion}</textarea>
-                            </div>
-                            <div class="question-field">
-                                <label>Answer:</label>
-                                <textarea id="edit-answer-${questionKey}" data-field="answer" data-key="${questionKey}" ${isTrashed ? 'disabled' : ''}>${currentAnswer}</textarea>
-                            </div>
-                            <div class="question-field">
-                                <div class="question-actions">
-                                    <button class="btn-icon btn-save-edit" onclick="saveEditAndClose('${questionKey}')">Save</button>
-                                    <button class="btn-icon btn-cancel-edit" onclick="toggleEditMode('${questionKey}', false)">Cancel</button>
                                 </div>
                             </div>
                         `;
@@ -5450,10 +5348,8 @@ select {
 
                         const questionData = {
                             type,
-                            originalQuestion: data.q || '',
-                            originalAnswer: data.a || '',
-                            editedQuestion: edits.question !== undefined ? edits.question : (data.q || ''),
-                            editedAnswer: edits.answer !== undefined ? edits.answer : (data.a || ''),
+                            question: data.q || '',
+                            answer: data.a || '',
                             trashed: edits.trashed || false,
                             modified: edits.modified || false,
                             ranking: ranking // Add ranking here
@@ -5495,7 +5391,7 @@ select {
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    showStatus('Successfully saved final questions to final_questions folder!', 'success');
+                    showStatus('Thank you! Final questions saved successfully.', 'success');
                     console.log('Saved to:', result.filepath);
 
                     // Save to localStorage as backup
@@ -5511,6 +5407,10 @@ select {
                             btn.textContent = 'Finalize questions and submit';
                         }, 3000);
                     }
+
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 400);
                 } else {
                     throw new Error(result.message || 'Server save failed');
                 }

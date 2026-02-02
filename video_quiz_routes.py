@@ -237,11 +237,13 @@ def get_final_questions(video_id: str):
         # Find first non-trashed question
         chosen_q = next((q for q in sorted_qs if not q.get("trashed", False)), None)
         if chosen_q:
+            question_text = chosen_q.get("question") or chosen_q.get("originalQuestion")
+            answer_text = chosen_q.get("answer") or chosen_q.get("originalAnswer")
             selected_segments.append({
                 "segment_range_start": seg.get("start"),
                 "segment_range_end": seg.get("end"),
-                "question": chosen_q.get("editedQuestion"),
-                "answer": chosen_q.get("editedAnswer"),
+                "question": question_text,
+                "answer": answer_text,
                 "llm_ranking": chosen_q.get("llm_ranking"),
                 "expert_ranking": chosen_q.get("expert_ranking"),
             })
