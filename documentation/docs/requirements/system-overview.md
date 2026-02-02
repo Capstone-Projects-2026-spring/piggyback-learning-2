@@ -7,6 +7,15 @@ sidebar_position: 1
 This document proposes an application that allows young children to get learning out of videos that they watch on a daily basis. The application offers a selection of activities that consist of a YouTube video and quiz questions about the video, all prompted throughout the its duration. Users answer the questions using their voice. There are settings to let users decide whether the video continues or rewinds when a question is answered incorrectly. The application records and tracks users' individual progress, saving data such as watchtime, correctly and incorrectly answered  questions, and video data.
 
 # Conceptual Design
+The system is divided into a frontend and a backend that work together to deliver interactive video-based learning. The frontend is responsible for presenting YouTube videos, displaying quiz questions at predefined points during playback, recording user voice responses, and providing immediate feedback. It also manages user settings, such as whether the video rewinds or continues after an incorrect response, and displays progress information in a child-friendly interface.
+
+The backend handles all processing and data management. It stores activity definitions, evaluates spoken responses using speech recognition, determines correctness, and tracks individual user progress including watch time and quiz results. The backend exposes APIs that allow the frontend to retrieve activities, submit responses, and securely save progress data.
+
+
+
+
+
+
 
 # Background
 
