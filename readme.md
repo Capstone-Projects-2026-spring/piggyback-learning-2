@@ -13,64 +13,91 @@ processing, an expert review UI, and a kids-friendly playback/quiz interface.
 - Expert review and final question curation
 - Kids library and quiz player UI
 
-## Prerequisites
+## Quickstart
 
-- Python 3.8+
-- OpenAI API key (question generation + grading)
-- FFmpeg (recommended for muxing/format handling)
-- Node.js LTS (optional, improves yt-dlp extraction reliability)
-- Optional: YouTube cookies file for restricted videos
-
-## Installation
-
-1. Create and activate a virtual environment.
+1. Install system dependencies (FFmpeg required, Node.js optional). See the OS-specific section below.
+2. Create and activate a virtual environment:
    ```bash
    python -m venv venv
-   # Windows
+   # Windows (PowerShell)
+   .\venv\Scripts\Activate.ps1
+   # Windows (cmd.exe)
    venv\Scripts\activate
    # macOS/Linux
    source venv/bin/activate
    ```
-2. Install dependencies.
+   If PowerShell blocks activation, run:
    ```bash
-   pip install -r requirements.txt
+   Set-ExecutionPolicy -Scope Process Bypass
+   ```
+3. Install Python dependencies:
+   ```bash
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+4. Create `.env` in the project root (defaults shown below).
+5. Run the app:
+   ```bash
+   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+6. Open:
+   ```
+   http://localhost:8000
    ```
 
-## Configuration (.env or .env.txt)
+## System Dependencies (Windows / macOS / Linux)
+
+FFmpeg is required for muxing/format handling. Node.js LTS is optional but improves yt-dlp reliability.
+
+Verify after install:
+```bash
+ffmpeg -version
+node -v
+```
+
+Windows:
+- Install FFmpeg and ensure `ffmpeg.exe` is on your PATH (via winget/chocolatey or a static build).
+- Install Node.js LTS (optional) and ensure `node` is on PATH.
+
+macOS (Homebrew):
+```bash
+brew install ffmpeg
+brew install node
+```
+
+Linux:
+- Ubuntu/Debian:
+  ```bash
+  sudo apt-get update
+  sudo apt-get install ffmpeg nodejs npm
+  ```
+- Fedora:
+  ```bash
+  sudo dnf install ffmpeg nodejs
+  ```
+- Arch:
+  ```bash
+  sudo pacman -S ffmpeg nodejs npm
+  ```
+
+## Configuration (Defaults)
 
 Create a `.env` file in the project root:
 
 ```bash
 OPENAI_API_KEY="your_openai_key"
-ADMIN_PASSWORD="admin"
-EXPERT_PASSWORD="expert"
+# Defaults are admin123 / expert123 if not set
+ADMIN_PASSWORD="admin123"
+EXPERT_PASSWORD="expert123"
 # Optional: use a Netscape-format cookies file for restricted videos
 YTDLP_COOKIEFILE="C:\\path\\to\\cookies.txt"
+# Alternate env var name also supported
+YTDLP_COOKIES_FILE="C:\\path\\to\\cookies.txt"
 ```
 
 Notes:
 - `.env` and `.env.txt` are both loaded if present.
 - Keep secrets out of git (add `.env` to `.gitignore`).
-
-## Optional: Node.js (recommended)
-
-yt-dlp can use Node.js to handle modern YouTube challenges. Verify install:
-
-```bash
-node -v
-```
-
-## Run the App
-
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Open the home page in your browser:
-
-```
-http://localhost:8000
-```
 
 ## App Flows
 
