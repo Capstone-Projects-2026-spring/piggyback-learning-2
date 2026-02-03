@@ -1,12 +1,12 @@
-# Piggyback Learning - YouTube Downloader + AI Question Generation
+# Piggyback Learning
 
-A FastAPI web app that downloads YouTube videos, extracts frames, and generates
-educational comprehension questions for kids. It includes an admin workflow for
-processing, an expert review UI, and a kids-friendly playback/quiz interface.
+FastAPI application for downloading YouTube videos, extracting frames, and generating
+educational comprehension questions. The app includes admin processing tools, expert
+review workflows, and a kids-friendly playback/quiz interface.
 
 ## Features
 
-- YouTube download via yt-dlp (prefers 720p H.264 MP4 on first attempt)
+- YouTube downloads via `yt-dlp` (prefers 720p H.264 MP4 on first attempt)
 - English subtitles (auto + manual when available) and metadata capture
 - Frame extraction at 1 FPS with CSV/JSON manifests
 - AI question generation with WebSocket progress updates
@@ -17,37 +17,38 @@ processing, an expert review UI, and a kids-friendly playback/quiz interface.
 
 1. Install system dependencies (FFmpeg required, Node.js optional). See the OS-specific section below.
 2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   # Windows (PowerShell)
-   .\venv\Scripts\Activate.ps1
-   # Windows (cmd.exe)
-   venv\Scripts\activate
-   # macOS/Linux
-   source venv/bin/activate
-   ```
-   If PowerShell blocks activation, run:
-   ```bash
-   Set-ExecutionPolicy -Scope Process Bypass
-   ```
+  ```bash
+  python -m venv venv
+  # Windows (PowerShell)
+  .\venv\Scripts\Activate.ps1
+  # Windows (cmd.exe)
+  venv\Scripts\activate
+  # macOS/Linux
+  source venv/bin/activate
+  ```
+  If PowerShell blocks activation, run:
+  ```bash
+  Set-ExecutionPolicy -Scope Process Bypass
+  ```
 3. Install Python dependencies:
-   ```bash
-   python -m pip install --upgrade pip
-   python -m pip install -r requirements.txt
-   ```
+  ```bash
+  python -m pip install --upgrade pip
+  python -m pip install -r requirements.txt
+  ```
 4. Create `.env` in the project root (defaults shown below).
 5. Run the app:
-   ```bash
-   python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
-   ```
+  ```bash
+  python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+  ```
 6. Open:
-   ```
-   http://localhost:8000
-   ```
+  ```
+  http://localhost:8000
+  ```
 
 ## System Dependencies (Windows / macOS / Linux)
 
-FFmpeg is required for muxing/format handling. Node.js LTS is optional but improves yt-dlp reliability.
+FFmpeg is required for muxing/format handling. Node.js LTS is optional but improves
+`yt-dlp` reliability.
 
 Verify after install:
 ```bash
@@ -80,7 +81,7 @@ Linux:
   sudo pacman -S ffmpeg nodejs npm
   ```
 
-## Configuration (Defaults)
+## Configuration
 
 Create a `.env` file in the project root:
 
@@ -116,7 +117,7 @@ Notes:
 1. Go to the Kids page.
 2. Browse videos and play quizzes.
 
-## API Endpoints (core)
+## API Endpoints (Core)
 
 - `POST /api/verify-password`
 - `POST /api/download`
