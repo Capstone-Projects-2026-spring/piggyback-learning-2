@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Pig Avatar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 50%, #fd79a8 100%);
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Status Indicator */
+        #status-indicator {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid #ff69b4;
+            border-radius: 50px;
+            padding: 15px 30px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(255, 105, 180, 0.3);
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background: #ff69b4;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 20px #ff69b4; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Chat Interface */
+        #chat-interface {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 2px solid #ff69b4;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(255, 105, 180, 0.4);
+        }
+        #chat-header {
+            padding: 20px 25px;
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        #messages {
+            height: 320px;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.5);
+        }
+        .message {
+            margin-bottom: 15px;
+            animation: fadeSlide 0.4s ease;
+        }
+        @keyframes fadeSlide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .msg-bubble {
+            padding: 14px 18px;
+            border-radius: 20px;
+            max-width: 80%;
+            word-wrap: break-word;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        .user .msg-bubble {
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .assistant .msg-bubble {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        #input-container {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            gap: 12px;
+        }
+        #message-input {
+            flex: 1;
+            padding: 14px 20px;
+            background: white;
+            border: 2px solid #ffb6c1;
+            border-radius: 25px;
+            color: #333;
+            outline: none;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        #message-input:focus {
+            border-color: #ff69b4;
+            box-shadow: 0 0 0 4px rgba(255, 105, 180, 0.1);
+        }
+        #message-input::placeholder {
+            color: #999;
+        }
+        #send-btn {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.4);
+        }
+        #send-btn:hover:not(:disabled) {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: 0 6px 25px rgba(255, 105, 180, 0.6);
+        }
+        #send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Instruction hint */
+        #hint {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 12px 24px;
+            border-radius: 20px;
+            color: #666;
+            font-size: 13px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 1s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container"></div>
+        
+        <div id="status-indicator">
+            <div class="status-dot"></div>
+            <div>🐷 Piggy is ready to chat!</div>
+        </div>
+        
+        <div id="hint">
+            💡 Click and drag to rotate • Scroll to zoom
+        </div>
+        
+        <div id="chat-interface">
+            <div id="chat-header">
+                <span>🐷</span>
+                <span>Chat with Piggy</span>
+            </div>
+            <div id="messages">
+                <div class="message assistant">
+                    <div class="msg-bubble">
+                        Oink oink! 🐷 Hi there! I'm Piggy, your adorable 3D companion! Chat with me and watch me react!
+                    </div>
+                </div>
+            </div>
+            <div id="input-container">
+                <input type="text" id="message-input" placeholder="Say something to Piggy...">
+                <button id="send-btn">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Three.js Scene Setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffeaa7);
+        scene.fog = new THREE.Fog(0xffeaa7, 10, 30);
+        
+        const camera = new THREE.PerspectiveCamera(
+            50,
+            container.clientWidth / container.clientHeight,
+            0.1,
+            1000
+        );
+        camera.position.set(0, 2, 6);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        sunLight.position.set(8, 12, 8);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        scene.add(sunLight);
+        
+        const fillLight = new THREE.DirectionalLight(0xffb6c1, 0.5);
+        fillLight.position.set(-5, 5, -5);
+        scene.add(fillLight);
+        
+        const rimLight = new THREE.DirectionalLight(0xff69b4, 0.6);
+        rimLight.position.set(0, 5, -10);
+        scene.add(rimLight);
+        
+        // Ground
+        const groundGeometry = new THREE.CircleGeometry(15, 64);
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0x90ee90,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Create Pig Avatar
+        const pig = new THREE.Group();
+        scene.add(pig);
+        
+        // Pink material for pig
+        const pinkMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffb6c1,
+            roughness: 0.5,
+            metalness: 0.1
+        });
+        
+        const darkPinkMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff69b4,
+            roughness: 0.6
+        });
+        
+        // Body (ellipsoid)
+        const bodyGeometry = new THREE.SphereGeometry(1, 32, 32);
+        bodyGeometry.scale(1.2, 1, 1.2);
+        const body = new THREE.Mesh(bodyGeometry, pinkMaterial);
+        body.position.y = 1.2;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        pig.add(body);
+        
+        // Head (larger sphere)
+        const headGroup = new THREE.Group();
+        headGroup.position.y = 2;
+        pig.add(headGroup);
+        
+        const headGeometry = new THREE.SphereGeometry(0.7, 32, 32);
+        headGeometry.scale(1, 0.9, 1);
+        const head = new THREE.Mesh(headGeometry, pinkMaterial);
+        head.castShadow = true;
+        head.receiveShadow = true;
+        headGroup.add(head);
+        
+        // Snout
+        const snoutGeometry = new THREE.CylinderGeometry(0.35, 0.4, 0.3, 32);
+        const snout = new THREE.Mesh(snoutGeometry, darkPinkMaterial);
+        snout.position.set(0, -0.1, 0.6);
+        snout.rotation.x = Math.PI / 2;
+        snout.castShadow = true;
+        headGroup.add(snout);
+        
+        // Nostrils
+        const nostrilGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+        const nostrilMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        
+        const leftNostril = new THREE.Mesh(nostrilGeometry, nostrilMaterial);
+        leftNostril.position.set(-0.12, -0.1, 0.73);
+        headGroup.add(leftNostril);
+        
+        const rightNostril = new THREE.Mesh(nostrilGeometry, nostrilMaterial);
+        rightNostril.position.set(0.12, -0.1, 0.73);
+        headGroup.add(rightNostril);
+        
+        // Eyes
+        const eyeWhiteGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+        const eyeWhiteMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffffff,
+            roughness: 0.2
+        });
+        
+        const leftEyeWhite = new THREE.Mesh(eyeWhiteGeometry, eyeWhiteMaterial);
+        leftEyeWhite.position.set(-0.25, 0.2, 0.55);
+        leftEyeWhite.castShadow = true;
+        headGroup.add(leftEyeWhite);
+        
+        const rightEyeWhite = new THREE.Mesh(eyeWhiteGeometry, eyeWhiteMaterial);
+        rightEyeWhite.position.set(0.25, 0.2, 0.55);
+        rightEyeWhite.castShadow = true;
+        headGroup.add(rightEyeWhite);
+        
+        // Pupils
+        const pupilGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+        const pupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+        
+        const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+        leftPupil.position.set(-0.25, 0.2, 0.65);
+        headGroup.add(leftPupil);
+        
+        const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+        rightPupil.position.set(0.25, 0.2, 0.65);
+        headGroup.add(rightPupil);
+        
+        // Eye highlights
+        const highlightGeometry = new THREE.SphereGeometry(0.04, 8, 8);
+        const highlightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        
+        const leftHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
+        leftHighlight.position.set(-0.22, 0.24, 0.67);
+        headGroup.add(leftHighlight);
+        
+        const rightHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
+        rightHighlight.position.set(0.28, 0.24, 0.67);
+        headGroup.add(rightHighlight);
+        
+        // Ears (triangular/floppy)
+        const earGeometry = new THREE.ConeGeometry(0.2, 0.4, 16);
+        
+        const leftEar = new THREE.Mesh(earGeometry, darkPinkMaterial);
+        leftEar.position.set(-0.5, 0.5, 0.1);
+        leftEar.rotation.z = -0.5;
+        leftEar.rotation.x = -0.3;
+        leftEar.castShadow = true;
+        headGroup.add(leftEar);
+        
+        const rightEar = new THREE.Mesh(earGeometry, darkPinkMaterial);
+        rightEar.position.set(0.5, 0.5, 0.1);
+        rightEar.rotation.z = 0.5;
+        rightEar.rotation.x = -0.3;
+        rightEar.castShadow = true;
+        headGroup.add(rightEar);
+        
+        // Legs (short and stubby)
+        const legGeometry = new THREE.CylinderGeometry(0.15, 0.18, 0.6, 16);
+        
+        const frontLeftLeg = new THREE.Mesh(legGeometry, pinkMaterial);
+        frontLeftLeg.position.set(-0.5, 0.3, 0.6);
+        frontLeftLeg.castShadow = true;
+        pig.add(frontLeftLeg);
+        
+        const frontRightLeg = new THREE.Mesh(legGeometry, pinkMaterial);
+        frontRightLeg.position.set(0.5, 0.3, 0.6);
+        frontRightLeg.castShadow = true;
+        pig.add(frontRightLeg);
+        
+        const backLeftLeg = new THREE.Mesh(legGeometry, pinkMaterial);
+        backLeftLeg.position.set(-0.5, 0.3, -0.6);
+        backLeftLeg.castShadow = true;
+        pig.add(backLeftLeg);
+        
+        const backRightLeg = new THREE.Mesh(legGeometry, pinkMaterial);
+        backRightLeg.position.set(0.5, 0.3, -0.6);
+        backRightLeg.castShadow = true;
+        pig.add(backRightLeg);
+        
+        // Hooves
+        const hoofGeometry = new THREE.CylinderGeometry(0.18, 0.2, 0.1, 16);
+        const hoofMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+        
+        [frontLeftLeg, frontRightLeg, backLeftLeg, backRightLeg].forEach(leg => {
+            const hoof = new THREE.Mesh(hoofGeometry, hoofMaterial);
+            hoof.position.y = -0.3;
+            leg.add(hoof);
+        });
+        
+        // Curly tail
+        const tailCurve = new THREE.QuadraticBezierCurve3(
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0.2, 0.3, -0.2),
+            new THREE.Vector3(0, 0.4, -0.4)
+        );
+        const tailGeometry = new THREE.TubeGeometry(tailCurve, 20, 0.08, 8, false);
+        const tail = new THREE.Mesh(tailGeometry, darkPinkMaterial);
+        tail.position.set(0, 1.5, -1);
+        tail.castShadow = true;
+        pig.add(tail);
+        
+        // Animation state
+        let isSpeaking = false;
+        let isHappy = false;
+        let isExcited = false;
+        
+        // Mouse Controls
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraRotation = { x: 0, y: 0 };
+        
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                
+                cameraRotation.y += deltaX * 0.005;
+                cameraRotation.x += deltaY * 0.005;
+                cameraRotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, cameraRotation.x));
+                
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            }
+            
+            // Eye tracking
+            const rect = renderer.domElement.getBoundingClientRect();
+            const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            leftPupil.position.x = -0.25 + mouseX * 0.05;
+            leftPupil.position.y = 0.2 + mouseY * 0.05;
+            rightPupil.position.x = 0.25 + mouseX * 0.05;
+            rightPupil.position.y = 0.2 + mouseY * 0.05;
+        });
+        
+        renderer.domElement.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            camera.position.z += e.deltaY * 0.01;
+            camera.position.z = Math.max(3, Math.min(10, camera.position.z));
+        });
+        
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Breathing
+            pig.position.y = Math.sin(time * 2) * 0.08;
+            body.scale.y = 1 + Math.sin(time * 2) * 0.03;
+            
+            // Head bobbing
+            if (isSpeaking) {
+                headGroup.position.y = 2 + Math.sin(time * 10) * 0.05;
+                snout.scale.y = 1 + Math.abs(Math.sin(time * 8)) * 0.2;
+            } else {
+                headGroup.rotation.y = Math.sin(time * 0.5) * 0.1;
+                headGroup.rotation.x = Math.sin(time * 0.3) * 0.05;
+            }
+            
+            // Tail wagging (when happy or excited)
+            if (isHappy || isExcited) {
+                tail.rotation.z = Math.sin(time * 8) * 0.5;
+            } else {
+                tail.rotation.z += (0 - tail.rotation.z) * 0.1;
+            }
+            
+            // Ear wiggling
+            leftEar.rotation.z = -0.5 + Math.sin(time * 3) * 0.1;
+            rightEar.rotation.z = 0.5 - Math.sin(time * 3) * 0.1;
+            
+            // Jumping when excited
+            if (isExcited) {
+                pig.position.y = Math.abs(Math.sin(time * 5)) * 0.5;
+            }
+            
+            // Blinking
+            if (Math.random() < 0.01) {
+                leftEyeWhite.scale.y = 0.1;
+                rightEyeWhite.scale.y = 0.1;
+                setTimeout(() => {
+                    leftEyeWhite.scale.y = 1;
+                    rightEyeWhite.scale.y = 1;
+                }, 150);
+            }
+            
+            // Camera rotation
+            const radius = camera.position.z;
+            camera.position.x = Math.sin(cameraRotation.y) * radius * Math.cos(cameraRotation.x);
+            camera.position.y = Math.sin(cameraRotation.x) * radius + 2;
+            camera.position.z = Math.cos(cameraRotation.y) * radius * Math.cos(cameraRotation.x);
+            camera.lookAt(0, 1.5, 0);
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Chat functionality
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        
+        function addMessage(role, text) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+            
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'msg-bubble';
+            bubbleDiv.textContent = text;
+            
+            msgDiv.appendChild(bubbleDiv);
+            messagesDiv.appendChild(msgDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function generateResponse(userMsg) {
+            const lower = userMsg.toLowerCase();
+            
+            // Reset states
+            isSpeaking = true;
+            isHappy = false;
+            isExcited = false;
+            
+            setTimeout(() => { isSpeaking = false; }, 3000);
+            
+            if (lower.includes('hi') || lower.includes('hello') || lower.includes('hey')) {
+                isHappy = true;
+                setTimeout(() => { isHappy = false; }, 3000);
+                return "Oink oink! 🐷 Hello there, friend! I'm so happy to see you!";
+            }
+            
+            if (lower.includes('cute') || lower.includes('adorable') || lower.includes('love')) {
+                isExcited = true;
+                setTimeout(() => { isExcited = false; }, 4000);
+                return "Oink! *bounces excitedly* 🐷💕 You're making me blush! Thank you so much!";
+            }
+            
+            if (lower.includes('jump') || lower.includes('bounce') || lower.includes('happy')) {
+                isExcited = true;
+                setTimeout(() => { isExcited = false; }, 4000);
+                return "Wheee! *jumps around* 🐷 This is so much fun! Oink oink!";
+            }
+            
+            if (lower.includes('food') || lower.includes('eat') || lower.includes('hungry')) {
+                isHappy = true;
+                setTimeout(() => { isHappy = false; }, 3000);
+                return "Oink oink! 🐷🍎 I love food! Do you have any apples or carrots?";
+            }
+            
+            if (lower.includes('tail') || lower.includes('wag')) {
+                isHappy = true;
+                setTimeout(() => { isHappy = false; }, 3000);
+                return "*wags tail happily* 🐷 My curly tail is wagging just for you! Oink!";
+            }
+            
+            if (lower.includes('dance') || lower.includes('play')) {
+                isExcited = true;
+                setTimeout(() => { isExcited = false; }, 4000);
+                return "Oink oink! *wiggles and bounces* 🐷💃 Let's play together!";
+            }
+            
+            const responses = [
+                "Oink oink! 🐷 That's interesting! Tell me more!",
+                "*snorts happily* 🐷 I'm listening! What else?",
+                "Oink! 🐷 You're so nice to chat with me!",
+                "*wiggles ears* 🐷 That sounds fun! Oink oink!",
+                "Oink oink! 🐷 I love talking with you!",
+                "*happy pig noises* 🐷 You're the best!"
+            ];
+            
+            isHappy = true;
+            setTimeout(() => { isHappy = false; }, 3000);
+            
+            return responses[Math.floor(Math.random() * responses.length)];
+        }
+        
+        function handleSendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+            
+            addMessage('user', text);
+            messageInput.value = '';
+            sendBtn.disabled = true;
+            
+            setTimeout(() => {
+                const response = generateResponse(text);
+                addMessage('assistant', response);
+                sendBtn.disabled = false;
+            }, 500);
+        }
+        
+        sendBtn.addEventListener('click', handleSendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleSendMessage();
+            }
+        });
+        
+        // Window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+        
+        // Hide hint after a few seconds
+        setTimeout(() => {
+            const hint = document.getElementById('hint');
+            if (hint) {
+                hint.style.animation = 'fadeOut 1s ease forwards';
+                setTimeout(() => hint.remove(), 1000);
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
