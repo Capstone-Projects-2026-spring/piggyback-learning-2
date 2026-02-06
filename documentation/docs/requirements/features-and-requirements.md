@@ -5,15 +5,12 @@ sidebar_position: 4
 # Features and Requirements
 
 # Functional Requirements
-* The system shall allow users to create an account.
-* The system shall allow users to log in and log out.
-* The system shall allow users to select and start a quiz.
-* The system shall present quiz questions one at a time.
-* The system shall allow users to submit answers using voice input.
-* The system shall convert the user’s voice input into text for answer checking.
-*The system shall automatically calculate quiz scores.
-*The system shall display feedback after quiz completion showing correct and incorrect answers.
-* The system shall store each quiz attempt and score for the logged-in user.
+* The application generates questions for the child to answer.
+* The application provides summaries for parents to track their children's performance and progress.
+* The application uses various companions for the child to interact with.
+* The application detects the child's mood using signals other than the child's voice.
+* The application provides hints for the child when they answer incorrectly. 
+* The application allows for the creation and use of IDs.
 
 # Non-Functional Requirements
 * Usability: The system shall be easy to use for first-time users, including clear voice input instructions.
