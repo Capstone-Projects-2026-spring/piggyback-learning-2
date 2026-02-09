@@ -12,9 +12,10 @@ venv/
 .DS_Store
 .git bash commands.txt
 Thumbs.db
-
-# Generated files
+backend.txt
+frontend.txt
+__pycache__/
+git bash commands.txt
+.static/
+.static
 .docusaurus
-
-# Misc
-.DS_Store
