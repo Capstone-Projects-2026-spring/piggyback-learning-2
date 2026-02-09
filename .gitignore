@@ -19,3 +19,8 @@ git bash commands.txt
 .static/
 .static
 .docusaurus
+*.mp4
+*.mp4.part
+*.mkv
+*.avi
+
