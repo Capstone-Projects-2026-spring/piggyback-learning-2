@@ -117,7 +117,6 @@ Notes:
 1. Go to the Kids page.
 2. Browse videos and play quizzes.
 
-<<<<<<< HEAD
 ## API Endpoints (Core)
 
 - `POST /api/verify-password`
@@ -130,7 +129,6 @@ Notes:
 - `GET /api/final-questions/{video_id}`
 - `GET /api/videos-list`
 - `GET /api/expert-questions/{video_id}`
-=======
 Then install with:
 
 ```bash
@@ -424,7 +422,6 @@ Open your browser and go to: `http://localhost:8000`
 3. Optionally enter your OpenAI API key if not set as environment variable
 4. Choose between single interval or full duration processing
 5. Use "Stream Results" for real-time progress updates
->>>>>>> 612e9a2 (updated readme)
 
 ## Project Structure
 
@@ -446,7 +443,6 @@ readme.md
 
 ## Troubleshooting
 
-<<<<<<< HEAD
 - 403 Forbidden on download:
   - Try again (the downloader cycles player clients automatically).
   - Add a cookies file via `YTDLP_COOKIEFILE`.
@@ -456,7 +452,6 @@ readme.md
     format selector in `main.py` inside `download_youtube()`.
 - FFmpeg not found:
   - Install FFmpeg and ensure it is on your PATH.
-=======
 ### Common Issues
 
 1. **"No module named 'cv2'"**
@@ -486,7 +481,6 @@ readme.md
 - For long videos, use smaller intervals (30-60 seconds) to avoid API timeouts
 - The application resizes images to 512x512 for efficiency
 - Frame extraction can take several minutes for long videos
->>>>>>> 612e9a2 (updated readme)
 
 ## License
 
