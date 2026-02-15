@@ -28,6 +28,7 @@ from fastapi.templating import Jinja2Templates
 
 import yt_dlp
 import cv2
+import numpy as np
 import pandas as pd
 from PIL import Image
 import httpx
@@ -533,7 +534,10 @@ def extract_frames_per_second_for_video(video_id: str) -> Dict[str, Any]:
 
         frame_filename = f"frame_{second:04d}s.jpg"
         frame_path = output_dir / frame_filename
-        cv2.imwrite(str(frame_path), frame)
+        ok, encoded = cv2.imencode(".jpg",frame)
+        if not ok:
+            continue
+        encoded.tofile(str(frame_path))
 
         frame_info = {
             "frame_number": second + 1,
@@ -856,7 +860,7 @@ Return JSON only (no extra text) in this structure:
         for attempt in range(max_retries):
             try:
                 resp = client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": system_message},
                         {"role": "user", "content": content_with_prompt},
@@ -876,18 +880,24 @@ Return JSON only (no extra text) in this structure:
                     return None
 
                 if result_content:
-                    return result_content
-
-                last_error_payload = {
-                    "reason": "empty_response",
-                    "retryable": True,
-                }
+                    try:
+                        json.loads(result_content)
+                        return result_content
+                    except Exception:
+                        last_error_payload= {
+                            "reason": "invalid_json",
+                            "retryable": True,
+                            "raw_preview": str(result_content)
+                        }
+                else:
+                    last_error_payload = {
+                        "reason": "empty_response",
+                        "retryable": True,
+                    }
             except Exception as e:
                 if "rate_limit_exceeded" in str(e) and attempt < max_retries - 1:
                     wait_time = (2**attempt) + random.uniform(0, 1)
-                    print(
-                        f"Rate limit hit, waiting {wait_time:.1f} seconds before retry {attempt + 1}"
-                    )
+                    print(f"[QGEN ERROR] video={video_id} segment={start_time}-{end_time} err={e}")
                     time.sleep(wait_time)
                     last_error_payload = {
                         "reason": "rate_limit_exceeded",
@@ -896,7 +906,7 @@ Return JSON only (no extra text) in this structure:
                     }
                     continue
 
-                print(f"Error calling OpenAI API: {e}")
+                print(f"[QGEN ERROR] video={video_id} segment={start_time}-{end_time} err={e}")
                 last_error_payload = {
                     "reason": "openai_error",
                     "retryable": True,
