@@ -56,6 +56,8 @@ CREATE TABLE watch_histories (
 
 **Endpoints**
 
+```
+```
 - POST /api/verify-password
 - POST /api/download
 - POST /api/frames/{video_id}
@@ -66,6 +68,8 @@ CREATE TABLE watch_histories (
 - GET /api/final-questions/{video_id}
 - GET /api/videos-list
 - GET /api/expert-questions/{video_id}
+```
+```
 
 **Class Diagram**
 I think we should forgo a class diagram for the api for now:
