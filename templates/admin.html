@@ -850,6 +850,15 @@
                             <label for="start_seconds">Start Time (seconds)</label>
                             <input type="number" id="start_seconds" value="0" min="0" />
                         </div>
+                     <!-- Admin can choose which model backend to use for the same generation. -->
+                    <div class = "form-group">
+                        <label for = "question_provider">AI Provider</label>
+                        <select id="question_provider">
+                            <option value = "openai" selected>OpenAI</option>
+                            <option value="gemini">Gemini</option>
+                        </select>
+                    </div>
+
                         <div class="form-group">
                             <label for="interval_seconds">Interval Length (seconds)</label>
                             <input type="number" id="interval_seconds" value="60" min="1" max="300" />
@@ -1429,12 +1438,16 @@
             // Use WebSocket for real-time updates
             const wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + `/ws/questions/${currentVideoId}`;
             const ws = new WebSocket(wsUrl);
+            const questionProvider = document.getElementById('question_provider').value;
             
+            //backend provide per request.
+           
             ws.onopen = () => {
                 ws.send(JSON.stringify({
-                    start_seconds: parseInt(startSeconds),
-                    interval_seconds: parseInt(intervalSeconds),
-                    full_duration: fullDuration
+                 start_seconds: parseInt(startSeconds),
+                 interval_seconds: parseInt(intervalSeconds),
+                 full_duration: fullDuration,
+                provider: questionProvider
                 }));
             };
             
