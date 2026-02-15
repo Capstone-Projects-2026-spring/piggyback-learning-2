@@ -11,6 +11,16 @@
             background: #f3f9ff;
             color: #333;
         }
+        /* No-Distraction Mode: disable hyperlinks */
+         body.no-distraction a {
+          pointer-events: none;
+          text-decoration: none;
+        }
+        /* Disable exit button */
+        body.no-distraction #exit-quiz {
+            display: none;
+        }
+
 
         h1 {
             background: #ff6f61;
@@ -258,7 +268,7 @@
     </style>
 </head>
 
-<body>
+<body class="no-distraction">
     <h1>Video Library</h1>
     <div id="video-grid"></div>
 
@@ -266,6 +276,7 @@
     <div id="quiz-shell">
         <div id="quiz-header">
             <button id="exit-quiz">Exit Quiz</button>
+            <button id="toggle-nd">Toggle Lock</button>
             <span id="quiz-title"></span>
             <button id="results-btn" style="display:none;">See Results</button>
         </div>
@@ -832,6 +843,11 @@
         document.getElementById("results-btn").onclick = () => {
             player.pause();
             showSummary();
+        };    
+            
+            // Toggle No-Distraction Mode
+        document.getElementById("toggle-nd").onclick = () => {
+        document.body.classList.toggle("no-distraction");
         };
 
         // Init
