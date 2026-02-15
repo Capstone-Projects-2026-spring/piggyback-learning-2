@@ -8,15 +8,14 @@ sidebar_position: 1
 ## Components
 ### Database
 ### Entity Relationship Diagram:
-```
-mermaid erDiagram
 
-
+```mermaid
+erDiagram
     USERS {
         INTEGER id PK
-        VARCHAR(255) email
-        VARCHAR(60) username
-        VARCHAR(255) password_hash
+        VARCHAR email
+        VARCHAR username
+        VARCHAR password_hash
         INTEGER role_id FK
         TIMESTAMP created_at
         TIMESTAMP updated_at
@@ -26,20 +25,20 @@ mermaid erDiagram
     USER_PROFILES {
         INTEGER id PK
         INTEGER user_id FK
-        VARCHAR(60) first_name
-        VARCHAR(100) last_name
+        VARCHAR first_name
+        VARCHAR last_name
         TIMESTAMP date_of_birth
     }
 
     ROLES {
         INTEGER id PK
-        VARCHAR(30) role_type
+        VARCHAR role_type
     }
 
     VIDEOS {
         INTEGER id PK
-        VARCHAR(2048) url
-        VARCHAR(300) title
+        VARCHAR url
+        VARCHAR title
         INTEGER duration_in_seconds
     }
 
