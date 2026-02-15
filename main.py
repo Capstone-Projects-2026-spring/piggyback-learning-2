@@ -49,6 +49,8 @@ load_dotenv(".env.txt")
 
 from video_quiz_routes import router_video_quiz, router_api
 from admin_routes import router_admin_pages, router_admin_api, router_admin_ws
+import models
+from db import Base, engine
 
 
 # --------- Configuration ----------
@@ -76,6 +78,8 @@ def get_openai_client() -> OpenAI:
 
 # Initialize once (fail fast if key missing)
 OPENAI_CLIENT = get_openai_client()
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Piggyback Learning")
 app.include_router(router_video_quiz, prefix="/api")  # kids_videos etc
