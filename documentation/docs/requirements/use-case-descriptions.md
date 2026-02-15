@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Use-case descriptions
 
-### Use Case 1 - Account Creation
+<!-- ### Use Case 1 - Account Creation
 
 _As a user, it is important that I can create an account so that I can maintain my video preferences and settings._
 
@@ -15,9 +15,9 @@ _As a user, it is important that I can create an account so that I can maintain 
 5.  The user selects the 'Sign In' link to access the sign-in page, and enters in their email and password.
 6.  Since the user is logging in for the first time, they are redirected to a landing page (tutorial?)
 
----
+--- -->
 
-### Use case 2 - Find other Accounts
+### Use case 1 - Find other Accounts
 
 _As a user, I want to search for other users so I can assign videos and quizzes to them._
 
@@ -30,7 +30,7 @@ _As a user, I want to search for other users so I can assign videos and quizzes 
 
 ---
 
-### Use case 3 - View Dashboard
+<!-- ### Use case 3 - View Dashboard
 
 _As a user, I want a dashboard so I can view my history and quiz performance._
 
@@ -38,9 +38,9 @@ _As a user, I want a dashboard so I can view my history and quiz performance._
 2.  The system shows watch history and quiz.
 3.  The user can click a video to see more detailed stats.
 
----
+--- -->
 
-### Use Case 4 - Answering a Quiz Question
+### Use Case 2 - Answering a Quiz Question
 
 _As a user, I want to be able to answer quiz questions with voice recognition._
 
@@ -54,7 +54,7 @@ _As a user, I want to be able to answer quiz questions with voice recognition._
 
 ---
 
-### Use Case 5 - Store Video and Data
+### Use Case 3 - Store Video and Data
 
 _As a user, I want my video and quiz activity to be saved automatically so that my progress can be tracked._
 
