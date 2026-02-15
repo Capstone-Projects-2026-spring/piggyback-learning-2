@@ -11,6 +11,8 @@ import random
 import shutil
 from datetime import datetime
 from urllib.parse import quote
+import google.generativeai as genai
+
 
 from fastapi import (
     FastAPI,
@@ -63,6 +65,14 @@ DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # Add these lines after your existing load_dotenv() calls
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 EXPERT_PASSWORD = os.getenv("EXPERT_PASSWORD", "expert123")
+
+#Fetch from Gemini.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+QUESTION_PROVIDER_DEFAULT = os.getenv("QUESTION_PROVIDER_DEFAULT", "openai").strip().lower()
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
 
 
 def get_openai_client() -> OpenAI:
@@ -690,7 +700,7 @@ def read_frame_data_from_csv(folder_name, start_time, end_time):
 
 
 def generate_questions_for_segment(
-    video_id: str, start_time: int, end_time: int, polite_first: bool = False
+    video_id: str, start_time: int, end_time: int, polite_first: bool = False, provider: Optional[str] = None
 ) -> Optional[str]:
     """
     Analyze frames + transcript for a time window and return JSON text with the questions.
@@ -718,6 +728,11 @@ def generate_questions_for_segment(
         )
 
     duration = end_time - start_time + 1  # inclusive window
+    #Provider is requested- scope so Admin switch model backend without changing flow.
+    provider_name = (provider or "openai").strip().lower()
+    if provider_name not in {"openai", "gemini"}:
+        provider_name = "openai"
+
 
     system_message = (
         "You are a safe, child-focused educational assistant. "
@@ -859,18 +874,54 @@ Return JSON only (no extra text) in this structure:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                resp = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": system_message},
-                        {"role": "user", "content": content_with_prompt},
-                    ],  # type: ignore
-                    max_tokens=1500,
-                    temperature=0.3,
-                    response_format={"type": "json_object"},
-                )
-                result_content = resp.choices[0].message.content
-                finish_reason = resp.choices[0].finish_reason
+                if provider_name =="openai":
+                    resp = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": system_message},
+                            {"role": "user", "content": content_with_prompt},
+                        ],  # type: ignore
+                        max_tokens=1500,
+                        temperature=0.3,
+                        response_format={"type": "json_object"},
+                    )
+                    result_content = resp.choices[0].message.content
+                    finish_reason = resp.choices[0].finish_reason
+                else:
+                        if not GEMINI_API_KEY:
+                            last_error_payload= {
+                                "reason": "gemini_key_missing",
+                                "retryable": False,
+                            }
+                            return None
+                        gemini_model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+                        gemini_model = genai.GenerativeModel(gemini_model_name)
+                    
+                    #Keep provider output contrtact idential(JSON) , so downstream flow is
+
+                        prompt_text = ""
+                        for item in content_with_prompt:
+                            if isinstance(item, dict) and item.get("type")== "text":
+                                prompt_text += str(item.get("text", "")) + "\n\n"
+                            
+                        gemini_parts = [system_message + "\n\n" + prompt_text]
+                        for fr in sampled_frames:
+                            try:
+                                with Image.open(fr["image_path"]) as img:
+                                    gemini_parts.append(img.convert("RGB").copy())
+                            except Exception:
+                                continue        
+                            
+                        gemini_resp = gemini_model.generate_content(
+                            gemini_parts,
+                            generation_config={
+                                "temperature": 0.3,
+                                "response_mime_type": "application/json",
+                                },
+                            )
+                        result_content = getattr(gemini_resp, "text", None)
+                        finish_reason = None
+
 
                 if finish_reason == "content_filter":
                     last_error_payload = {
@@ -887,7 +938,8 @@ Return JSON only (no extra text) in this structure:
                         last_error_payload= {
                             "reason": "invalid_json",
                             "retryable": True,
-                            "raw_preview": str(result_content)
+                            #Keeps logs/debug payload small and readable for team/UI.
+                            "raw_preview": str(result_content)[:300],
                         }
                 else:
                     last_error_payload = {
@@ -955,7 +1007,7 @@ Return JSON only (no extra text) in this structure:
 
 
 def generate_questions_for_segment_with_retry(
-    video_id: str, start_time: int, end_time: int, max_attempts: int = 10
+    video_id: str, start_time: int, end_time: int, max_attempts: int = 10, provider: Optional[str]= None
 ) -> Optional[str]:
     """
     Attempt to generate questions for a segment, retrying up to max_attempts times.
@@ -972,7 +1024,7 @@ def generate_questions_for_segment_with_retry(
             )
 
         result_text = generate_questions_for_segment(
-            video_id, start_time, end_time, polite_first=polite_first
+            video_id, start_time, end_time, polite_first=polite_first, provider=provider
         )
         if result_text:
             try:
