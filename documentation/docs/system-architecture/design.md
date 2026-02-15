@@ -2,11 +2,60 @@
 sidebar_position: 1
 ---
 
+
 # Design
 
 ## Components
 ### Database
 ### Entity Relationship Diagram:
+```
+mermaid erDiagram
+
+
+    USERS {
+        INTEGER id PK
+        VARCHAR(255) email
+        VARCHAR(60) username
+        VARCHAR(255) password_hash
+        INTEGER role_id FK
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+        TIMESTAMP last_login
+    }
+
+    USER_PROFILES {
+        INTEGER id PK
+        INTEGER user_id FK
+        VARCHAR(60) first_name
+        VARCHAR(100) last_name
+        TIMESTAMP date_of_birth
+    }
+
+    ROLES {
+        INTEGER id PK
+        VARCHAR(30) role_type
+    }
+
+    VIDEOS {
+        INTEGER id PK
+        VARCHAR(2048) url
+        VARCHAR(300) title
+        INTEGER duration_in_seconds
+    }
+
+    WATCH_HISTORIES {
+        INTEGER id PK
+        INTEGER user_id FK
+        INTEGER video_id FK
+        TIMESTAMP watched_on
+    }
+
+    ROLES ||--o{ USERS : has
+    USERS ||--|| USER_PROFILES : has
+    USERS ||--o{ WATCH_HISTORIES : watches
+    VIDEOS ||--o{ WATCH_HISTORIES : watched_in
+```
+
 
 Initial database schema:
 ```
@@ -57,7 +106,6 @@ CREATE TABLE watch_histories (
 **Endpoints**
 
 ```
-```
 - POST /api/verify-password
 - POST /api/download
 - POST /api/frames/{video_id}
@@ -68,7 +116,6 @@ CREATE TABLE watch_histories (
 - GET /api/final-questions/{video_id}
 - GET /api/videos-list
 - GET /api/expert-questions/{video_id}
-```
 ```
 
 **Class Diagram**
