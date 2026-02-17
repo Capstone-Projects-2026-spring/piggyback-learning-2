@@ -18,3 +18,17 @@ EXPERT_PASSWORD = os.getenv("EXPERT_PASSWORD", "expert123")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 QUESTION_PROVIDER_DEFAULT = os.getenv("QUESTION_PROVIDER_DEFAULT", "openai").strip().lower()
 
+VIDEO_EXTENSIONS = (".mp4",".webm",".mkv",".mov")
+
+EXPERT_QUESTION_TYPES = [
+    ("character","Character"),
+    ("settings","Setting"),
+    ("feeling","Feeling"),
+    ("action","Action"),
+    ("causal","Causal"),
+    ("outcome","Outcome"),
+    ("prediction","Prediction"),    
+]
+
+EXPERT_QUESTION_TYPE_VALUES = {value for value, _ in EXPERT_QUESTION_TYPES}
+EXPERT_QUESTION_TYPE_LABELS = {value: label for value, label in EXPERT_QUESTION_TYPES}

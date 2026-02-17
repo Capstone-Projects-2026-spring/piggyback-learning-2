@@ -5,7 +5,7 @@ from rapidfuzz import fuzz
 from typing import cast, Any, Dict
 from functools import lru_cache
 from app.settings import BASE_DIR, DOWNLOADS_DIR
-from app.services.clients import  OPENAI_CLIENT
+from app.services.clients import OPENAI_CLIENT
 
 
 router_video_quiz = APIRouter()
