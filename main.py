@@ -11,8 +11,6 @@ import random
 import shutil
 from datetime import datetime
 from urllib.parse import quote
-import google.generativeai as genai
-
 
 from fastapi import (
     FastAPI,
@@ -35,58 +33,23 @@ import pandas as pd
 from PIL import Image
 import httpx
 import re
-from dotenv import load_dotenv
 
 
-import io
+
 from fastapi import UploadFile, File
-from openai import OpenAI
-
-# OpenAI SDK v1.x (pip install openai>=1.30)
-from openai import OpenAI  # uses OPENAI_API_KEY env var by default
-
-
-# Load env vars from .env (if present) and .env.txt (explicit file requested by user)
-load_dotenv()
-load_dotenv(".env.txt")
 
 from video_quiz_routes import router_video_quiz, router_api
 from admin_routes import router_admin_pages, router_admin_api, router_admin_ws
+from app.settings import (
+    ADMIN_PASSWORD,
+    DOWNLOADS_DIR,
+    EXPERT_PASSWORD,
+    GEMINI_API_KEY,
+    PUBLIC_ASSETS_DIR,
+    TEMPLATES_DIR,
+)
+from app.services.clients import OPENAI_CLIENT, genai
 
-
-# --------- Configuration ----------
-BASE_DIR = Path(__file__).parent.resolve()
-DOWNLOADS_DIR = BASE_DIR / "downloads"
-TEMPLATES_DIR = BASE_DIR / "templates"
-PUBLIC_ASSETS_DIR = BASE_DIR / "public" / "assets"
-DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
-
-
-# Add these lines after your existing load_dotenv() calls
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-EXPERT_PASSWORD = os.getenv("EXPERT_PASSWORD", "expert123")
-
-#Fetch from Gemini.
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-QUESTION_PROVIDER_DEFAULT = os.getenv("QUESTION_PROVIDER_DEFAULT", "openai").strip().lower()
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-
-
-
-def get_openai_client() -> OpenAI:
-    """
-    Create a singleton OpenAI client using ONLY the environment variable.
-    """
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or not api_key.strip():
-        raise RuntimeError("Missing OPENAI_API_KEY in environment (.env / .env.txt).")
-    return OpenAI(api_key=api_key)
-
-
-# Initialize once (fail fast if key missing)
-OPENAI_CLIENT = get_openai_client()
 
 app = FastAPI(title="Piggyback Learning")
 app.include_router(router_video_quiz, prefix="/api")  # kids_videos etc
