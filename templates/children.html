@@ -5,6 +5,26 @@
   <meta charset="utf-8">
   <title>Kids Videos | Piggyback</title>
   <style>
+
+    @import  url("https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap");
+    :root {
+      --font-display: "Fredoka", "Baloo 2", "Nunito", "Comic Sans MS", Arial, sans-serif;
+      --font-body: "Nunito", "Baloo 2", "Comic Sans MS", Arial, sans-serif;
+      --ink: #1f2a3d;
+      --ink-soft: #415173;
+      --sky-1: #e9f6ff;
+      --sky-2: #fff3d6;
+      --blue-500: #4c8dff;
+      --pink-500: #ff5fa2;
+      --sun-500: #ffcc4d;
+      --mint-500: #44d7a8;
+      --orange-500: #ff9f68;
+      --lime-500: #a7f36b;
+      --card-shadow: 0 26px 50px rgba(40, 86, 140, 0.18);
+      --card-shadow-strong: 0 34px 60px rgba(40, 86, 140, 0.22);
+    }
+
+    
     * {
       box-sizing: border-box;
     }
@@ -265,12 +285,13 @@
     /* Quiz player wrapper */
     #player-container {
       display: none;
-      margin-top: 36px;
+      margin-top: clamp(20px, 3vw,36px);
       width: 100%;
       flex-direction: column;
       gap: 24px;
       background: rgba(255, 255, 255, 0.92);
-      border-radius: 36px;
+      border-radius: clamp(22px,4vw,36px);
+      padding: clamp(18px,3vw,32px);  
       padding: 32px;
       box-shadow: 0 32px 60px rgba(41, 86, 160, 0.18);
     }
@@ -948,12 +969,11 @@
     </div>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script>
     // ===============================
     // CONFIGURATION
     // ===============================
-    const DEV_MODE = true; // set false to hide sidebar & toggle in production
+    const DEV_MODE = false; // set false to hide sidebar & toggle in production
 
     let THRESHOLDS = {
       phrase: { correct: 0.6, borderline: 0.5 },

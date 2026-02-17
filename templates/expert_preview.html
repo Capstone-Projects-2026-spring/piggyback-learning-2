@@ -6000,7 +6000,6 @@ select {
                 // Simple approach - look for video_id.json file
                 const filename = `${videoId}.json`;
                 
-                console.log(`Trying to load: /downloads/${videoId}/questions/${filename}`);
                 const response = await fetch(`/downloads/${videoId}/questions/${filename}`);
                 
                 if (response.ok) {
