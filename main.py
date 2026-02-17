@@ -24,8 +24,7 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-
+from app.web import templates
 import yt_dlp
 import cv2
 import numpy as np
@@ -47,6 +46,10 @@ from app.settings import (
     GEMINI_API_KEY,
     PUBLIC_ASSETS_DIR,
     TEMPLATES_DIR,
+    VIDEO_EXTENSIONS,
+    EXPERT_QUESTION_TYPE_LABELS,
+    EXPERT_QUESTION_TYPES,
+    EXPERT_QUESTION_TYPE_VALUES,
 )
 from app.services.clients import OPENAI_CLIENT, genai
 
@@ -68,21 +71,6 @@ if PUBLIC_ASSETS_DIR.exists():
         StaticFiles(directory=str(PUBLIC_ASSETS_DIR)),
         name="public-assets",
     )
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
-VIDEO_EXTENSIONS = (".mp4", ".webm", ".mkv", ".mov")
-EXPERT_QUESTION_TYPES = [
-    ("character", "Character"),
-    ("setting", "Setting"),
-    ("feeling", "Feeling"),
-    ("action", "Action"),
-    ("causal", "Causal"),
-    ("outcome", "Outcome"),
-    ("prediction", "Prediction"),
-]
-EXPERT_QUESTION_TYPE_VALUES = {value for value, _ in EXPERT_QUESTION_TYPES}
-EXPERT_QUESTION_TYPE_LABELS = {value: label for value, label in EXPERT_QUESTION_TYPES}
-
 
 def normalize_segment_value(value: Any) -> float:
     try:
