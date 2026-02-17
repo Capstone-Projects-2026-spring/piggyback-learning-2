@@ -7,6 +7,20 @@ sidebar_position: 1
 ## Project Abstract
 
 This document proposes improvements to an existing application, Piggyback Learning. This application aims to help children retain focus while watching educational videos by automatically generating quizzes based on the video they’re watching. As the video plays, it will occasionally pause while a short quiz about the events of the video is queued.
+The improvements include:
+- Mascot animation and overlays
+- User statistic gathering and display
+- A toggleable No Distraction Mode.
+- Better voice recognition
+- Question Layering
+- More fallback options
+- Faster speed
+
+Similar Web Apps are:
+- Edpuzzle
+- Khan Academy
+- Nearpod
+- Wayground
 
 ## Conceptual Design
 
