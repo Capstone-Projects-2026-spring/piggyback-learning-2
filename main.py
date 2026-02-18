@@ -8,7 +8,6 @@ import json
 import asyncio
 import time
 import random
-import shutil
 from datetime import datetime
 from urllib.parse import quote
 from app.services.download_service import download_youtube
@@ -25,13 +24,11 @@ from fastapi import (
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.web import templates
-import yt_dlp
 import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image
-import httpx
-import re
+
 
 
 
@@ -45,7 +42,6 @@ from app.settings import (
     EXPERT_PASSWORD,
     GEMINI_API_KEY,
     PUBLIC_ASSETS_DIR,
-    TEMPLATES_DIR,
     VIDEO_EXTENSIONS,
     EXPERT_QUESTION_TYPE_LABELS,
     EXPERT_QUESTION_TYPES,
