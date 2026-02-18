@@ -54,7 +54,6 @@ sidebar_position: 4
 ### Account
 
 - Users must be able to create their own accounts (username, password, accountID)
-- Users must be able to login, logout and change their passwords.
 - Users must have different permission levels that will give them access to which videos they can watch. Think parental controls: the parent’s account can control what the kids account can / cannot watch.
 
 ## Nonfunctional Requirements
