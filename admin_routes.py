@@ -1,7 +1,6 @@
 # admin_routes.py
 import json
 import csv
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import (
@@ -15,12 +14,16 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-
+#Pulls shared path from settings.py so all module uses the same directory
+from app.settings import DOWNLOADS_DIR, TEMPLATES_DIR
 # ----- Local paths (keep consistent with main.py) -----
-BASE_DIR = Path(__file__).parent.resolve()
-TEMPLATES_DIR = BASE_DIR / "templates"
-DOWNLOADS_DIR = BASE_DIR / "downloads"
+#maybe needed if not delete later, should be duplicates with shared setting imports.
+#TODO- might delete this 
+# BASE_DIR = Path(__file__).parent.resolve()
+# TEMPLATES_DIR = BASE_DIR / "templates"
+# DOWNLOADS_DIR = BASE_DIR / "downloads"
 
+# Use shared templates path from app.settings to avoid path drift across modules.
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Three routers:

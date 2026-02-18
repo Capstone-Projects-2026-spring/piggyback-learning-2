@@ -8,12 +8,9 @@ import json
 import asyncio
 import time
 import random
-import shutil
 from datetime import datetime
 from urllib.parse import quote
-import google.generativeai as genai
-
-
+from app.services.download_service import download_youtube
 from fastapi import (
     FastAPI,
     Form,
@@ -26,67 +23,32 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-
-import yt_dlp
+from app.web import templates
 import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image
-import httpx
-import re
-from dotenv import load_dotenv
 
 
-import io
+
+
 from fastapi import UploadFile, File
-from openai import OpenAI
-
-# OpenAI SDK v1.x (pip install openai>=1.30)
-from openai import OpenAI  # uses OPENAI_API_KEY env var by default
-
-
-# Load env vars from .env (if present) and .env.txt (explicit file requested by user)
-load_dotenv()
-load_dotenv(".env.txt")
 
 from video_quiz_routes import router_video_quiz, router_api
 from admin_routes import router_admin_pages, router_admin_api, router_admin_ws
+from app.settings import (
+    ADMIN_PASSWORD,
+    DOWNLOADS_DIR,
+    EXPERT_PASSWORD,
+    GEMINI_API_KEY,
+    PUBLIC_ASSETS_DIR,
+    VIDEO_EXTENSIONS,
+    EXPERT_QUESTION_TYPE_LABELS,
+    EXPERT_QUESTION_TYPES,
+    EXPERT_QUESTION_TYPE_VALUES,
+)
+from app.services.clients import OPENAI_CLIENT, genai
 
-
-# --------- Configuration ----------
-BASE_DIR = Path(__file__).parent.resolve()
-DOWNLOADS_DIR = BASE_DIR / "downloads"
-TEMPLATES_DIR = BASE_DIR / "templates"
-PUBLIC_ASSETS_DIR = BASE_DIR / "public" / "assets"
-DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
-
-
-# Add these lines after your existing load_dotenv() calls
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-EXPERT_PASSWORD = os.getenv("EXPERT_PASSWORD", "expert123")
-
-#Fetch from Gemini.
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-QUESTION_PROVIDER_DEFAULT = os.getenv("QUESTION_PROVIDER_DEFAULT", "openai").strip().lower()
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-
-
-
-def get_openai_client() -> OpenAI:
-    """
-    Create a singleton OpenAI client using ONLY the environment variable.
-    """
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or not api_key.strip():
-        raise RuntimeError("Missing OPENAI_API_KEY in environment (.env / .env.txt).")
-    return OpenAI(api_key=api_key)
-
-
-# Initialize once (fail fast if key missing)
-OPENAI_CLIENT = get_openai_client()
 
 app = FastAPI(title="Piggyback Learning")
 app.include_router(router_video_quiz, prefix="/api")  # kids_videos etc
@@ -105,21 +67,6 @@ if PUBLIC_ASSETS_DIR.exists():
         StaticFiles(directory=str(PUBLIC_ASSETS_DIR)),
         name="public-assets",
     )
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
-VIDEO_EXTENSIONS = (".mp4", ".webm", ".mkv", ".mov")
-EXPERT_QUESTION_TYPES = [
-    ("character", "Character"),
-    ("setting", "Setting"),
-    ("feeling", "Feeling"),
-    ("action", "Action"),
-    ("causal", "Causal"),
-    ("outcome", "Outcome"),
-    ("prediction", "Prediction"),
-]
-EXPERT_QUESTION_TYPE_VALUES = {value for value, _ in EXPERT_QUESTION_TYPES}
-EXPERT_QUESTION_TYPE_LABELS = {value: label for value, label in EXPERT_QUESTION_TYPES}
-
 
 def normalize_segment_value(value: Any) -> float:
     try:
@@ -128,13 +75,6 @@ def normalize_segment_value(value: Any) -> float:
         return 0.0
 
 
-def _looks_like_mp4(path: Path) -> bool:
-    try:
-        with path.open("rb") as handle:
-            header = handle.read(64)
-        return b"ftyp" in header
-    except Exception:
-        return False
 
 
 def _parse_rank_value(value: Any) -> Optional[int]:
@@ -202,233 +142,6 @@ def _build_llm_rank_lookup(video_dir: Path, video_id: str):
 
     return by_index, by_range
 
-
-# -----------------------------
-# Download helpers
-# -----------------------------
-def download_youtube(url: str) -> Dict[str, Any]:
-    """
-    Download a YouTube video and save metadata (title, thumbnail, duration).
-    Returns: dict with success, message, video_id, title, thumbnail, and local paths.
-    """
-    result = {
-        "success": False,
-        "message": "Download error",
-        "video_id": None,
-        "title": None,
-        "thumbnail": None,
-        "files": [],
-    }
-
-    if not url:
-        result["message"] = "No URL provided."
-        return result
-
-    if not (url.startswith("http") and ("youtube.com" in url or "youtu.be" in url)):
-        result["message"] = "Please provide a valid YouTube URL."
-        return result
-
-    try:
-        # Step 1: Get metadata only
-        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as ydl:
-            info = ydl.extract_info(url, download=False)
-            video_id = info.get("id", "unknown")
-            title = info.get("title", "Untitled Video")
-            thumbnail = info.get("thumbnail", "")
-            duration = info.get("duration", 0)
-
-        result["video_id"] = video_id
-        result["title"] = title
-        result["thumbnail"] = thumbnail
-
-        video_dir = DOWNLOADS_DIR / video_id
-        video_dir.mkdir(parents=True, exist_ok=True)
-
-        has_ffmpeg = shutil.which("ffmpeg") is not None
-        has_node = shutil.which("node") is not None
-
-        def _clean_ytdlp_error(message: str) -> str:
-            return re.sub(r"\x1b\[[0-9;]*m", "", message).strip()
-
-        # Step 2: Download actual video (prefer 720p on the first attempt)
-        ydl_opts = {
-            # Prefer highest-quality H.264 MP4 + M4A (avoid re-encode quality loss).
-            "format": (
-                "bv*[vcodec^=avc1][ext=mp4][height<=?720]+ba[acodec^=mp4a]/"
-                "b[ext=mp4][height<=?720]/b[height<=?720]/b"
-            ),
-            "merge_output_format": "mp4",
-            # Try to proceed even if some formats look unplayable
-            "allow_unplayable_formats": True,
-            # Output path
-            "outtmpl": str(video_dir / f"{video_id}.%(ext)s"),
-            # Quiet mode + warnings suppressed
-            "quiet": False,
-            "no_warnings": True,
-            # Avoid progress rendering issues on some Windows terminals
-            "noprogress": True,
-            # Prevent playlists
-            "noplaylist": True,
-            # Save thumbnail + metadata (for kids panel)
-            "writethumbnail": True,
-            "writeinfojson": True,
-            # Force ffmpeg to do proper muxing/remuxing (no re-encode).
-            "prefer_ffmpeg": True,
-            "postprocessors": [{"key": "FFmpegVideoRemuxer", "preferedformat": "mp4"}],
-        }
-
-        if has_node:
-            # Enable JS runtime to improve YouTube extraction reliability
-            ydl_opts["js_runtimes"] = {"node": {}}
-            # Fetch remote EJS components for tougher JS challenges
-            ydl_opts["external_deps"] = {"ejs": "github"}
-
-        cookies_file = (os.getenv("YTDLP_COOKIEFILE") or os.getenv("YTDLP_COOKIES_FILE") or "").strip()
-        if cookies_file:
-            ydl_opts["cookiefile"] = cookies_file
-
-        if not has_ffmpeg:
-            ydl_opts["compat_opts"] = ["no-sabr"]
-            ydl_opts["format"] = "best[ext=mp4]/best"
-
-        def _download_with_format_fallback(opts: Dict[str, Any]) -> None:
-            try:
-                with yt_dlp.YoutubeDL(opts) as ydl:  # type: ignore
-                    ydl.download([url])
-            except yt_dlp.utils.DownloadError as e:  # type: ignore
-                message = str(e)
-                if "Requested format is not available" in message:
-                    fallback_opts = dict(opts)
-                    if has_ffmpeg:
-                        # Fall back to highest quality in native container if MP4/H.264 isn't available.
-                        fallback_opts["format"] = "bestvideo+bestaudio/best"
-                        fallback_opts.pop("merge_output_format", None)
-                    else:
-                        # No ffmpeg: keep it single-file to avoid merge failures.
-                        fallback_opts["format"] = "best"
-                        fallback_opts.pop("merge_output_format", None)
-                    fallback_opts.pop("postprocessors", None)
-                    # Let yt-dlp choose the most compatible client for fallback.
-                    fallback_opts.pop("extractor_args", None)
-                    with yt_dlp.YoutubeDL(fallback_opts) as ydl:  # type: ignore
-                        ydl.download([url])
-                else:
-                    raise
-
-        player_client_candidates = [
-            ["android", "web"],
-            ["tv", "web"],
-            ["ios", "web"],
-            ["web"],
-        ]
-
-        last_error = None
-        used_player_client = None
-        for player_client in player_client_candidates:
-            attempt_opts = dict(ydl_opts)
-            attempt_opts["extractor_args"] = {
-                "youtube": {"player_client": player_client}
-            }
-            try:
-                _download_with_format_fallback(attempt_opts)
-                last_error = None
-                used_player_client = player_client
-                break
-            except yt_dlp.utils.DownloadError as e:  # type: ignore
-                message = str(e)
-                if "HTTP Error 403" in message or "403" in message:
-                    last_error = e
-                    continue
-                raise
-
-        if last_error is not None:
-            raise last_error
-
-        subtitle_warning = None
-        subtitle_opts = {
-            "outtmpl": str(video_dir / f"{video_id}.%(ext)s"),
-            "writesubtitles": True,
-            "writeautomaticsub": True,
-            "subtitleslangs": ["en"],
-            "subtitlesformat": "vtt",
-            "skip_download": True,
-            "quiet": True,
-            "no_warnings": True,
-            "noprogress": True,
-            "noplaylist": True,
-        }
-
-        if has_node:
-            subtitle_opts["js_runtimes"] = {"node": {}}
-            subtitle_opts["external_deps"] = {"ejs": "github"}
-
-        if cookies_file:
-            subtitle_opts["cookiefile"] = cookies_file
-
-        if used_player_client:
-            subtitle_opts["extractor_args"] = {
-                "youtube": {"player_client": used_player_client}
-            }
-
-        try:
-            with yt_dlp.YoutubeDL(subtitle_opts) as ydl:  # type: ignore
-                ydl.download([url])
-        except yt_dlp.utils.DownloadError as e:  # type: ignore
-            subtitle_warning = _clean_ytdlp_error(str(e))
-
-        # Step 3: Collect downloaded files
-        created = []
-        for p in sorted(video_dir.iterdir()):
-            if p.is_file():
-                rel = p.relative_to(DOWNLOADS_DIR).as_posix()
-                created.append(rel)
-
-        video_path = find_primary_video_file(video_dir)
-        if not video_path:
-            result["message"] = "Download completed but no video file was found."
-            result["files"] = created
-            return result
-
-        if video_path.suffix.lower() == ".mp4" and not _looks_like_mp4(video_path):
-            result["message"] = (
-                "Downloaded file is not a valid MP4 container (likely HLS/TS). "
-                "Install ffmpeg or re-download with a non-SABR format."
-            )
-            result["files"] = created
-            return result
-
-        # Step 4: Save metadata file
-        meta = {
-            "video_id": video_id,
-            "title": title,
-            "thumbnail": thumbnail,
-            "duration": duration,
-            "local_path": f"/downloads/{video_path.relative_to(DOWNLOADS_DIR).as_posix()}",
-        }
-
-        meta_path = video_dir / "meta.json"
-        meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
-
-        # Step 5: Return result
-        result.update(
-            {
-                "success": True,
-                "message": "Video downloaded successfully.",
-                "files": created,
-                "duration": duration,
-                "local_path": meta["local_path"],
-            }
-        )
-        if subtitle_warning:
-            result["subtitle_warning"] = subtitle_warning
-        return result
-
-    except yt_dlp.utils.DownloadError as e:  # type: ignore
-        result["message"] = f"Download error: {e}"
-        return result
-    except Exception as e:
-        result["message"] = f"Unexpected error: {e}"
-        return result
 
 
 def list_all_downloads() -> List[dict]:

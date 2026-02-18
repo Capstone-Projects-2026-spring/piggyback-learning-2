@@ -1,32 +1,17 @@
 import os, re, io, json
-from pathlib import Path
 from fastapi import APIRouter, Body, UploadFile, File
 from config import GRADING_CONFIG
 from rapidfuzz import fuzz
-from openai import OpenAI
 from typing import cast, Any, Dict
 from functools import lru_cache
-from dotenv import load_dotenv
-load_dotenv()
+from app.settings import BASE_DIR, DOWNLOADS_DIR
+from app.services.clients import OPENAI_CLIENT
 
-# ---- Local paths (mirrors your main.py) ----
-BASE_DIR = Path(__file__).parent.resolve()
-DOWNLOADS_DIR = BASE_DIR / "downloads"
 
 router_video_quiz = APIRouter()
 
 # Separate router for API endpoints shared with main app
 router_api = APIRouter()
-
-
-# Kids-specific OpenAI client (Whisper + AI fallback for grading)
-def get_openai_client() -> OpenAI:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "OPENAI_API_KEY missing. Add it to your .env or environment."
-        )
-    return OpenAI(api_key=api_key)
 
 
 # Put these two helpers near the top of the file (once):
@@ -648,7 +633,7 @@ async def check_answer(payload: dict = Body(...)):
     # --- Borderline → escalate to AI ---
     if GRADING_CONFIG["use_ai"]:
         try:
-            client = get_openai_client()
+            client = OPENAI_CLIENT
             resp = client.chat.completions.create(
                 model=GRADING_CONFIG["ai_model"],
                 temperature=GRADING_CONFIG["ai_temperature"],
