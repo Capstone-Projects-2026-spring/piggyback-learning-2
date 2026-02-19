@@ -10,29 +10,23 @@ import time
 import random
 from datetime import datetime
 from urllib.parse import quote
-from app.services.download_service import download_youtube
 from fastapi import (
     FastAPI,
     Form,
     Request,
-    WebSocket,
-    WebSocketDisconnect,
     Body,
     Query,
     HTTPException,
 )
+from app.services.frame_service import (
+    extract_frames_per_second_for_video as extract_frames_per_second_for_video_service,
+)
+
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.web import templates
-import cv2
-import numpy as np
 import pandas as pd
 from PIL import Image
-
-
-
-
-from fastapi import UploadFile, File
 
 from video_quiz_routes import router_video_quiz, router_api
 from admin_routes import router_admin_pages, router_admin_api, router_admin_ws
@@ -208,113 +202,13 @@ def find_current_video_and_sub(video_id: Optional[str]) -> Dict[str, Optional[st
 # -----------------------------
 # Frame extraction
 # -----------------------------
-def extract_frames_per_second_for_video(video_id: str) -> Dict[str, Any]:
+def extract_frames_per_second_for_video(video_id: str)-> Dict[str,Any]:
     """
-    Extract 1 frame per second from the downloaded video in downloads/<video_id>.
+    Backward-compatible wrapper.
+    Core implementation lives in app.services.frame_service.
     """
-    folder_path = DOWNLOADS_DIR / video_id
-    if not folder_path.exists():
-        return {
-            "success": False,
-            "message": f"Folder '{video_id}' not found.",
-            "files": [],
-        }
-
-    video_file = find_primary_video_file(folder_path)
-    if not video_file:
-        return {
-            "success": False,
-            "message": f"No video files found in '{video_id}'.",
-            "files": [],
-        }
-    output_dir = folder_path / "extracted_frames"
-    output_dir.mkdir(exist_ok=True)
-
-    cap = cv2.VideoCapture(str(video_file))
-    if not cap.isOpened():
-        return {
-            "success": False,
-            "message": f"Error opening video file: {video_file.name}",
-            "files": [],
-        }
-
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    if fps is None or fps <= 0:
-        cap.release()
-        return {"success": False, "message": "Invalid FPS detected.", "files": []}
-
-    duration = total_video_frames / fps
-    total_seconds = int(duration)
-
-    frame_data = []
-    for second in range(total_seconds):
-        frame_number = int(second * fps)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-        ret, frame = cap.read()
-        if not ret:
-            continue
-
-        frame_filename = f"frame_{second:04d}s.jpg"
-        frame_path = output_dir / frame_filename
-        ok, encoded = cv2.imencode(".jpg",frame)
-        if not ok:
-            continue
-        encoded.tofile(str(frame_path))
-
-        frame_info = {
-            "frame_number": second + 1,
-            "timestamp_seconds": second,
-            "timestamp_formatted": f"{second // 60:02d}:{second % 60:02d}",
-            "filename": frame_filename,
-            "file_path": str(frame_path),
-        }
-        frame_data.append(frame_info)
-
-    cap.release()
-
-    json_path = output_dir / "frame_data.json"
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "video_info": {
-                    "filename": video_file.name,
-                    "duration_seconds": duration,
-                    "total_frames": total_video_frames,
-                    "fps": fps,
-                    "extracted_frames": len(frame_data),
-                },
-                "frames": frame_data,
-            },
-            f,
-            indent=2,
-            ensure_ascii=False,
-        )
-
-    csv_path = output_dir / "frame_data.csv"
-    with open(csv_path, "w", encoding="utf-8") as f:
-        f.write("Frame,Timestamp,Time_Formatted,Filename\n")
-        for fr in frame_data:
-            f.write(
-                f"{fr['frame_number']},{fr['timestamp_seconds']},"
-                f"{fr['timestamp_formatted']},{fr['filename']}\n"
-            )
-
-    links: List[str] = []
-    if output_dir.exists():
-        for p in sorted(output_dir.iterdir()):
-            if p.is_file():
-                rel = p.relative_to(DOWNLOADS_DIR).as_posix()
-                links.append(f"/downloads/{rel}")
-
-    return {
-        "success": True,
-        "message": f"Extracted {len(frame_data)} frames to '{output_dir.name}'.",
-        "files": links,
-        "video_id": video_id,
-        "output_dir": f"/downloads/{video_id}/extracted_frames",
-        "count": len(frame_data),
-    }
+    
+    return extract_frames_per_second_for_video_service(video_id)
 
 
 # -----------------------------
@@ -348,7 +242,7 @@ def time_to_seconds(time_str):
             return minutes * 60 + seconds
         else:  # Just seconds
             return int(parts[0])
-    except:
+    except (TypeError, ValueError):
         return 0
 
 
