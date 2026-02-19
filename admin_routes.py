@@ -1,8 +1,11 @@
 # admin_routes.py
 import json
 import csv
+import asyncio
 from typing import Any, Dict, List, Optional
-
+from app.services.frame_service import (
+    extract_frames_per_second_for_video as extract_frames_per_second_for_video_service,
+)
 from fastapi import (
     APIRouter,
     Body,
@@ -245,7 +248,7 @@ def admin_page(request: Request):
 @router_admin_api.post("/download")
 async def api_download(url: str = Form(...)):
     # Lazy import to avoid circular dependency
-    from main import download_youtube
+    from app.services.download_service import download_youtube
 
     outcome = download_youtube(url)
     return outcome
@@ -253,7 +256,7 @@ async def api_download(url: str = Form(...)):
 
 @router_admin_api.post("/frames/{video_id}")
 async def api_extract_frames(video_id: str):
-    from main import extract_frames_per_second_for_video
+    from app.services.frame_service import extract_frames_per_second_for_video
 
     return extract_frames_per_second_for_video(video_id)
 
@@ -465,9 +468,6 @@ async def ws_questions(websocket: WebSocket, video_id: str):
 
 
 # small helper: run sync function in thread (keeps this file standalone)
-import asyncio
-
-
 def asyncio_to_thread(func, *args, **kwargs):
     loop = asyncio.get_event_loop()
     return loop.run_in_executor(None, lambda: func(*args, **kwargs))
