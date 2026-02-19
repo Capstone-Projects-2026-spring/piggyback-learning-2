@@ -47,6 +47,8 @@ def format_hhmmss(total_seconds: int) -> str:
     return f"{m:02d}:{s:02d}"
 
 
+
+
 def _collect_downloaded_videos(include_without_frames: bool = False) -> List[Dict[str, Any]]:
     """
     Enumerate downloads/<video_id> folders so the admin UI can reuse existing assets.
@@ -331,11 +333,12 @@ async def ws_questions(websocket: WebSocket, video_id: str):
         full_duration = bool(params.get("full_duration", False))
 
         # Lazy imports to avoid circulars
-        from main import (
-            generate_questions_for_segment_with_retry,
-            build_segments_from_duration,
-            _maybe_parse_json,
+        from app.services.question_generation_service import (
+        generate_questions_for_segment_with_retry,
+        build_segments_from_duration,
+        _maybe_parse_json,
         )
+
         frames_dir = DOWNLOADS_DIR / video_id / "extracted_frames"
         if not frames_dir.exists():
             await websocket.send_json(
