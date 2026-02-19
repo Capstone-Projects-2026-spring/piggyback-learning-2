@@ -8,7 +8,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict
 import yt_dlp
-
+from app.services.video_files import find_primary_video_file
 from app.settings import DOWNLOADS_DIR, VIDEO_EXTENSIONS
 
 def download_youtube(url: str) -> Dict[str, Any]:
@@ -188,7 +188,6 @@ def download_youtube(url: str) -> Dict[str, Any]:
                 rel = p.relative_to(DOWNLOADS_DIR).as_posix()
                 created.append(rel)
 
-        video_path = _find_primary_video_file(video_dir)
         if not video_path:
             result["message"] = "Download completed but no video file was found."
             result["files"] = created
@@ -243,11 +242,3 @@ def _looks_like_mp4(path: Path) -> bool:
     except Exception:
         return False
 
-def _find_primary_video_file (video_dir: Path):
-    if not video_dir.exists() or not video_dir.is_dir():
-        return None
-    for ext in VIDEO_EXTENSIONS:
-        matches = sorted(video_dir.glob(f"*{ext}"))
-        if matches: 
-            return matches[0]
-    return None
