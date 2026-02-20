@@ -1,9 +1,11 @@
 # admin_routes.py
 import json
 import csv
-from pathlib import Path
+import asyncio
 from typing import Any, Dict, List, Optional
-
+from app.services.frame_service import (
+    extract_frames_per_second_for_video as extract_frames_per_second_for_video_service,
+)
 from fastapi import (
     APIRouter,
     Body,
@@ -15,12 +17,16 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-
+#Pulls shared path from settings.py so all module uses the same directory
+from app.settings import DOWNLOADS_DIR, TEMPLATES_DIR
 # ----- Local paths (keep consistent with main.py) -----
-BASE_DIR = Path(__file__).parent.resolve()
-TEMPLATES_DIR = BASE_DIR / "templates"
-DOWNLOADS_DIR = BASE_DIR / "downloads"
+#maybe needed if not delete later, should be duplicates with shared setting imports.
+#TODO- might delete this 
+# BASE_DIR = Path(__file__).parent.resolve()
+# TEMPLATES_DIR = BASE_DIR / "templates"
+# DOWNLOADS_DIR = BASE_DIR / "downloads"
 
+# Use shared templates path from app.settings to avoid path drift across modules.
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Three routers:
@@ -39,6 +45,8 @@ def format_hhmmss(total_seconds: int) -> str:
     if h > 0:
         return f"{h:02d}:{m:02d}:{s:02d}"
     return f"{m:02d}:{s:02d}"
+
+
 
 
 def _collect_downloaded_videos(include_without_frames: bool = False) -> List[Dict[str, Any]]:
@@ -242,7 +250,7 @@ def admin_page(request: Request):
 @router_admin_api.post("/download")
 async def api_download(url: str = Form(...)):
     # Lazy import to avoid circular dependency
-    from main import download_youtube
+    from app.services.download_service import download_youtube
 
     outcome = download_youtube(url)
     return outcome
@@ -250,7 +258,7 @@ async def api_download(url: str = Form(...)):
 
 @router_admin_api.post("/frames/{video_id}")
 async def api_extract_frames(video_id: str):
-    from main import extract_frames_per_second_for_video
+    from app.services.frame_service import extract_frames_per_second_for_video
 
     return extract_frames_per_second_for_video(video_id)
 
@@ -325,11 +333,12 @@ async def ws_questions(websocket: WebSocket, video_id: str):
         full_duration = bool(params.get("full_duration", False))
 
         # Lazy imports to avoid circulars
-        from main import (
-            generate_questions_for_segment_with_retry,
-            build_segments_from_duration,
-            _maybe_parse_json,
+        from app.services.question_generation_service import (
+        generate_questions_for_segment_with_retry,
+        build_segments_from_duration,
+        _maybe_parse_json,
         )
+
         frames_dir = DOWNLOADS_DIR / video_id / "extracted_frames"
         if not frames_dir.exists():
             await websocket.send_json(
@@ -462,9 +471,6 @@ async def ws_questions(websocket: WebSocket, video_id: str):
 
 
 # small helper: run sync function in thread (keeps this file standalone)
-import asyncio
-
-
 def asyncio_to_thread(func, *args, **kwargs):
     loop = asyncio.get_event_loop()
     return loop.run_in_executor(None, lambda: func(*args, **kwargs))

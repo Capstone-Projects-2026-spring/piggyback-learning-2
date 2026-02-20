@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>Video Processing Dashboard</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
     <style>
         * {
             margin: 0;
@@ -721,6 +722,7 @@
         <div class="header">
             <h1>Video Processing Dashboard</h1>
             <p>Download, extract frames, and generate educational questions from YouTube videos</p>
+            <p>Download, extract frames, and generate educational questions from YouTube videos</p>
         </div>
         
         <div class="progress-container">
@@ -731,6 +733,7 @@
             </div>
             <div class="step-labels">
                 <div class="step-label active">Download & Select</div>
+                <div class="step-label active">Download & Select</div>
                 <div class="step-label">Extract Frames</div>
                 <div class="step-label">Generate Questions</div>
             </div>
@@ -738,7 +741,9 @@
         
         <div class="main-content">
             <!-- Step 1: Download & Select -->
+            <!-- Step 1: Download & Select -->
             <div id="step-1" class="step-content active">
+                <h2 class="step-title">Step 1: Download or Select Video</h2>
                 <h2 class="step-title">Step 1: Download or Select Video</h2>
                 
                 <div class="step-tabs">
@@ -750,6 +755,7 @@
                         <div class="tab-panel active" id="tab-download-new">
                             <div class="search-container">
                                 <h3>Option 1: Direct YouTube URL</h3>
+                                <h3>Option 1: Direct YouTube URL</h3>
                                 <form id="download-form" class="search-form">
                                     <div class="form-group flex-1">
                                         <label for="youtube_url">YouTube URL</label>
@@ -760,6 +766,7 @@
                                     </div>
                                 </form>
                             </div>
+
 
                             <div class="loading" id="download-loading" style="display: none;">
                                 <div class="spinner"></div>
@@ -782,6 +789,7 @@
                         </div>
                         <div class="tab-panel" id="tab-use-existing">
                             <div class="search-container existing-download-panel">
+                                <h3>Option 2: Use Existing Download</h3>
                                 <h3>Option 2: Use Existing Download</h3>
                                 <p style="margin-bottom: 15px; color: #6c757d;">
                                     Reuse a video that already lives in the downloads folder. When you submit fresh questions, the previous JSON (if any) will be overwritten.
@@ -850,6 +858,15 @@
                             <label for="start_seconds">Start Time (seconds)</label>
                             <input type="number" id="start_seconds" value="0" min="0" />
                         </div>
+                     <!-- Admin can choose which model backend to use for the same generation. -->
+                    <div class = "form-group">
+                        <label for = "question_provider">AI Provider</label>
+                        <select id="question_provider">
+                            <option value = "openai" selected>OpenAI</option>
+                            <option value="gemini">Gemini</option>
+                        </select>
+                    </div>
+
                         <div class="form-group">
                             <label for="interval_seconds">Interval Length (seconds)</label>
                             <input type="number" id="interval_seconds" value="60" min="1" max="300" />
@@ -909,6 +926,9 @@
             </div>
         </div>
     </div>
+<script src="/assets/js/admin.js" defer></script>
+</body>
+</html>
     
     <script>
         let currentStep = 1;
