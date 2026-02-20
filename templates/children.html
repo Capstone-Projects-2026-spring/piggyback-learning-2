@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <title>Kids Videos | Piggyback</title>
+ <link rel="stylesheet" href="/assets/css/children.css">
   <style>
     * {
       box-sizing: border-box;
@@ -916,6 +917,44 @@
           <div id="blocker" aria-hidden="true"></div>
           <div id="question-box" role="dialog" aria-live="assertive" aria-labelledby="question" aria-describedby="timestamp feedback">
             <div class="question-character">
+              <video src="/assets/asking_question.webm" autoplay loop muted playsinline></video>
+            </div>
+            <div class="question-bubble">
+              <h3 id="question"></h3>
+              <p id="timestamp"></p>
+              <p id="feedback"></p>
+              <div id="question-actions" class="question-actions">
+                <button id="retry-answer-btn" class="retry-btn" type="button">Try again</button>
+                <button id="skip-answer-btn" class="skip-btn" type="button">Skip for now</button>
+              </div>
+            </div>
+          </div>
+          <div class="video-floating-controls">
+            <button id="toggle-sidebar" type="button" title="Toggle question list" aria-label="Toggle question list">&#128472;</button>
+          </div>
+          <div class="video-fullscreen-hitbox">
+            <button id="custom-fullscreen-btn" type="button" aria-label="Toggle fullscreen">
+              <span class="icon-enter">&#x26F6;</span>
+              <span class="icon-exit">&#x2715;</span>
+            </button>
+          </div>
+        </div>
+      </div>
+        <div id="video-container" tabindex="0" aria-label="Video player">
+          <div id="player" aria-label="YouTube video player"></div>
+          <div id="yt-logo-blocker" aria-hidden="true"></div>
+          <div id="yt-logo-blocker-left" aria-hidden="true"></div>
+          <div id="yt-logo-blocker-bottom" aria-hidden="true"></div>
+          <div id="yt-end-blocker" role="button" aria-label="Replay video">Tap to replay</div>
+          <div id="yt-pause-blocker" role="button" aria-label="Resume video">Tap to continue</div>
+          <div id="embed-fallback" class="embed-fallback" role="status" aria-live="polite">
+            <span>Having trouble playing the embed?</span>
+            <button id="use-local-video-btn" type="button">Play downloaded video</button>
+          </div>
+          <div id="question-overlay" aria-hidden="true"></div>
+          <div id="blocker" aria-hidden="true"></div>
+          <div id="question-box" role="dialog" aria-live="assertive" aria-labelledby="question" aria-describedby="timestamp feedback">
+            <div class="question-character">
               <video src="/assets/asking_question.webm" autoplay loop muted playsinline></video> <!-- mascot overlay already exists-->
             </div>
             <div class="question-bubble">
@@ -947,6 +986,7 @@
       </div>
     </div>
   </main>
+<script src="/assets/js/children.js" defer></script>
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script>

@@ -1822,6 +1822,7 @@ select {
         }
 
     </style>
+    <link rel="stylesheet" href="/assets/css/expert_preview.css">
 </head>
 <body data-selected-video-id="{{ (selected_video_id or '') | e }}">
     <div class="container">
@@ -1930,6 +1931,8 @@ select {
                             <button class="btn btn-secondary btn-sm" onclick="seekVideo(-10)">-10s</button>
                             <button class="btn btn-secondary btn-sm" onclick="seekVideo(10)">+10s</button>
                             <button class="btn btn-secondary btn-sm" id="use-local-video-btn" type="button">Use downloaded video</button>
+                            <button class="btn btn-secondary btn-sm" id="use-local-video-btn" type="button">Use downloaded video</button>
+                            <button class="btn btn-secondary btn-sm" id="add-manual-question-btn" type="button" disabled>Add Question</button>
                         </div>
                     </div>
                     <div class="questions-panel">
@@ -1984,6 +1987,10 @@ select {
                             <button class="btn" id="review-button" onclick="handleReviewQuestions()" disabled>Review Questions</button>
                         </div>
                         <div id="status-messages"></div>
+                    </div>
+                </div>
+            </div>
+            
                     </div>
                 </div>
             </div>
@@ -6786,6 +6793,8 @@ select {
             }
         }
     </script>
+    </div>
+<script src="/assets/js/expert_preview.js" defer></script>
 </body>
 </html>
 
