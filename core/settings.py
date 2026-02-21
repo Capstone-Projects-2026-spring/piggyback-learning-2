@@ -32,6 +32,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     # my apps
+    'review',
+    'quizgen',
+    'videos',
 ]
 
 MIDDLEWARE = [
