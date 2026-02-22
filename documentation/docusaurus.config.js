@@ -101,8 +101,8 @@ const config = {
         // Plugin Options for loading OpenAPI files
         specs: [
           {
-            id: 'using-single-yaml',
-            spec: 'static/openapi.yml.yaml',
+            id: 'swagger-doc',
+            spec: 'static/openapi.json',
             route: '/api/',
           },
         ],
