@@ -1,4 +1,8 @@
-# main.py Documentation
+---
+sidebar_position: 3
+---
+
+# main.py
 
 Class: FastAPI Application (`app`)
 Purpose: Entry point and HTTP interface for the Piggyback Learning platform. Configures routes, mounts static directories, integrates admin/expert APIs, and exposes TTS and video management endpoints.
