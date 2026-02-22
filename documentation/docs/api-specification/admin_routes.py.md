@@ -1,3 +1,7 @@
+---
+sidebar_position: 3
+---
+
 # admin_routes.py
 
 Class: AdminRoutesModule  
