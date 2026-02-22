@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkcreate_project_docs=self.webpackChunkcreate_project_docs||[]).push([[9645],{19013:e=>{e.exports=JSON.parse('{"name":"docusaurus-plugin-redoc","id":"swagger-doc"}')}}]);
