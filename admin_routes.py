@@ -327,10 +327,16 @@ async def submit_questions(payload: Dict[str, Any] = Body(...)):
 async def ws_questions(websocket: WebSocket, video_id: str):
     await websocket.accept()
     try:
+        #recives the full JSON message from the browser 
         params = await websocket.receive_json()
+        #starting time.
         start_seconds = int(params.get("start_seconds", 0))
         interval_seconds = int(params.get("interval_seconds", 60))
+        #generate for the whole video.
         full_duration = bool(params.get("full_duration", False))
+        #browser should send providers 
+        provider = params.get("provider","openai")
+
 
         # Lazy imports to avoid circulars
         from app.services.question_generation_service import (
@@ -375,8 +381,9 @@ async def ws_questions(websocket: WebSocket, video_id: str):
                     "message": f"Generating questions for {start}-{end}s...",
                 }
             )
+            #calls generate question,  without freezing the server while it waits for the AI response.
             result_text = await asyncio_to_thread(
-                generate_questions_for_segment_with_retry, video_id, start, end
+                generate_questions_for_segment_with_retry, video_id, start, end, provider = provider
             )
             result_obj = _maybe_parse_json(result_text)
             result_obj = _wrap_segment_result(
@@ -433,6 +440,7 @@ async def ws_questions(websocket: WebSocket, video_id: str):
                 video_id,
                 seg_start,
                 seg_end,
+                provider = provider,
             )
             result_obj = _maybe_parse_json(result_text)
             result_obj = _wrap_segment_result(
