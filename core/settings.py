@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     # my apps
+    'ai',
     'review',
     'quizgen',
     'videos',
@@ -114,3 +115,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+DOWNLOADS_DIR = BASE_DIR / 'downloads'
+DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)

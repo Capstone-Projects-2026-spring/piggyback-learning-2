@@ -1,4 +1,10 @@
 channels==4.3.2
+daphne==4.2.1
 Django==6.0.2
 djangorestframework==3.16.1
 drf-yasg==1.21.14
+openai==2.21.0
+opencv-python==4.13.0.92
+pillow==12.1.1
+RapidFuzz==3.14.3
+yt-dlp==2026.2.21
