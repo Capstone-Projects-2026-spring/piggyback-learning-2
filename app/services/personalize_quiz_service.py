@@ -2,10 +2,6 @@ import anthropic
 import json
 from anthropic.types import MessageParam
 
-# Start Claude API
-api_key = ""
-client = anthropic.Anthropic(api_key=api_key)
-
 # Claude parameters
 model = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 1024
