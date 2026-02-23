@@ -16,6 +16,7 @@ DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 EXPERT_PASSWORD = os.getenv("EXPERT_PASSWORD", "expert123")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
 QUESTION_PROVIDER_DEFAULT = os.getenv("QUESTION_PROVIDER_DEFAULT", "openai").strip().lower()
 
 VIDEO_EXTENSIONS = (".mp4",".webm",".mkv",".mov")

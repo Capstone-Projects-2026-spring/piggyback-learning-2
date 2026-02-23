@@ -13,6 +13,8 @@ from PIL import Image
 from app.settings import DOWNLOADS_DIR, GEMINI_API_KEY
 from app.services.clients import OPENAI_CLIENT, genai
 
+import anthropic
+
 # -----------------------------
 # Question generation helpers
 # -----------------------------
@@ -142,7 +144,7 @@ def generate_questions_for_segment(
     duration = end_time - start_time + 1  # inclusive window
     #Provider is requested- scope so Admin switch model backend without changing flow.
     provider_name = (provider or "openai").strip().lower()
-    if provider_name not in {"openai", "gemini"}:
+    if provider_name not in {"openai", "gemini","claude"}:
         provider_name = "openai"
 
 
@@ -286,7 +288,7 @@ Return JSON only (no extra text) in this structure:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                if provider_name =="openai":
+                if provider_name =="openai": # OpenAI
                     resp = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
@@ -299,7 +301,7 @@ Return JSON only (no extra text) in this structure:
                     )
                     result_content = resp.choices[0].message.content
                     finish_reason = resp.choices[0].finish_reason
-                else:
+                elif provider_name == "gemini": # Gemini
                         if not GEMINI_API_KEY:
                             last_error_payload= {
                                 "reason": "gemini_key_missing",
@@ -333,8 +335,53 @@ Return JSON only (no extra text) in this structure:
                             )
                         result_content = getattr(gemini_resp, "text", None)
                         finish_reason = None
+                else: # Claude
+                    
+                    # Check for Claude API key
+                    if not ANTHROPIC_API_KEY:
+                        last_error_payload = {
+                            "reason": "anthropic key missing",
+                            "retryable": False
+                        }
+                        return None
+                    
+                    claude_client = anthropic.Anthropic()
+                    model_name = os.getenv("ANTHROPIC_API_KEY", "claude-opus-4-6")
 
+                    # Load Claude prompt
+                    prompt_text = ""
+                    for item in content_with_prompt:
+                        if isinstance(item, dict) and item.get("type")== "text":
+                            prompt_text += str(item.get("text", "")) + "\n\n"  
 
+                    parts = [system_message + "\n\n" + prompt_text]
+
+                    # Load frames
+                    for frame in sampled_frames:
+                        try:
+                            parts.append({
+                                    "type":"image",
+                                    "source": {
+                                        "type":"base64",
+                                        "media_type":"image/jpeg",
+                                        "data": encode_image_to_base64(frame["image_path"])
+                                    }
+                                })
+                        except Exception:
+                            continue
+                    
+                    # Get Claude response
+                    resp = claude_client.messages.create(
+                        model="claude-opus-4-6",
+                        max_tokens=1024,
+                        messages=[{"role": "user", "content": parts}]
+                    )
+                    if resp.content:
+                        result_content= resp.content[0].text
+                    else:
+                        result_content = None
+                    finish_reason = None
+                    
                 if finish_reason == "content_filter":
                     last_error_payload = {
                         "reason": "model_refusal",

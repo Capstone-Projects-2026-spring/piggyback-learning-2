@@ -3,8 +3,10 @@ from functools import lru_cache
 
 import google.generativeai as genai
 from openai import OpenAI
+import anthropic
 
 from app.settings import GEMINI_API_KEY
+from app.settings import ANTHROPIC_API_KEY
 
 
 @lru_cache(maxsize=1)
