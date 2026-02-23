@@ -9,7 +9,10 @@ from django.conf import settings
 
 # Use your DB-backed generator from Step 2 Port #3
 # (If you used a different module name, update this import.)
-from quizgen.services.generation import generate_questions_for_segment_with_retry
+from quizgen.services.generation import (
+    generate_questions_for_segment_with_retry,
+    get_openai_client,
+)
 
 
 def _maybe_parse_json(text: Optional[str]):
@@ -179,6 +182,7 @@ class QuestionsConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content, **kwargs):
         video_id: str = self.video_id
+        client = get_openai_client()
 
         try:
             start_seconds = int(content.get('start_seconds', 0))
@@ -230,7 +234,7 @@ class QuestionsConsumer(AsyncJsonWebsocketConsumer):
                 # Run blocking generation in threadpool
                 result_text = await sync_to_async(
                     generate_questions_for_segment_with_retry, thread_sensitive=False
-                )(video_id, start, end)
+                )(client, video_id, start, end)
 
                 result_obj = _maybe_parse_json(result_text)
                 wrapped = _wrap_segment_result(
@@ -286,7 +290,7 @@ class QuestionsConsumer(AsyncJsonWebsocketConsumer):
 
                 result_text = await sync_to_async(
                     generate_questions_for_segment_with_retry, thread_sensitive=False
-                )(video_id, seg_start, seg_end)
+                )(client, video_id, seg_start, seg_end)
 
                 result_obj = _maybe_parse_json(result_text)
                 wrapped = _wrap_segment_result(
