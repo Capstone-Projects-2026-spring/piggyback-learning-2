@@ -33,8 +33,9 @@ INSTALLED_APPS = [
     'drf_yasg',
     # my apps
     'ai',
-    'review',
+    'pages',
     'quizgen',
+    'review',
     'videos',
 ]
 
@@ -50,10 +51,11 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 
+TEMPLATES_DIR = BASE_DIR / 'templates'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [TEMPLATES_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -115,6 +117,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+PUBLIC_ASSETS_DIR = BASE_DIR / 'public' / 'assets'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',  # so static/kids_videos.json works like before
+    PUBLIC_ASSETS_DIR,  # so /static/... can also find those files if needed
+]
 
 DOWNLOADS_DIR = BASE_DIR / 'downloads'
 DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)

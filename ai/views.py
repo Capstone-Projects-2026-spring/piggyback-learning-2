@@ -1,3 +1,4 @@
+import base64
 import io
 import os
 import re
@@ -6,6 +7,7 @@ from functools import lru_cache
 from openai import OpenAI
 from rapidfuzz import fuzz
 from rest_framework import status
+from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -460,3 +462,88 @@ class ConfigAPIView(APIView):
 
     def get(self, request):
         return Response({'skip_prevention': False, 'thresholds': GRADING_CONFIG})
+
+
+class TTSAPIView(APIView):
+    """
+    POST /api/tts
+    FastAPI takes JSON payload: {text, voice="sage", speed=0.75, format="mp3"}
+    Returns: {success: True, audio: <base64>, format: "...", voice: "..."}
+    """
+
+    authentication_classes = []
+    permission_classes = []
+    parser_classes = [JSONParser]
+
+    def post(self, request):
+        payload = request.data if isinstance(request.data, dict) else {}
+
+        text = str(payload.get('text') or '').strip()
+        if not text:
+            return Response(
+                {'success': False, 'message': 'text is required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        voice = str(payload.get('voice') or 'sage').strip() or 'sage'
+
+        raw_speed = payload.get('speed', 0.75)
+        try:
+            speed = float(raw_speed)
+        except (TypeError, ValueError):
+            speed = 0.75
+        speed = max(0.25, min(speed, 4.0))
+
+        response_format = str(payload.get('format') or 'mp3').strip() or 'mp3'
+
+        def _synthesize(voice_name: str) -> bytes:
+            client = get_openai_client()
+            # Mirrors FastAPI: audio.speech.with_streaming_response.create(...).read()
+            with client.audio.speech.with_streaming_response.create(
+                model='gpt-4o-mini-tts',
+                voice=voice_name,
+                input=text,
+                speed=speed,
+            ) as resp:
+                return resp.read()
+
+        try:
+            audio_bytes = _synthesize(voice)
+        except Exception as exc:
+            # Match FastAPI fallback behaviour: try "alloy" if voice error-ish
+            fallback_voice = 'alloy'
+            error_message = str(exc)
+            should_retry_with_fallback = voice.lower() != fallback_voice and any(
+                kw in error_message.lower()
+                for kw in ('voice', 'unknown', 'not found', 'unsupported')
+            )
+            if should_retry_with_fallback:
+                try:
+                    audio_bytes = _synthesize(fallback_voice)
+                    voice = fallback_voice
+                except Exception as retry_exc:
+                    return Response(
+                        {
+                            'success': False,
+                            'message': f'TTS generation failed: {error_message} | fallback_failed={retry_exc}',
+                        },
+                        status=status.HTTP_502_BAD_GATEWAY,
+                    )
+            else:
+                return Response(
+                    {
+                        'success': False,
+                        'message': f'TTS generation failed: {error_message}',
+                    },
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
+        return Response(
+            {
+                'success': True,
+                'audio': audio_b64,
+                'format': response_format,
+                'voice': voice,
+            }
+        )
