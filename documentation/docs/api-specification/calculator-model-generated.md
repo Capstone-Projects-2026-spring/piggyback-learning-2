@@ -1,61 +1,101 @@
 ---
+title: Internal Code Contract
 sidebar_position: 3
+description: Core backend service contracts (implementation-level).
 ---
 
-# CalculatorModel.java
-(generated using [Javadoc to Markdown](https://delight-im.github.io/Javadoc-to-Markdown/))
+# Internal Code Contract (Python)
 
-## `public class CalculatorModel`
+This page documents internal service contracts that implement the backend API.
 
-This is the model of this MVC implementation of a calculator. It performs the functions of the calculator and keeps track of what the user has entered.
+## `app/services/frame_service.py`
 
-* **Author:** Tom Bylander
+### `extract_frames_per_second_for_video(video_id: str) -> Dict[str, Any]`
+- Purpose: Extract 1 frame per second from `downloads/<video_id>/` and persist frame metadata.
+- Parameters: `video_id` (video folder id).
+- Returns: dict with `success`, `message`, `files`, `video_id`, `output_dir`, `count`.
+- Preconditions: video folder exists and contains a supported video file.
+- Postconditions: writes `extracted_frames/`, `frame_data.json`, `frame_data.csv`.
+- Error behavior: returns structured failure payload for missing folder/video/FPS/read issues.
 
-## `private double displayValue`
+## `app/services/question_generation_service.py`
 
-This is the numeric value of the number the user is entering, or the number that was just calculated.
+### `encode_image_to_base64(image_path, max_size=(512, 512)) -> Optional[str]`
+- Purpose: Convert frame image to resized base64 JPEG.
+- Returns: base64 string or `None` on error.
 
-## `private double internalValue`
+### `time_to_seconds(time_str) -> int`
+- Purpose: Convert `HH:MM:SS` / `MM:SS` / seconds text to integer seconds.
+- Returns: parsed seconds or `0` on invalid input.
 
-This is the previous value entered or calculated.
+### `read_frame_data_from_csv(folder_name, start_time, end_time) -> Tuple[List[Dict[str, Any]], str]`
+- Purpose: Load and filter frame rows for a segment; build transcript text.
+- Returns: `(frame_data, complete_transcript)`.
 
-## `private String displayString`
+### `generate_questions_for_segment(video_id, start_time, end_time, polite_first=False, provider=None) -> Optional[str]`
+- Purpose: Generate segment question JSON from frames + transcript via LLM provider.
+- Returns: JSON text on success, JSON error payload text for known failures, or `None`.
+- Preconditions: frames/transcript exist; provider credentials configured.
 
-This is the String corresponding to what the user. is entering
+### `generate_questions_for_segment_with_retry(video_id, start_time, end_time, max_attempts=10, provider=None) -> Optional[str]`
+- Purpose: Retry orchestration for segment generation.
+- Returns: successful JSON text or final failure result.
 
-## `private String operation`
+### `build_segments_from_duration(duration_seconds, interval_seconds, start_offset=0) -> List[tuple]`
+- Purpose: Build inclusive segment windows `(start, end)` over duration.
 
-This is the last operation entered by the user.
+### `_maybe_parse_json(text)`
+- Purpose: Best-effort parser for model output (including fenced JSON).
+- Returns: parsed object or raw text.
 
-## `private boolean start`
+### `persist_segment_questions_json(video_id, start, end, payload) -> Optional[str]`
+- Purpose: Save one segment’s question payload into `downloads/<video_id>/questions/`.
+- Returns: downloads URL or `None` on failure.
 
-This is true if the next digit entered starts a new value.
+### `resolve_question_file_param(value) -> Optional[Path]`
+- Purpose: Safely resolve user-supplied question JSON path under `DOWNLOADS_DIR`.
+- Returns: resolved JSON `Path` or `None` if invalid/unsafe.
 
-## `private boolean dot`
+## `app/services/download_service.py`
 
-This is true if a decimal dot has been entered for the current value.
+### `download_youtube(url: str) -> Dict[str, Any]`
+- Purpose: Download YouTube video, gather metadata, and persist `meta.json`.
+- Returns: normalized result dict (`success`, `message`, `video_id`, `title`, `thumbnail`, `files`, optional `duration`, `local_path`).
+- Preconditions: valid YouTube URL.
+- Postconditions: creates/updates `downloads/<video_id>/` assets.
+- Error behavior: returns structured failure payload (no unhandled route-level exception expected).
 
-## `public CalculatorModel()`
+## `app/services/expert_review_service.py`
 
-Initializes the instance variables.
+### `build_expert_preview_data(file, video, mode) -> Dict[str, Any]`
+- Purpose: Build expert preview context (segments, selected file/video, annotation state).
 
-## `public String getValue()`
+### `save_expert_annotation_payload(payload) -> Dict[str, Any]`
+- Purpose: Save/update expert annotation for segment.
+- Error behavior: raises `HTTPException(400/500)` on validation/persistence failure.
 
-* **Returns:** the String value of what was just calculated
+### `get_expert_questions_payload(video_id) -> Tuple[Dict[str, Any], int]`
+- Purpose: Load stored expert questions for video.
 
-  or what the user is entering
+### `save_expert_question_payload(payload) -> Tuple[Dict[str, Any], int]`
+- Purpose: Upsert expert question (or skipped segment marker).
 
-## `public void update(String text)`
+### `save_final_questions_payload(payload) -> Tuple[Dict[str, Any], int]`
+- Purpose: Persist final ranked questions to `final_questions.json`.
 
-Updates the values maintained by the calculator based on the button that the user has just clicked.
+## `app/services/clients.py`
 
-* **Parameters:** `text` — is the name of the button that the user has just clicked
+### `get_openai_client() -> OpenAI`
+- Purpose: Build cached OpenAI client from environment.
+- Preconditions: `OPENAI_API_KEY` exists.
+- Error behavior: raises `RuntimeError` if key missing.
 
-## `public double operationAdd(double rhs, double lhs)`
+## Route-to-Service Traceability
 
-Operation to add two numbers. <pre> operationAdd(3,2); // should equal 5.0 </pre>
-
-* **Parameters:**
-  * `rhs` — `double` representing the right hand side of the operator
-  * `lhs` — `double` representing the left hand side of the operator
-* **Returns:** `double`
+- `POST /api/download` -> `download_youtube`
+- `POST /api/frames/{video_id}` -> `extract_frames_per_second_for_video`
+- `WS /ws/questions/{video_id}` -> segment generation functions in `question_generation_service.py`
+- `POST /api/expert-annotations` -> `save_expert_annotation_payload`
+- `GET /api/expert-questions/{video_id}` -> `get_expert_questions_payload`
+- `POST /api/expert-questions` -> `save_expert_question_payload`
+- `POST /api/save-final-questions` -> `save_final_questions_payload`

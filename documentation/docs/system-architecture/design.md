@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# design
+# Design
 
 ## Purpose
 This document describes the **software architecture** for Piggyback Learning and shows how our requirements map to the design. It focuses on the **components, their responsibilities, interfaces, and data flow** (high-level).  

@@ -1,41 +1,129 @@
 ---
 sidebar_position: 1
-description: What should be in this section.
+description: Backend API contract overview and internal code contract scope.
 ---
 
 Design Document - Part II API
 =============================
 
-**Purpose**
+This page defines the backend API contract scope for this project and points to the two required contract artifacts.
 
-This Design Document gives the complete design of the software implementation. This information should be in structured comments (e.g. Javadoc) in the source files. We encourage the use of a documentation generation tool to generate a draft of your API that you can augment to include the following details.
+This project maintains two contracts:
 
-**Requirements**
+- `HTTP API Contract (OpenAPI/Swagger)`: external behavior (endpoints, request/response schemas, errors, auth).
+- `Internal Code Contract (Python Javadoc-style)`: internal implementation responsibilities (core modules, function purpose, params, returns, exceptions, pre/post conditions).
 
-In addition to the general documentation requirements the Design Document - Part II API will contain:
+If implementation changes, both contracts must be updated.
 
-General review of the software architecture for each module specified in Design Document - Part I Architecture. Please include your class diagram as an important reference.
+## Required Artifacts
 
-**For each class define the data fields, methods.**
+- OpenAPI spec source: `documentation/static/openapi.yml.yaml`
+- Rendered API docs page: `documentation/docs/api-specification/openapi-spec.md`
+- Internal code contract page: `documentation/docs/api-specification/internal-code-contract.md` (recommended)
 
-The purpose of the class.
+This page is an overview. The canonical endpoint schema definitions belong in `openapi.yml.yaml`.
 
-The purpose of each data field.
+## Frontend and Backend Split
 
-The purpose of each method
+### Frontend Contract
 
-Pre-conditions if any.
+Frontend communicates with backend using:
 
-Post-conditions if any.
+- REST routes under `/api`
+- WebSocket route `/ws/questions/{video_id}`
 
-Parameters and data types
+### Backend Contract
 
-Return value and output variables
+Backend is implemented with FastAPI and exposes:
 
-Exceptions thrown\* (PLEASE see note below for details).
+- HTML page routes
+- JSON/form/multipart API routes
+- WebSocket streaming route
 
-An example of an auto-generated and then augmented API specification is here ([Fiscal Design Document 2\_API.docx](https://templeu.instructure.com/courses/106563/files/16928898?wrap=1 "Fiscal Design Document 2_API.docx") )
+## Backend API Surface (Inventory)
 
-This group developed their API documentation by hand ([Design Document Part 2 API-1\_MovieMatch.docx](https://templeu.instructure.com/courses/106563/files/16928899?wrap=1 "Design Document Part 2 API-1_MovieMatch.docx") )
+### Page Routes (HTML)
 
-\*At the top level, or where appropriate, all exceptions should be caught and an error message that is meaningful to the user generated. It is not OK to say ("xxxx has encountered a problem and will now close (OK?)". Error messages and recovery procedures should be documented in the User’s Manual.
+- `GET /`
+- `GET /home`
+- `GET /children`
+- `GET /expert-preview`
+- `GET /admin/`
+
+### API Routes (JSON, form, multipart)
+
+- `POST /api/verify-password`
+- `POST /api/expert-annotations`
+- `GET /api/videos-list`
+- `GET /api/expert-questions/{video_id}`
+- `POST /api/expert-questions`
+- `POST /api/save-final-questions`
+- `POST /api/tts`
+- `POST /api/download`
+- `POST /api/frames/{video_id}`
+- `GET /api/admin/videos`
+- `POST /api/submit-questions`
+- `GET /api/kids_videos`
+- `GET /api/final-questions/{video_id}`
+- `POST /api/check_answer`
+- `POST /api/transcribe`
+- `GET /api/config`
+
+### WebSocket Route
+
+- `WS /ws/questions/{video_id}`
+
+Client payload fields:
+
+- `start_seconds`
+- `interval_seconds`
+- `full_duration`
+
+Server event types:
+
+- `status`
+- `segment_result`
+- `done`
+- `error`
+
+## Authentication and Authorization (Current State)
+
+Current implementation includes:
+
+- `POST /api/verify-password` for admin/expert password checks.
+
+Current limitations:
+
+- No formal JWT/session token contract is defined in OpenAPI yet.
+- Authorization is not uniformly expressed as token-based route security.
+- Any auth model update requires immediate OpenAPI `securitySchemes` and route `security` updates.
+
+## Error Handling (Current State)
+
+Current behavior varies by endpoint:
+
+- Some responses return JSON with failure fields (for example `success: false`, `message`).
+- Some flows use `HTTPException`.
+- FastAPI validation errors may return `422`.
+
+Contract requirement:
+
+- OpenAPI must define endpoint-specific error responses and payload schemas.
+
+## Traceability (Endpoint -> Internal Responsibility)
+
+- `POST /api/frames/{video_id}` -> `app/services/frame_service.py::extract_frames_per_second_for_video`
+- `WS /ws/questions/{video_id}` -> orchestration in `admin_routes.py` + generation functions in `app/services/question_generation_service.py`
+- `POST /api/check_answer` -> scoring flow in `video_quiz_routes.py`
+- `POST /api/transcribe` -> transcription flow in `video_quiz_routes.py`
+- `GET /api/kids_videos` -> local video discovery/refresh flow in `video_quiz_routes.py`
+
+## Maintenance Requirement
+
+Update documentation whenever any of the following changes:
+
+- Route path or HTTP method
+- Request model or response model
+- Auth behavior or security policy
+- Error schema
+- Core service function signature or module responsibility
