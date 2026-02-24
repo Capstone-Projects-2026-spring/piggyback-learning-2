@@ -379,41 +379,6 @@ class CheckAnswerAPIView(APIView):
                 }
             )
 
-        if GRADING_CONFIG['use_ai']:
-            try:
-                client = get_openai_client()
-                resp = client.chat.completions.create(
-                    model=GRADING_CONFIG['ai_model'],
-                    temperature=GRADING_CONFIG['ai_temperature'],
-                    max_tokens=GRADING_CONFIG['ai_max_tokens'],
-                    messages=[
-                        {
-                            'role': 'system',
-                            'content': "You are a friendly teacher grading a child's comprehension. Be lenient if the child expresses the same idea using different words or more specific examples. Respond with only one word: correct, almost, or wrong.",
-                        },
-                        {
-                            'role': 'user',
-                            'content': f"Question: {question}\nExpected answer: {expected}\nChild's answer: {user}",
-                        },
-                    ],
-                    timeout=GRADING_CONFIG['ai_timeout'],
-                )
-                ai_label = (resp.choices[0].message.content or '').strip().lower()
-                if ai_label not in {'correct', 'almost', 'wrong'}:
-                    ai_label = 'almost'
-                return Response(
-                    {
-                        'similarity': round(score, 3),
-                        'expected': expected,
-                        'user': user,
-                        'is_numeric': is_numeric,
-                        'status': ai_label,
-                        'reason': f'AI judged borderline case (RapidFuzz={score:.2f})',
-                    }
-                )
-            except Exception:
-                pass
-
         return Response(
             {
                 'similarity': round(score, 3),

@@ -1,4 +1,9 @@
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -128,3 +133,6 @@ STATICFILES_DIRS = [
 
 DOWNLOADS_DIR = BASE_DIR / 'downloads'
 DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '').strip()
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash')

@@ -7,12 +7,7 @@ from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.conf import settings
 
-# Use your DB-backed generator from Step 2 Port #3
-# (If you used a different module name, update this import.)
-from quizgen.services.generation import (
-    generate_questions_for_segment_with_retry,
-    get_openai_client,
-)
+from quizgen.services.generation import generate_questions_for_segment_with_retry
 
 
 def _maybe_parse_json(text: Optional[str]):
@@ -32,7 +27,7 @@ def _maybe_parse_json(text: Optional[str]):
     try:
         return json.loads(cleaned)
     except Exception:
-        return text  # raw if invalid JSON
+        return text
 
 
 def build_segments_from_duration(
@@ -182,7 +177,6 @@ class QuestionsConsumer(AsyncJsonWebsocketConsumer):
 
     async def receive_json(self, content, **kwargs):
         video_id: str = self.video_id
-        client = get_openai_client()
 
         try:
             start_seconds = int(content.get('start_seconds', 0))
@@ -234,7 +228,7 @@ class QuestionsConsumer(AsyncJsonWebsocketConsumer):
                 # Run blocking generation in threadpool
                 result_text = await sync_to_async(
                     generate_questions_for_segment_with_retry, thread_sensitive=False
-                )(client, video_id, start, end)
+                )(video_id, start, end)
 
                 result_obj = _maybe_parse_json(result_text)
                 wrapped = _wrap_segment_result(
@@ -290,7 +284,7 @@ class QuestionsConsumer(AsyncJsonWebsocketConsumer):
 
                 result_text = await sync_to_async(
                     generate_questions_for_segment_with_retry, thread_sensitive=False
-                )(client, video_id, seg_start, seg_end)
+                )(video_id, seg_start, seg_end)
 
                 result_obj = _maybe_parse_json(result_text)
                 wrapped = _wrap_segment_result(
