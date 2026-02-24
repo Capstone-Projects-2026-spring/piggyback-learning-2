@@ -190,7 +190,7 @@ class SaveExpertQuestionsAPIView(APIView):
 
     def post(self, request):
         payload = request.data if isinstance(request.data, dict) else {}
-        video_id = payload.get('video_id')
+        video_id = payload.get('video_id') or payload.get('videoId')
         if not video_id:
             return Response(
                 {'detail': 'Missing video_id'}, status=status.HTTP_400_BAD_REQUEST

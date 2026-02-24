@@ -1,3 +1,4 @@
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -39,3 +40,30 @@ class KidsVideosAPIView(APIView):
             )
 
         return Response({'success': True, 'count': len(videos), 'videos': videos})
+
+
+class VideoListAPIView(APIView):
+    """
+    GET /api/video-list
+
+    FastAPI-equivalent endpoint to list downloaded videos.
+    """
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        qs = Video.objects.all().order_by('-created_at')
+        videos = []
+        for v in qs:
+            videos.append(
+                {
+                    'id': v.id,
+                    'title': v.title or '',
+                    'thumbnail': v.thumbnail_url or '',
+                    'duration': v.duration_seconds,
+                    'local_path': v.local_video_path or '',
+                }
+            )
+
+        return Response({'videos': videos, 'success': True}, status=status.HTTP_200_OK)
