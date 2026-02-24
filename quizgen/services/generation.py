@@ -17,12 +17,7 @@ def get_gemini_client():
     if not api_key:
         raise RuntimeError('GEMINI_API_KEY is not set')
 
-    return genai.Client(
-        api_key=api_key,
-        http_options=types.HttpOptions(
-            api_version=os.getenv('GEMINI_API_VERSION', 'v1')
-        ),
-    )
+    return genai.Client(api_key=api_key)
 
 
 def _sample_frames(
