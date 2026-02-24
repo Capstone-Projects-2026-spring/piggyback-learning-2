@@ -14,6 +14,7 @@ from videos.models import ExtractedFrame, Video
 
 def get_gemini_client():
     api_key = os.getenv('GEMINI_API_KEY', '').strip()
+    print(api_key)
     if not api_key:
         raise RuntimeError('GEMINI_API_KEY is not set')
 
@@ -282,7 +283,7 @@ def generate_questions_for_segment_with_retry(
     video_id: str,
     start_time: int,
     end_time: int,
-    max_attempts: int = 10,
+    max_attempts: int = 2,
 ) -> Optional[str]:
     last_result: Optional[str] = None
 
