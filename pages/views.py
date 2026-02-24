@@ -1,8 +1,6 @@
-from django.conf import settings
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest
 from django.shortcuts import render
 
-from review.models import FinalQuestionSet
 from videos.models import Video
 
 
@@ -15,7 +13,6 @@ def children(request: HttpRequest):
 
 
 def admin_ui(request: HttpRequest):
-    # FastAPI returned admin.html and the JS fetches everything via /api
     return render(request, 'admin.html')
 
 
@@ -33,9 +30,6 @@ def expert_preview(request: HttpRequest):
     """
     mode = request.GET.get('mode', 'review')
     video_id = request.GET.get('video')
-    file_param = request.GET.get(
-        'file'
-    )  # legacy query param from FastAPI, if your template still sends it
 
     video_url = None
     if video_id:

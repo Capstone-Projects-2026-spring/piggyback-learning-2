@@ -6,7 +6,7 @@ from videos.models import Video
 from videos.services.download import download_youtube
 from videos.services.frames import extract_frames_per_second_for_video
 
-from .models import GeneratedQuestion, Segment, SegmentLLMResult, SubmittedQuestionSet
+from .models import SubmittedQuestionSet
 
 
 class AdminVideosAPIView(APIView):

@@ -127,7 +127,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 PUBLIC_ASSETS_DIR = BASE_DIR / 'public' / 'assets'
 
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',  # so static/kids_videos.json works like before
     PUBLIC_ASSETS_DIR,  # so /static/... can also find those files if needed
 ]
 

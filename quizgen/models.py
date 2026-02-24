@@ -1,5 +1,4 @@
 from django.db import models
-from django.db.models import JSONField
 
 from videos.models import Video
 
@@ -70,13 +69,13 @@ class SegmentLLMResult(models.Model):
     )
 
     # raw response (or error payload) from _maybe_parse_json/_wrap_segment_result
-    raw = JSONField(default=dict, blank=True)
+    raw = models.JSONField(default=dict, blank=True)
 
     best_question = models.TextField(blank=True, default='')
 
     # if generation failed, capture the normalized error + debug
     has_error = models.BooleanField(default=False)
-    error = JSONField(default=dict, blank=True)
+    error = models.JSONField(default=dict, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -114,4 +113,4 @@ class SubmittedQuestionSet(models.Model):
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     # store exactly what the UI submits (segments array etc.)
-    payload = JSONField(default=dict, blank=True)
+    payload = models.JSONField(default=dict, blank=True)

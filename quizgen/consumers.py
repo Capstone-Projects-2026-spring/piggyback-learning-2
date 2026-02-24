@@ -15,8 +15,7 @@ def _maybe_parse_json(text: Optional[str]):
         return None
     if isinstance(text, (dict, list)):
         return text
-    if not isinstance(text, str):
-        return text
+
     cleaned = text.strip()
     if cleaned.startswith('```'):
         cleaned = cleaned[3:].lstrip()

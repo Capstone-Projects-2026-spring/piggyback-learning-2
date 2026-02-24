@@ -11,7 +11,6 @@ from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-# ---- grading config (copy your config.GRADING_CONFIG) ----
 GRADING_CONFIG = {
     'rapidfuzz_correct': 0.82,
     'rapidfuzz_wrong': 0.55,
@@ -45,7 +44,9 @@ NUM_WORDS = {
     'nineteen': 19,
     'twenty': 20,
 }
+
 SCALE_WORDS = {'hundred': 100, 'thousand': 1000, 'million': 1_000_000}
+
 STOPWORDS = {
     'the',
     'a',
@@ -95,6 +96,7 @@ STOPWORDS = {
     'by',
     'from',
 }
+
 FILLER_WORDS = {'um', 'uh', 'like', 'you know', 'hmm', 'well', 'okay', 'so'}
 
 SYNONYMS = {

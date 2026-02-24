@@ -3,7 +3,7 @@ import os
 import random
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from django.conf import settings
 from google import genai
@@ -309,38 +309,3 @@ def generate_questions_for_segment_with_retry(
         time.sleep(random.uniform(1, 3))
 
     return last_result
-
-
-def build_segments_from_duration(
-    duration_seconds: int, interval_seconds: int, start_offset: int = 0
-) -> List[Tuple[int, int]]:
-    segments = []
-    start = max(0, int(start_offset))
-    step = max(1, int(interval_seconds))
-    while start <= duration_seconds:
-        end = min(start + step - 1, duration_seconds)
-        segments.append((start, end))
-        if end >= duration_seconds:
-            break
-        start = end + 1
-    return segments
-
-
-def _maybe_parse_json(text: Optional[str]):
-    if text is None:
-        return None
-    if isinstance(text, (dict, list)):
-        return text
-    if not isinstance(text, str):
-        return text
-    cleaned = text.strip()
-    if cleaned.startswith('```'):
-        cleaned = cleaned[3:].lstrip()
-        if cleaned.lower().startswith('json'):
-            cleaned = cleaned[4:].lstrip()
-        if cleaned.endswith('```'):
-            cleaned = cleaned[:-3].rstrip()
-    try:
-        return json.loads(cleaned)
-    except Exception:
-        return text

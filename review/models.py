@@ -1,5 +1,4 @@
 from django.db import models
-from django.db.models import JSONField
 
 from quizgen.models import QuestionType, Segment
 from videos.models import Video
@@ -42,7 +41,7 @@ class ExpertAnnotation(models.Model):
     answer = models.TextField(blank=True, default='')
 
     # best_question object {question, answer, approved, comment}
-    best_question = JSONField(default=dict, blank=True)
+    best_question = models.JSONField(default=dict, blank=True)
 
     saved_at = models.DateTimeField(auto_now=True)
 
@@ -90,7 +89,7 @@ class FinalQuestionSet(models.Model):
     saved_at = models.DateTimeField(auto_now_add=True)
 
     # store the full blob for perfect fidelity with your current payloads
-    payload = JSONField(default=dict, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
 
 
 class FinalSegment(models.Model):
