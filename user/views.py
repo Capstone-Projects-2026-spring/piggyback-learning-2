@@ -1,6 +1,13 @@
+from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from .serializers import (
+    VerifyPasswordFailureSerializer,
+    VerifyPasswordRequestSerializer,
+    VerifyPasswordSuccessSerializer,
+)
 
 
 class VerifyPasswordAPIView(APIView):
@@ -15,6 +22,7 @@ class VerifyPasswordAPIView(APIView):
     authentication_classes = []
     permission_classes = []
     parser_classes = [FormParser, MultiPartParser]
+    serializer_class = VerifyPasswordRequestSerializer
 
     def post(self, request):
         user_type = (request.data.get('user_type') or '').strip()
@@ -25,10 +33,17 @@ class VerifyPasswordAPIView(APIView):
             'expert': 'expert123',
         }
 
-        if user_type in valid_passwords and password == valid_passwords[user_type]:
-            if user_type == 'admin':
-                return Response({'success': True, 'redirect': '/admin'})
-            if user_type == 'expert':
-                return Response({'success': True, 'redirect': '/expert-preview'})
+        if password == valid_passwords.get(user_type):
+            redirect = '/admin' if user_type == 'admin' else '/expert-preview'
+            return Response(
+                VerifyPasswordSuccessSerializer(
+                    {'success': True, 'redirect': redirect}
+                ).data
+            )
 
-        return Response({'success': False, 'message': 'Invalid password'})
+        return Response(
+            VerifyPasswordFailureSerializer(
+                {'success': False, 'message': 'Invalid password'}
+            ).data,
+            status=status.HTTP_400_BAD_REQUEST,
+        )

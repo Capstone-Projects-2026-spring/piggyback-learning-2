@@ -129,8 +129,7 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Piggybank API',
-    'DESCRIPTION': 'API for Piggybank.',
+    'TITLE': 'Piggyback API',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
