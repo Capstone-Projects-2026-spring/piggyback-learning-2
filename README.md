@@ -1,15 +1,19 @@
 # Piggyback Learning
 
-FastAPI application for downloading YouTube videos, extracting frames, and generating
-educational comprehension questions. The app includes admin processing tools, expert
-review workflows, and a kids-friendly playback/quiz interface.
+Django 6.0 application for downloading YouTube videos, extracting frames, and generating
+educational comprehension questions for children ages 6–8. The app includes admin
+processing tools, expert review workflows, and a kids-friendly playback/quiz interface.
+It uses Daphne/Channels for ASGI with WebSocket support, Django REST Framework for APIs,
+and drf-spectacular for API docs.
 
 ## Features
 
 - YouTube downloads via `yt-dlp` (prefers 720p H.264 MP4 on first attempt)
 - English subtitles (auto + manual when available) and metadata capture
 - Frame extraction at 1 FPS with CSV/JSON manifests
-- AI question generation with WebSocket progress updates
+- AI question generation (Google Gemini multimodal) with WebSocket progress updates
+- Answer grading via RapidFuzz fuzzy matching
+- Speech transcription (OpenAI Whisper) and TTS (OpenAI)
 - Expert review and final question curation
 - Kids library and quiz player UI
 
@@ -35,12 +39,16 @@ review workflows, and a kids-friendly playback/quiz interface.
   python -m pip install --upgrade pip
   python -m pip install -r requirements.txt
   ```
-4. Create `.env` in the project root (defaults shown below).
-5. Run the app:
+4. Create `.env` in the project root (see Configuration below).
+5. Run database migrations:
   ```bash
-  python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+  python manage.py migrate
   ```
-6. Open:
+6. Start the dev server:
+  ```bash
+  python manage.py runserver 
+  ```
+7. Open:
   ```
   http://localhost:8000
   ```
@@ -86,18 +94,24 @@ Linux:
 Create a `.env` file in the project root:
 
 ```bash
-OPENAI_API_KEY="your_openai_key"
+GEMINI_API_KEY="your_gemini_key"         # Required for AI question generation (Google Gemini)
+OPENAI_API_KEY="your_openai_key"         # Required for speech transcription and TTS
+
 # Defaults are admin123 / expert123 if not set
 ADMIN_PASSWORD="admin123"
 EXPERT_PASSWORD="expert123"
+
+# Optional: override the default Gemini model
+GEMINI_MODEL="gemini-2.5-flash-lite"
+
 # Optional: use a Netscape-format cookies file for restricted videos
-YTDLP_COOKIEFILE="C:\\path\\to\\cookies.txt"
+YTDLP_COOKIEFILE="/path/to/cookies.txt"
 # Alternate env var name also supported
-YTDLP_COOKIES_FILE="C:\\path\\to\\cookies.txt"
+YTDLP_COOKIES_FILE="/path/to/cookies.txt"
 ```
 
 Notes:
-- `.env` and `.env.txt` are both loaded if present.
+- `.env` is loaded via `python-dotenv` in `core/settings.py`.
 - Keep secrets out of git (add `.env` to `.gitignore`).
 
 ## App Flows
@@ -119,275 +133,42 @@ Notes:
 
 ## API Endpoints (Core)
 
-- `POST /api/verify-password`
-- `POST /api/download`
-- `POST /api/frames/{video_id}`
-- `GET /api/admin/videos`
-- `POST /api/submit-questions`
-- `WS  /ws/questions/{video_id}`
-- `GET /api/kids_videos`
-- `GET /api/final-questions/{video_id}`
-- `GET /api/videos-list`
-- `GET /api/expert-questions/{video_id}`
-Then install with:
+All API endpoints are under `/api/`. Interactive docs available at `/api/docs/`.
 
-```bash
-pip install -r requirements.txt
-```
+- `POST /api/verify-password` — role-based password check
+- `POST /api/download` — download a YouTube video
+- `POST /api/frames/<video_id>` — extract frames from a video
+- `GET  /api/admin/videos` — list videos with processing status
+- `POST /api/submit-questions` — submit generated questions
+- `POST /api/check_answer` — grade a student answer
+- `POST /api/transcribe` — speech-to-text via Whisper
+- `POST /api/tts` — text-to-speech
+- `GET  /api/config` — client config/thresholds
+- `GET  /api/kids_videos` — videos with final question sets
+- `GET  /api/final-questions/<video_id>` — curated questions for kids
+- `GET  /api/videos-list` — all videos
+- `GET  /api/expert-questions/<video_id>` — expert questions for a video
+- `POST /api/expert-annotations` — save expert annotations
+- `POST /api/expert-questions` — save expert questions
+- `POST /api/save-final-questions` — save final curated questions
+- `WS   /ws/questions/<video_id>` — stream question generation progress
 
-### 4. Set Up OpenAI API Key
-
-You need an OpenAI API key to use the question generation features. Set it as an environment variable:
-
-```bash
-# Windows (Command Prompt)
-set OPENAI_API_KEY=your_api_key_here
-
-# Windows (PowerShell)
-$env:OPENAI_API_KEY="your_api_key_here"
-
-# macOS/Linux
-export OPENAI_API_KEY="your_api_key_here"
-```
-
-Alternatively, you can enter the API key directly in the web interface when generating questions.
-
-### 5. Create Required Directories
-
-The application will create necessary directories automatically, but you can create the template directory structure:
+## Project Structure
 
 ```
-your-project/
-├── main.py
-├── templates/
-│   ├── download.html
-│   ├── preview.html
-│   ├── frames.html
-│   └── questions.html
-├── downloads/
-└── venv/
-```
-
-## HTML Templates
-
-You'll need to create the following HTML template files in the `templates/` directory. Here are basic examples:
-
-### templates/download.html
-
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>YouTube Downloader</title>
-  </head>
-  <body>
-    <h1>YouTube Video Downloader</h1>
-    <form action="/download" method="post">
-      <label for="url">YouTube URL:</label>
-      <input type="text" id="url" name="url" required style="width: 400px;" />
-      <button type="submit">Download</button>
-    </form>
-  </body>
-</html>
-```
-
-### templates/preview.html
-
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Download Result</title>
-  </head>
-  <body>
-    <h1>Download Result</h1>
-    {% if success %}
-    <p style="color: green;">{{ message }}</p>
-    <p>Video ID: {{ video_id }}</p>
-
-    {% if current_video_url %}
-    <video width="640" height="360" controls>
-      <source src="{{ current_video_url }}" type="video/mp4" />
-      {% if current_sub_url %}
-      <track
-        src="{{ current_sub_url }}"
-        kind="subtitles"
-        srclang="en"
-        label="English"
-      />
-      {% endif %}
-    </video>
-    {% endif %}
-
-    <p><a href="/frames/{{ video_id }}">Extract Frames</a></p>
-    {% else %}
-    <p style="color: red;">{{ message }}</p>
-    {% endif %}
-
-    <p><a href="/">Download Another Video</a></p>
-  </body>
-</html>
-```
-
-### templates/frames.html
-
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Frame Extraction</title>
-  </head>
-  <body>
-    <h1>Frame Extraction - {{ video_id }}</h1>
-
-    {% if not ran %}
-    <form method="post">
-      <button type="submit">Extract Frames (1 per second)</button>
-    </form>
-    {% else %} {% if success %}
-    <p style="color: green;">{{ message }}</p>
-    <p>Extracted {{ count }} frames</p>
-    <p><a href="/questions/{{ video_id }}">Generate Questions</a></p>
-    {% else %}
-    <p style="color: red;">{{ message }}</p>
-    {% endif %} {% endif %}
-
-    <p><a href="/">Back to Home</a></p>
-  </body>
-</html>
-```
-
-### templates/questions.html
-
-```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Question Generation</title>
-  </head>
-  <body>
-    <h1>Generate Questions - {{ video_id }}</h1>
-
-    {% if duration_seconds %}
-    <p>Video Duration: {{ duration_seconds }} seconds</p>
-    {% endif %}
-
-    <form method="post" id="questionForm">
-      <div>
-        <label for="start_seconds">Start Time (seconds):</label>
-        <input
-          type="number"
-          id="start_seconds"
-          name="start_seconds"
-          value="{{ start_seconds or 0 }}"
-          min="0"
-        />
-      </div>
-
-      <div>
-        <label for="interval_seconds">Interval Length (seconds):</label>
-        <input
-          type="number"
-          id="interval_seconds"
-          name="interval_seconds"
-          value="{{ interval_seconds or 60 }}"
-          min="1"
-          required
-        />
-      </div>
-
-      <div>
-        <label for="full_duration">
-          <input
-            type="checkbox"
-            id="full_duration"
-            name="full_duration"
-            {%
-            if
-            full_duration
-            %}checked{%
-            endif
-            %}
-          />
-          Generate for entire video duration
-        </label>
-      </div>
-
-      <div>
-        <label for="api_key"
-          >OpenAI API Key (optional if set as environment variable):</label
-        >
-        <input
-          type="password"
-          id="api_key"
-          name="api_key"
-          style="width: 400px;"
-        />
-      </div>
-
-      <button type="submit">Generate Questions</button>
-      <button type="button" onclick="startWebSocket()">Stream Results</button>
-    </form>
-
-    <div id="progress" style="margin-top: 20px;"></div>
-
-    {% if error %}
-    <div style="color: red; margin-top: 20px;">
-      <h3>Error:</h3>
-      <p>{{ error }}</p>
-    </div>
-    {% endif %} {% if result %}
-    <div style="margin-top: 20px;">
-      <h3>Generated Questions:</h3>
-      <pre>{{ result }}</pre>
-    </div>
-    {% endif %}
-
-    <p><a href="/">Back to Home</a></p>
-
-    <script>
-      function startWebSocket() {
-        const form = document.getElementById("questionForm");
-        const formData = new FormData(form);
-        const progressDiv = document.getElementById("progress");
-
-        const ws = new WebSocket(
-          `ws://localhost:8000/ws/questions/{{ video_id }}`,
-        );
-
-        ws.onopen = function () {
-          progressDiv.innerHTML = "<p>Connected to server...</p>";
-          ws.send(
-            JSON.stringify({
-              start_seconds: parseInt(formData.get("start_seconds") || "0"),
-              interval_seconds: parseInt(formData.get("interval_seconds")),
-              full_duration: formData.get("full_duration") === "on",
-              api_key: formData.get("api_key") || null,
-            }),
-          );
-        };
-
-        ws.onmessage = function (event) {
-          const data = JSON.parse(event.data);
-          if (data.type === "status") {
-            progressDiv.innerHTML += `<p>${data.message}</p>`;
-          } else if (data.type === "segment_result") {
-            progressDiv.innerHTML += `<div><strong>Segment ${data.start}-${data.end}s:</strong><pre>${JSON.stringify(data.result, null, 2)}</pre></div>`;
-          } else if (data.type === "done") {
-            progressDiv.innerHTML +=
-              "<p><strong>Generation complete!</strong></p>";
-          } else if (data.type === "error") {
-            progressDiv.innerHTML += `<p style="color: red;">Error: ${data.message}</p>`;
-          }
-        };
-
-        ws.onclose = function () {
-          progressDiv.innerHTML += "<p>Connection closed.</p>";
-        };
-      }
-    </script>
-  </body>
-</html>
+manage.py                 # Django management script
+core/                     # Project config: settings.py, urls.py, asgi.py
+ai/                       # Answer grading, transcription, TTS, config
+pages/                    # Server-rendered HTML views (home, admin, children, expert)
+videos/                   # Video, VideoAsset, ExtractedFrame models & services
+quizgen/                  # Question generation pipeline, WebSocket consumer
+review/                   # Expert review workflow & final question curation
+user/                     # Password verification for admin/expert roles
+templates/                # Django templates
+public/assets/            # Static frontend assets (CSS, JS, images)
+downloads/                # Runtime dir for videos, frames, metadata
+db.sqlite3                # SQLite database (development)
+requirements.txt
 ```
 
 ## Usage
@@ -396,8 +177,10 @@ You'll need to create the following HTML template files in the `templates/` dire
 
 ```bash
 # Make sure your virtual environment is activated
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python manage.py runserver
 ```
+
+Django admin is available at `http://localhost:8000/django-admin/`.
 
 ### 2. Access the Web Interface
 
@@ -419,26 +202,20 @@ Open your browser and go to: `http://localhost:8000`
 
 1. After extracting frames, click "Generate Questions"
 2. Configure the time range and interval
-3. Optionally enter your OpenAI API key if not set as environment variable
-4. Choose between single interval or full duration processing
-5. Use "Stream Results" for real-time progress updates
+3. Choose between single interval or full duration processing
+4. Use "Stream Results" for real-time WebSocket progress updates
 
-## Project Structure
+## Running Tests
 
-```
-main.py
-admin_routes.py
-video_quiz_routes.py
-templates/
-  admin.html
-  children.html
-  expert_preview.html
-  home.html
-  video_quiz.html
-downloads/
-static/
-requirements.txt
-readme.md
+```bash
+# Run all tests
+python manage.py test
+
+# Run tests for a single app
+python manage.py test ai
+
+# Run a specific test
+python manage.py test ai.tests.TestClassName.test_method
 ```
 
 ## Troubleshooting
@@ -449,9 +226,10 @@ readme.md
   - Install Node.js LTS to improve extraction reliability.
 - Low quality:
   - The first attempt prefers 720p H.264 MP4. If you need higher, adjust the
-    format selector in `main.py` inside `download_youtube()`.
+    format selector in `videos/services/download.py`.
 - FFmpeg not found:
   - Install FFmpeg and ensure it is on your PATH.
+
 ### Common Issues
 
 1. **"No module named 'cv2'"**
@@ -461,25 +239,18 @@ readme.md
    ```
 
 2. **"FFmpeg not found"**
-   - yt-dlp usually handles this automatically
    - On Windows: Download FFmpeg and add to PATH
    - On macOS: `brew install ffmpeg`
    - On Ubuntu: `sudo apt install ffmpeg`
 
-3. **OpenAI API errors**
-   - Verify your API key is correct
-   - Check your OpenAI account has sufficient credits
-   - Ensure you have access to GPT-4 Vision API
-
-4. **WebSocket connection issues**
+3. **WebSocket connection issues**
    - Check firewall settings
    - Ensure the server is running on the correct port
-   - Try using HTTP endpoints instead
+   - Make sure Daphne is serving the ASGI app (the default `runserver` uses Daphne when installed)
 
 ### Performance Tips
 
 - For long videos, use smaller intervals (30-60 seconds) to avoid API timeouts
-- The application resizes images to 512x512 for efficiency
 - Frame extraction can take several minutes for long videos
 
 ## License
@@ -491,11 +262,14 @@ This project is for educational purposes. Please respect YouTube's Terms of Serv
 For issues related to:
 
 - **yt-dlp**: Check [yt-dlp documentation](https://github.com/yt-dlp/yt-dlp)
-- **OpenAI API**: Check [OpenAI documentation](https://platform.openai.com/docs)
-- **FastAPI**: Check [FastAPI documentation](https://fastapi.tiangolo.com)
+- **Django**: Check [Django documentation](https://docs.djangoproject.com/en/6.0/)
+- **Django REST Framework**: Check [DRF documentation](https://www.django-rest-framework.org/)
+- **Django Channels**: Check [Channels documentation](https://channels.readthedocs.io/)
 
 ## Collaborators
 
 - Ayush Gupta
 - Riju Pant
 - William Yang
+- Adam Marx
+- Shiven Patel

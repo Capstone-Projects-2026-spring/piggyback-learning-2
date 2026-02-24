@@ -22,3 +22,5 @@ git bash commands.txt
 all_cookies.txt
 *cookies*.txt
 node_modules/
+*.sqlite3
+AGENTS.md
