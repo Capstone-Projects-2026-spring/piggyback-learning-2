@@ -2,7 +2,7 @@ channels==4.3.2
 daphne==4.2.1
 Django==6.0.2
 djangorestframework==3.16.1
-drf-yasg==1.21.14
+drf-spectacular==0.29.0
 google-genai==1.64.0
 openai==2.21.0
 opencv-python==4.13.0.92
