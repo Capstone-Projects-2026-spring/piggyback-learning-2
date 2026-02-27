@@ -23,3 +23,4 @@ all_cookies.txt
 *cookies*.txt
 .claude/
 node_modules/
+static/kids_videos.json
