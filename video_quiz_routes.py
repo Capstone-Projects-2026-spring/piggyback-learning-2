@@ -1,3 +1,4 @@
+from datetime import datetime
 import io
 import json
 import os
@@ -677,6 +678,18 @@ async def check_answer(payload: dict = Body(...)):
         "reason": f"Borderline case defaulted (RapidFuzz={score:.2f})",
     }
 
+def log_speech(text:str):
+    log_path = "speech_log.txt"
+    entry = {"timestamp": datetime.now().isoformat(), "text": text}
+    if os.path.exists(log_path):
+        with open(log_path, "r") as f:
+            data = json.load(f)
+    else:
+        data = []
+
+    data.append(entry)
+    with open(log_path, "w") as f:
+        json.dump(data, f, indent=2)
 
 # ============================================================
 # Whisper transcription (moved verbatim; decorator adjusted)
@@ -696,10 +709,12 @@ async def transcribe_audio(file: UploadFile = File(...)):
             file=("speech.webm", audio_bytes, file.content_type),
         )
         print("Whisper raw response:", transcription)
+        log_speech(transcription.text)
         return {"success": True, "text": transcription.text}
     except Exception as e:
         print("❌ Whisper transcription error:", e)
         return {"success": False, "error": str(e)}
+    log_speech()
 
 
 # ============================================================
