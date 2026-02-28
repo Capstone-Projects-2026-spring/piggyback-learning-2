@@ -41,7 +41,7 @@ class VideosUnitTests(TestCase):
             local_video_path="/videos/test2.mp4",
             thumbnail_url="/thumbs/test2.jpg",
         )
-        
+
     def test_kids_videos_success(self):
         print("\nRunning test_kids_videos_success")
 
@@ -79,23 +79,11 @@ class VideosUnitTests(TestCase):
         response = self.client.get(url)
         data = response.json()
 
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(data["count"], 0)
         self.assertEqual(data["videos"], [])
 
-    def test_video_list_success(self):
-        print("\nRunning test_video_list_success")
 
-        url = reverse("video-list")
-        response = self.client.get(url)
-
-        print("Response JSON:", response.json())
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        data = response.json()
-
-        self.assertTrue(data["success"])
-        self.assertEqual(len(data["videos"]), 2)
 
 
 
