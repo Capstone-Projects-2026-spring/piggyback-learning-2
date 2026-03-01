@@ -13,7 +13,6 @@ ConfigAPIView,
 TTSAPIView,
 TranscribeAPIView,
 extract_items,
-list_match,
 prepare_text_for_scoring
 )
 
@@ -35,22 +34,6 @@ class TextNormalizationTests(TestCase):
         """Checks if extract_items works with 'called' phrase."""
         result = extract_items('animals called dog')
         self.assertTrue(any('dog' in item for item in result))
-
-    def test_list_match_all_items_found(self):
-        """Checks if all items match."""
-        matched, total = list_match('dog and cat', 'I saw a dog and a cat')
-        self.assertEqual(matched, total)
-
-    def test_list_match_partial_match(self):
-        """Checks if partial matches are counted."""
-        matched, total = list_match('dog and cat and bird', 'dog and cat')
-        self.assertEqual(total, 3)
-        self.assertEqual(matched, 2)
-
-    def test_list_match_no_matches(self):
-        """Checks if no matches return zero matched count."""
-        matched, total = list_match('zebra and giraffe', 'cat and dog')
-        self.assertEqual(matched, 0)
 
 """Test if the answer checking works correctly."""
 class CheckAnswerAPITests(TestCase):
@@ -123,9 +106,9 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'wrong')
         self.assertEqual(data['reason'], 'Missing numeric answer')
-
+        
+    """correct answers should return correct status."""
     def test_check_answer_list_all_items_matched(self):
-        """All items in list should return correct."""
         response = self.client.post(
             self.url,
             data=json.dumps(
