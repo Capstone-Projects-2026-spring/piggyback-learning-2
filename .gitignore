@@ -24,3 +24,4 @@ all_cookies.txt
 .claude/
 node_modules/
 static/kids_videos.json
+speech_log.txt
