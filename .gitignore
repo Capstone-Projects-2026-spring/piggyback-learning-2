@@ -26,3 +26,4 @@ node_modules/
 static/kids_videos.json
 speech_log.txt
 speech_log.json
+.pytest_cache/
