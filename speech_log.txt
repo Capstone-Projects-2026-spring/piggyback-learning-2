@@ -6,5 +6,13 @@
   {
     "timestamp": "2026-02-27T15:10:11.428809",
     "text": "They are fighting."
+  },
+  {
+    "timestamp": "2026-03-01T16:32:00.296467",
+    "text": "he's pointing at the screen"
+  },
+  {
+    "timestamp": "2026-03-01T16:32:29.369851",
+    "text": "Form may be cheering or giving instructions."
   }
 ]
