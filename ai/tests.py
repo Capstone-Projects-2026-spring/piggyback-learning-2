@@ -12,13 +12,13 @@ prepare_text_for_scoring
 #ai/tests.py tests
 #Checks if text normalization functions work correctly.
 class TextNormalizationTests(TestCase):
-    #Checks if prepare_text_for_scoring works with extracted numbers.
+    #Checks if user enters numeric answers it works.
     def test_prepare_text_for_scoring_include_numbers(self):
         result = prepare_text_for_scoring('five apples')
         self.assertIn('5', result)
 
-    #Checks if it returns correct results with same values.
-    def test_prepare_text_for_scoring_caching(self):
+    #Checks if user enters correctly, it correctly prepares the text for scoring every time.
+    def test_prepare_text_for_scoring_correct(self):
         text = 'the fox'
         result1 = prepare_text_for_scoring(text)
         result2 = prepare_text_for_scoring(text)

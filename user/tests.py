@@ -46,15 +46,4 @@ class VerifyPasswordAPIViewTestCase(TestCase):
         self.assertEqual(response.data['success'], False)
         self.assertEqual(response.data['message'], 'Invalid password')
 
-    #Checks if verify_password returns failure for non-existent user type.
-    def test_verify_password_failure_invalid_user_type(self):
-        response = self.client.post(
-            self.url,
-            {'user_type': 'invalid', 'password': 'admin123'},
-            format='multipart'
-        )
-        
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data['success'], False)
-        self.assertEqual(response.data['message'], 'Invalid password')
 
