@@ -2,16 +2,10 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from rest_framework import status
 
-import base64
-import io
 import json
-from unittest.mock import MagicMock, Mock, patch
 
 from .views import (
 CheckAnswerAPIView,
-ConfigAPIView,
-TTSAPIView,
-TranscribeAPIView,
 extract_items,
 prepare_text_for_scoring
 )
