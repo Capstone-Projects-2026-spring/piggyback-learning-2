@@ -37,7 +37,7 @@ class VideosUnitTests(TestCase):
         self.video2 = Video.objects.create(
             id="xyz789",
             title="Test Video 2",
-            duration_seconds=65,
+            duration_seconds=125,
             local_video_path="/videos/test2.mp4",
             thumbnail_url="/thumbs/test2.jpg",
         )
