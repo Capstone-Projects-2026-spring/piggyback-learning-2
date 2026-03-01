@@ -9,33 +9,33 @@ CheckAnswerAPIView,
 extract_items,
 prepare_text_for_scoring
 )
-
-"""Checks if text normalization functions work correctly."""
+#ai/tests.py tests
+#Checks if text normalization functions work correctly.
 class TextNormalizationTests(TestCase):
-    """Checks if prepare_text_for_scoring include extracted numbers."""
+    #Checks if prepare_text_for_scoring works with extracted numbers.
     def test_prepare_text_for_scoring_include_numbers(self):
         result = prepare_text_for_scoring('five apples')
         self.assertIn('5', result)
 
+    #Checks if it returns correct results with same values.
     def test_prepare_text_for_scoring_caching(self):
-        """Checks if LRU cache works correctly."""
-        text = 'the quick brown fox'
+        text = 'the fox'
         result1 = prepare_text_for_scoring(text)
         result2 = prepare_text_for_scoring(text)
         self.assertEqual(result1, result2)
 
     def test_extract_items_with_called_phrase(self):
-        """Checks if extract_items works with 'called' phrase."""
+        #Checks if extract_items works with 'called' phrase.
         result = extract_items('animals called dog')
         self.assertTrue(any('dog' in item for item in result))
 
-"""Test if the answer checking works correctly."""
+#Test if the answer checking works correctly.
 class CheckAnswerAPITests(TestCase):
     def setUp(self):
         self.client = Client()
         self.url = reverse('check-answer')
 
-    """Checks if exact answer returns correct status."""
+    #Checks if exact answer returns correct status. Returns 200 and correct. 
     def test_check_answer_correct_exact_match(self):
         response = self.client.post(
             self.url,
@@ -47,7 +47,7 @@ class CheckAnswerAPITests(TestCase):
         self.assertEqual(data['status'], 'correct')
         self.assertGreater(data['similarity'], 0.9)
 
-    """Checks if it evaluates numeric answers correctly."""
+    #Checks if it evaluates numeric answers correctly. Returns 200 and correct.
     def test_check_answer_numeric_match(self):
         response = self.client.post(
             self.url,
@@ -65,7 +65,7 @@ class CheckAnswerAPITests(TestCase):
         self.assertEqual(data['status'], 'correct')
         self.assertTrue(data['is_numeric'])
 
-    """Checks if wrong numeric answers return wrong status."""
+    #Checks if wrong numeric answers return wrong status. returns 200 and wrong.
     def test_check_answer_numeric_mismatch(self):
         response = self.client.post(
             self.url,
@@ -83,7 +83,7 @@ class CheckAnswerAPITests(TestCase):
         self.assertEqual(data['status'], 'wrong')
         self.assertEqual(data['similarity'], 0.0)
 
-    """Checks if non numeric answer given and it return wrong."""
+    #Checks if non numeric answer given and it return wrong. Returns 200 and wrong.
     def test_check_answer_missing_numeric_answer(self):
         response = self.client.post(
             self.url,
@@ -100,8 +100,8 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'wrong')
         self.assertEqual(data['reason'], 'Missing numeric answer')
-        
-    """correct answers should return correct status."""
+
+    #correct answers should return correct status. Returns 200 and correct.
     def test_check_answer_list_all_items_matched(self):
         response = self.client.post(
             self.url,
@@ -109,7 +109,7 @@ class CheckAnswerAPITests(TestCase):
                 {
                     'expected': 'apple and banana',
                     'user': 'I like apple and banana',
-                    'question': 'what fruits',
+                    'question': 'what fruits do they like?',
                 }
             ),
             content_type='application/json',
@@ -118,8 +118,8 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'correct')
         self.assertIn('Matched', data['reason'])
-        
-    """Partially correct answers should return almost."""
+
+    #Partially correct answers should return almost. Returns 200 and almost.
     def test_check_answer_list_partial_items_matched(self):
         response = self.client.post(
             self.url,
@@ -127,7 +127,7 @@ class CheckAnswerAPITests(TestCase):
                 {
                     'expected': 'apple and banana and orange',
                     'user': 'apple and banana',
-                    'question': 'what fruits',
+                    'question': 'what fruits does the cat like?',
                 }
             ),
             content_type='application/json',
@@ -136,7 +136,7 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'almost')
 
-    """Checks if empty input should return wrong status."""
+    #Checks if empty input should return wrong status. Returns 200 and wrong.
     def test_check_answer_empty_input(self):
         response = self.client.post(
             self.url,
@@ -148,7 +148,7 @@ class CheckAnswerAPITests(TestCase):
         self.assertEqual(data['status'], 'wrong')
         self.assertEqual(data['similarity'], 0.0)
 
-    """Checks if missing answers return wrong."""
+    #Checks if missing answers return wrong. Returns 200 and wrong.
     def test_check_answer_only_expected_empty(self):
         response = self.client.post(
             self.url,
@@ -159,7 +159,7 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'wrong')
 
-    """Checks if high similarity answer score returns correct."""
+    #Checks if high similarity answer score returns correct. Returns 200 and correct.
     def test_check_answer_high_similarity(self):
         response = self.client.post(
             self.url,
@@ -176,7 +176,7 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'correct')
 
-    """Checks if low similarity answer score returns wrong."""
+    #Checks if low similarity answer score returns wrong. Returns 200 and wrong.
     def test_check_answer_low_similarity(self):
         response = self.client.post(
             self.url,
@@ -193,7 +193,7 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'wrong')
 
-    """Checks if close similarity answers return almost."""
+    #Checks if close similarity answers return almost. Returns 200 and almost.
     def test_check_answer_borderline_similarity(self):
         response = self.client.post(
             self.url,
@@ -210,7 +210,7 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertIn(data['status'], ['almost', 'wrong'])
 
-    """Checks if synonym handling should return correct."""
+    #Checks if synonym handling should return correct.
     def test_check_answer_synonym_handling(self):
         response = self.client.post(
             self.url,

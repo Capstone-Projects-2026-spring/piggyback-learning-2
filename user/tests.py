@@ -10,7 +10,7 @@ class VerifyPasswordAPIViewTestCase(TestCase):
         self.client = APIClient()
         self.url = reverse('verify-password')
 
-    """Checks if verify_password returns success for correct admin password."""
+    #Checks if verify_password returns success for correct admin password.
     def test_verify_password_success_admin(self):
         response = self.client.post(
             self.url,
@@ -22,7 +22,7 @@ class VerifyPasswordAPIViewTestCase(TestCase):
         self.assertEqual(response.data['success'], True)
         self.assertEqual(response.data['redirect'], '/admin')
 
-    """Checks if verify_password returns success for correct expert password."""
+    #Checks if verify_password returns success for correct expert password.
     def test_verify_password_success_expert(self):
         response = self.client.post(
             self.url,
@@ -34,7 +34,7 @@ class VerifyPasswordAPIViewTestCase(TestCase):
         self.assertEqual(response.data['success'], True)
         self.assertEqual(response.data['redirect'], '/expert-preview')
 
-    """Checks if verify_password returns failure for incorrect password."""
+    #Checks if verify_password returns failure for incorrect password.
     def test_verify_password_failure_invalid_password(self):
         response = self.client.post(
             self.url,
@@ -46,7 +46,7 @@ class VerifyPasswordAPIViewTestCase(TestCase):
         self.assertEqual(response.data['success'], False)
         self.assertEqual(response.data['message'], 'Invalid password')
 
-    """Checks if verify_password returns failure for non-existent user type."""
+    #Checks if verify_password returns failure for non-existent user type.
     def test_verify_password_failure_invalid_user_type(self):
         response = self.client.post(
             self.url,
