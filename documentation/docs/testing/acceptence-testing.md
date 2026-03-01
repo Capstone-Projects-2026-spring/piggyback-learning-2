@@ -1,13 +1,12 @@
 ---
-sidebar_position: 3\
+sidebar_position: 3
 ---
 
 # Acceptance Test
 
 ### AT-AUTO-01: Homepage Loads Successfully
 
-**Command Executed:**\
-```bash\
+**Command Executed:**
 curl -i http://127.0.0.1:8000/
 
 **Observed Result:**
