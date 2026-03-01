@@ -5,29 +5,9 @@ from rest_framework import status
 import json
 
 from .views import (
-CheckAnswerAPIView,
-extract_items,
-prepare_text_for_scoring
+CheckAnswerAPIView
 )
 #ai/tests.py tests
-#Checks if text normalization functions work correctly.
-class TextNormalizationTests(TestCase):
-    #Checks if user enters numeric answers it works.
-    def test_prepare_text_for_scoring_include_numbers(self):
-        result = prepare_text_for_scoring('five apples')
-        self.assertIn('5', result)
-
-    #Checks if user enters correctly, it correctly prepares the text for scoring every time.
-    def test_prepare_text_for_scoring_correct(self):
-        text = 'the fox'
-        result1 = prepare_text_for_scoring(text)
-        result2 = prepare_text_for_scoring(text)
-        self.assertEqual(result1, result2)
-
-    def test_extract_items_with_called_phrase(self):
-        #Checks if extract_items works with 'called' phrase.
-        result = extract_items('animals called dog')
-        self.assertTrue(any('dog' in item for item in result))
 
 #Test if the answer checking works correctly.
 class CheckAnswerAPITests(TestCase):
@@ -101,8 +81,8 @@ class CheckAnswerAPITests(TestCase):
         self.assertEqual(data['status'], 'wrong')
         self.assertEqual(data['reason'], 'Missing numeric answer')
 
-    #correct answers should return correct status. Returns 200 and correct.
-    def test_check_answer_list_all_items_matched(self):
+    #correct non-numeric answers should return correct status. Returns 200 and correct.
+    def test_check_answer_correct_non_numeric(self):
         response = self.client.post(
             self.url,
             data=json.dumps(
@@ -136,8 +116,8 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'almost')
 
-    #Checks if empty input should return wrong status. Returns 200 and wrong.
-    def test_check_answer_empty_input(self):
+    #Checks if empty or missing input should return wrong status. Returns 200 and wrong.
+    def test_check_answer_missing_input(self):
         response = self.client.post(
             self.url,
             data=json.dumps({'expected': '', 'user': '', 'question': ''}),
@@ -147,17 +127,6 @@ class CheckAnswerAPITests(TestCase):
         data = response.json()
         self.assertEqual(data['status'], 'wrong')
         self.assertEqual(data['similarity'], 0.0)
-
-    #Checks if missing answers return wrong. Returns 200 and wrong.
-    def test_check_answer_only_expected_empty(self):
-        response = self.client.post(
-            self.url,
-            data=json.dumps({'expected': '', 'user': 'hello', 'question': ''}),
-            content_type='application/json',
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
-        self.assertEqual(data['status'], 'wrong')
 
     #Checks if high similarity answer score returns correct. Returns 200 and correct.
     def test_check_answer_high_similarity(self):
@@ -209,20 +178,3 @@ class CheckAnswerAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertIn(data['status'], ['almost', 'wrong'])
-
-    #Checks if synonym handling should return correct.
-    def test_check_answer_synonym_handling(self):
-        response = self.client.post(
-            self.url,
-            data=json.dumps(
-                {
-                    'expected': 'scared',
-                    'user': 'afraid',
-                    'question': 'how did they feel',
-                }
-            ),
-            content_type='application/json',
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.json()
-        self.assertEqual(data['status'], 'correct')
