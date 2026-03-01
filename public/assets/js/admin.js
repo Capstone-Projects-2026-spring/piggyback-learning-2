@@ -16,6 +16,7 @@
             bindEventListeners();
             initStepOneTabs();
             loadExistingDownloads();
+            initAdminTabs();
         });
         
         function bindEventListeners() {
@@ -258,6 +259,24 @@
             `;
             infoEl.style.display = 'block';
         }
+        function initAdminTabs() {
+            const tabButtons = document.querySelectorAll('.admin-tab');
+            const sections = document.querySelectorAll('.admin-section');
+
+                tabButtons.forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const targetId = btn.getAttribute('data-target');
+
+                        tabButtons.forEach((b) => b.classList.remove('active'));
+                        btn.classList.add('active');
+
+                        sections.forEach((section) => {
+                            section.classList.toggle('active', section.id === targetId);
+                        });
+                    });
+                });
+            }
+
 
         function useExistingDownload() {
             const selectEl = document.getElementById('existing-download-select');
