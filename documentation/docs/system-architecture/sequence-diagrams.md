@@ -27,17 +27,17 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant User
+    participant Child
     participant App
     participant System
-
-    User->>App: Log in
-    App->>User: Display available quizzes
-    User->>App: Select a quiz
-    App->>User: Display quiz instructions
-    User->>App: Start Quiz
-    App->>System: Load first question
-    System-->>App: Display question
+    
+    Child->>App: Open app
+    App->>Child: Display available videos
+    Child->>App: Select a video
+    App->>System: Load video with admin-configured mode
+    System-->>App: Video and mode ready
+    Child->>App: Start
+    App->>Child: Begin playing video
 ```
 
 ## Use case 3 - Learner answers a question using voice
@@ -61,7 +61,7 @@ sequenceDiagram
     end
 ```
 
-## Use case 4 - Track progress
+## Use case 4 - Child interact with video questions
 
 ```mermaid
 sequenceDiagram
@@ -70,7 +70,7 @@ sequenceDiagram
     participant System
     participant Video
 
-    Child->>App: Log in & start quiz
+    Child->>App:Sstart Video
     App->>System: Display question
     Child->>App: Answer using voice
     App->>System: Evaluate answer
