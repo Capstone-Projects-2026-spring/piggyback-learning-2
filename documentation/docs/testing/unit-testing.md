@@ -15,6 +15,7 @@ Functions tested:
 
 ## time_to_seconds 
 Converts a time string to total seconds.
+
 **Details:** Tested in isolation with no external dependencies. All external classes are stubbed.
 | Test Case | Input | Expected Result |
 |---|---|---|
@@ -28,6 +29,7 @@ Converts a time string to total seconds.
 ## normalize_text
 Removes stopwords and map synonyms for a test string 
 like the big dog  can just be big dog
+
 **Details:** Tested in isolation with no external dependencies. All external classes are stubbed.
 
 | Test Case | Input | Expected Result |
@@ -38,6 +40,7 @@ like the big dog  can just be big dog
 
 ## build_segments_from_duration
 Splits a video duration into timed segments for quiz question placement.
+
 **Details:** Tested in isolation with no external dependencies. All external classes are stubbed.
 
 | Test Case | Input | Expected Result |
