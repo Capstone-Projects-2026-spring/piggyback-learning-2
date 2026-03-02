@@ -45,7 +45,7 @@ flowchart LR
   end
 
   Child["Child User"] --> KidsUI
-  Parent["Parent or Educator"] --> KidsUI
+  Parent["Parent or Educator"] --> AdminUI
   Admin["Admin or Expert"] --> AdminUI
   Admin --> ExpertUI
 
