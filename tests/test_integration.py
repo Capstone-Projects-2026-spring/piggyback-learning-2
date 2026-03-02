@@ -24,3 +24,14 @@ def test_get_config():
     assert response.status_code == 200
     #threshold comfirms that the forntend will get data it needs to work.
     assert "thresholds" in response.json()
+
+
+def test_learner_can_fetch_video_list():
+    # Use Case 2: Learner sees list of available quizzes
+    response = client.get("/api/videos-list")
+    assert response.status_code == 200
+
+def test_learner_can_fetch_questions_for_video():
+    # Use Case 2: System displays quiz questions for selected video
+    response = client.get("/api/final-questions/test-video-id")
+    assert response.status_code == 200
