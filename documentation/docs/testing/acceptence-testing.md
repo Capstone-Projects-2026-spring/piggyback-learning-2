@@ -40,4 +40,4 @@ These scenarios require a real browser and microphone and were tested manually.
 4. Observe that the speech is transcribed into the answer field
 5. Observe that the result shows "correct" or "wrong"
 
-**Observed Result:** Passed — speech was correctly transcribed and graded.
+**Observed Result:** Passed , speech was correctly transcribed and graded.
