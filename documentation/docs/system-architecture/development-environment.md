@@ -60,7 +60,7 @@ Web & ASGI: fastapi, uvicorn, starlette
 
 Multimedia: yt-dlp, opencv-python, pandas, numpy
 
-Data & Utils: openai, gemini, python-dotenv, tqdm, python-multipart
+Data & Utils: anthropic, openai, gemini, python-dotenv, tqdm, python-multipart
 
 Networking & Async: httpx, anyio, websockets
 
