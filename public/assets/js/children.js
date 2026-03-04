@@ -1,5 +1,4 @@
-
-    // ===============================
+// ===============================
     // CONFIGURATION
     // ===============================
     const DEV_MODE = false; // set false to hide sidebar & toggle in production
@@ -392,6 +391,11 @@
           pauseVideo();
         }
       });
+      video.addEventListener("ended", () => {
+        if (typeof showFinalScore === "function" && typeof quizScore !== "undefined" && quizScore.total > 0) {
+          showFinalScore();
+        }
+      });
 
       host.appendChild(video);
       localVideoElement = video;
@@ -467,6 +471,9 @@
         hidePauseBlocker();
         if (ytEndBlocker) {
           ytEndBlocker.style.display = "flex";
+        }
+        if (typeof showFinalScore === "function" && typeof quizScore !== "undefined" && quizScore.total > 0) {
+          showFinalScore();
         }
       }
     }
@@ -941,6 +948,11 @@
           totalQuestions = segments.length;
           correctAnswers = 0;
           updateProgress();
+
+          // Start score tracking now that we know the real question count
+          if (typeof startQuizTracking === "function") {
+            startQuizTracking(video.video_id, segments.length);
+          }
 
           if (!segments.length) {
             throw new Error("No eligible questions found in final_questions.json");
@@ -1765,6 +1777,9 @@
 
           correctAnswers++;
           updateProgress();
+          if (typeof recordAnswer === "function") {
+            recordAnswer(q.question, q.answer, spoken, "correct", sim);
+          }
 
           await deliverFeedback({
             message: celebrationMessage,
@@ -1791,6 +1806,10 @@
             minVisibleMs: MIN_FEEDBACK_DISPLAY_MS
           });
 
+          if (typeof recordAnswer === "function") {
+            recordAnswer(q.question, q.answer, spoken, "almost", sim);
+          }
+
           setPlayerTime(rewindTo);
           await wait(200);
           resumeVideo();
@@ -1802,6 +1821,10 @@
           color: "#ef4444",
           minVisibleMs: MIN_FEEDBACK_DISPLAY_MS
         });
+
+        if (typeof recordAnswer === "function") {
+          recordAnswer(q.question, q.answer, spoken, "wrong", sim);
+        }
 
         setPlayerTime(rewindTo);
         await wait(200);
@@ -1921,5 +1944,3 @@
     // Init
     loadConfig();
     loadVideos();
-
-

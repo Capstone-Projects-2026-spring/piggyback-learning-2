@@ -9,7 +9,7 @@ from typing import cast, Any, Dict
 from functools import lru_cache
 from app.settings import BASE_DIR, DOWNLOADS_DIR
 from app.services.clients import OPENAI_CLIENT, get_openai_client
-from app.services.quiz_scoring import save_quiz_result, get_child_score
+from app.services.quiz_scoring_service import save_quiz_result, get_child_scores
 
 
 router_video_quiz = APIRouter()
