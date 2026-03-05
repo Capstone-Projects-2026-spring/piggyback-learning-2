@@ -1,6 +1,7 @@
 # Quiz Scoring Service-saves quiz results to JSON files
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -24,6 +25,7 @@ def save_quiz_result(child_id: str, video_id: str, score_data: dict) -> dict:
         Dict with success status
     """
     DOWNLOADS_DIR = get_downloads_dir()
+    child_id = re.sub(r'[^a-zA-Z0-9_-]', '', child_id)
     
     # Create quiz_results folder
     results_dir = DOWNLOADS_DIR / "quiz_results"
@@ -36,7 +38,7 @@ def save_quiz_result(child_id: str, video_id: str, score_data: dict) -> dict:
     if results_file.exists():
         try:
             data = json.loads(results_file.read_text(encoding="utf-8"))
-        except:
+        except Exception:
             data = {"child_id": child_id, "attempts": []}
     else:
         data = {"child_id": child_id, "attempts": []}

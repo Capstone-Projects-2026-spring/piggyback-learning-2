@@ -1331,6 +1331,12 @@
       }
     }
 
+    function tryRecordAnswer(question, answer, spoken, status, sim) {
+      if (typeof recordAnswer === "function") {
+        recordAnswer(question, answer, spoken, status, sim);
+      }
+    }
+
     // ===============================
     // Feedback Helpers
     // ===============================
@@ -1777,9 +1783,7 @@
 
           correctAnswers++;
           updateProgress();
-          if (typeof recordAnswer === "function") {
-            recordAnswer(q.question, q.answer, spoken, "correct", sim);
-          }
+          tryRecordAnswer(q.question, q.answer, spoken, "correct", sim);
 
           await deliverFeedback({
             message: celebrationMessage,
@@ -1806,9 +1810,7 @@
             minVisibleMs: MIN_FEEDBACK_DISPLAY_MS
           });
 
-          if (typeof recordAnswer === "function") {
-            recordAnswer(q.question, q.answer, spoken, "almost", sim);
-          }
+          tryRecordAnswer(q.question, q.answer, spoken, "almost", sim);
 
           setPlayerTime(rewindTo);
           await wait(200);
@@ -1822,9 +1824,7 @@
           minVisibleMs: MIN_FEEDBACK_DISPLAY_MS
         });
 
-        if (typeof recordAnswer === "function") {
-          recordAnswer(q.question, q.answer, spoken, "wrong", sim);
-        }
+        tryRecordAnswer(q.question, q.answer, spoken, "wrong", sim);
 
         setPlayerTime(rewindTo);
         await wait(200);

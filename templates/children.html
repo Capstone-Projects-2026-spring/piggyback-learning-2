@@ -228,13 +228,15 @@ async function saveScoreAndClose() {
         const result = await response.json();
         if (result.success) {
             console.log('✅ Saved to:', result.file);
+            alert('Your score has been saved! 🎉');
+          } else {
+            alert('Score could not be saved.');
         }
     } catch (error) {
         console.error('❌ Error:', error);
     }
     document.getElementById('finalScoreModal').remove();
     document.getElementById('scoreTracker').style.display = 'none';
-    alert('Your score has been saved! 🎉');
 }
 
 function getChildId() {
