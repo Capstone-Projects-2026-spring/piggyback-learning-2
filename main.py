@@ -5,6 +5,13 @@ import base64
 import json
 import asyncio
 from datetime import datetime
+from app.services.sqlite_store import init_db
+from app.services.expert_auth_service import (
+    authenticate_expert,
+    can_expert_access_video,
+    claim_video_for_expert,
+)
+
 from fastapi import (
     FastAPI,
     Form,
@@ -21,11 +28,14 @@ from app.services.expert_review_service import (
     save_expert_question_payload,
     save_final_questions_payload,
 )
-
+#Stores expert login session in single cookie
+from starlette.middleware.sessions import SessionMiddleware
 
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.web import templates
+
+
 
 from video_quiz_routes import router_video_quiz, router_api
 from admin_routes import router_admin_pages, router_admin_api, router_admin_ws
@@ -37,11 +47,41 @@ from app.settings import (
     EXPERT_QUESTION_TYPE_LABELS,
     EXPERT_QUESTION_TYPES,
     EXPERT_QUESTION_TYPE_VALUES,
+    SESSION_SECRET,
 )
 from app.services.clients import OPENAI_CLIENT
 
 
 app = FastAPI(title="Piggyback Learning")
+
+#middleware enables request.session
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    same_site="lax",
+    https_only=False,
+)
+
+#Startup ensures SQLite schema exisit every booot.
+@app.on_event("startup")
+def startup_init_db():
+    init_db()
+
+def require_expert_session(request: Request) -> Dict[str,str]:
+    role = request.session.get("role")
+    expert_id = request.session.get("expert_id")
+    display_name = request.session.get("display_name")
+
+    if role != "expert" or not expert_id:
+        raise HTTPException(status_code = 403, detail = "Expert login required")
+    
+    return {
+        "expert_id":str(expert_id),
+        "display_name":str(display_name or expert_id),
+    }
+
+
+
 app.include_router(router_video_quiz, prefix="/api")  # kids_videos etc
 app.include_router(router_api, prefix="/api")  # transcribe, check_answer, config
 
@@ -77,21 +117,58 @@ def children_page(request: Request):
     """Children's learning interface - no password required"""
     return templates.TemplateResponse("children.html", {"request": request})
 
+#Route: Handles expert login requests from the frontend
+@app.post("/api/expert/login")
+async def expert_login(request: Request, payload: Dict[str,Any]= Body(...)):
+    # Extract the expert_id and password from the request body.
+    expert_id = str(payload.get("expert_id")or "").strip().lower()
+    password = str(payload.get("password")or "")
+
+    #need to check if the expert credentials are valid. right 
+
+    account = authenticate_expert(expert_id, password)
+
+    # If authentication fails, return an error response.
+    if not account:
+        return JSONResponse(
+            {"success": False, "message": "Invalid expert ID or password"},
+            status_code=401,
+        )
+    
+    # Save the role so we know this user is an expert , so is id so is name.
+    request.session["role"] = "expert"
+    request.session["expert_id"] = account["expert_id"]
+    request.session["display_name"] = account["display_name"]
+
+    return JSONResponse(
+        {
+            "success": True,
+            "redirect": "/expert-preview",
+            "expert": account,
+        }
+    )
+
+#Logout feature, clear expert session cleanly.
+@app.post("/api/expert/logout")
+async def expert_logout(request: Request):
+    request.session.clear()
+    return JSONResponse({"success": True})
+
 
 @app.post("/api/verify-password")
 async def verify_password(
     user_type: str = Form(...), password: str = Form(...)
 ):
-    """Verify password for admin/expert access"""
-    valid_passwords = {"admin": ADMIN_PASSWORD, "expert": EXPERT_PASSWORD}
+    """Verify password for admin access (expert uses ID+password endpt)"""
+    if user_type == "admin" and password == ADMIN_PASSWORD:
+        return JSONResponse({"success": True, "redirect": "/admin"})
 
-    if user_type in valid_passwords and password == valid_passwords[user_type]:
-        if user_type == "admin":
-            return JSONResponse({"success": True, "redirect": "/admin"})
-        elif user_type == "expert":
-            return JSONResponse({"success": True, "redirect": "/expert-preview"})
-    else:
-        return JSONResponse({"success": False, "message": "Invalid password"})
+    if user_type == "expert":
+        return JSONResponse(
+            {"success": False, "message": "Use expert ID + password login."}
+        )
+
+    return JSONResponse({"success": False, "message": "Invalid password"})
 
 
 # -----------------------------
@@ -104,6 +181,7 @@ def expert_preview(
     video: Optional[str] = Query(None),
     mode: Optional[str] = Query("review"),
 ):
+    expert_identity = require_expert_session(request)
     preview_data = build_expert_preview_data(file=file, video=video, mode=mode)
     context = {
         "request": request,
@@ -111,6 +189,7 @@ def expert_preview(
         "question_type_options": [
             {"value": value, "label": label} for value, label in EXPERT_QUESTION_TYPES
         ],
+        "expert_identity": expert_identity,
     }
     return templates.TemplateResponse("expert_preview.html", context)
 
@@ -183,17 +262,30 @@ async def list_videos():
 
 
 @app.get("/api/expert-questions/{video_id}")
-async def get_expert_questions(video_id: str):
-    result, status_code = get_expert_questions_payload(video_id)
-    return JSONResponse(result, status_code=status_code)
+async def get_expert_questions(request: Request, video_id: str):
+    expert_identity = require_expert_session(request)
+    if not can_expert_access_video(expert_identity["expert_id"], video_id):
+        return JSONResponse({"success": False, "message": "Forbidden"}, status_code=403)
+    
 
+#protect save expert question route
 @app.post("/api/expert-questions")
-async def save_expert_question(payload: Dict[str, Any] = Body(...)):
-    result, status_code = save_expert_question_payload(payload)
-    return JSONResponse(result, status_code=status_code)
+async def save_expert_question(request: Request, payload: Dict[str, Any] = Body(...)):
+    expert_identity = require_expert_session(request)
+    video_id = str(payload.get("videoId") or payload.get("video_id") or "").strip()
+    if not video_id:
+        return JSONResponse({"success": False, "message": "videoId is required"}, status_code=400)
+
+    if (DOWNLOADS_DIR / video_id).exists() and not can_expert_access_video(expert_identity["expert_id"], video_id):
+        try:
+            claim_video_for_expert(expert_identity["expert_id"], video_id)
+        except Exception:
+            return JSONResponse({"success": False, "message": "Forbidden"}, status_code=403)
+        
+
 
 @app.post("/api/save-final-questions")
-async def save_final_questions(payload: Dict[str, Any] = Body(...)):
+async def save_final_questions(request: Request, payload: Dict[str, Any] = Body(...)):
     result, status_code = save_final_questions_payload(payload)
     return JSONResponse(result, status_code=status_code)
 

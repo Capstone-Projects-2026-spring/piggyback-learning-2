@@ -19,15 +19,45 @@ async function verifyPassword(userType, password) {
     }
 }
 
+//expert auth endpot is json 
+async function loginExpert(expertId, password) {
+    try {
+        const response = await fetch('/api/expert/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ expert_id: expertId, password })
+        });
+        return await response.json();
+    } catch (error) {
+        return { success: false, message: 'Connection error' };
+    }
+}
+
 function showPasswordModal(userType) {
     currentUserType = userType;
     const modal = document.getElementById('passwordModal');
     const modalTitle = document.getElementById('modalTitle');
     const passwordInput = document.getElementById('passwordInput');
     const errorMessage = document.getElementById('errorMessage');
+    const expertIdInput = document.getElementById('expertIdInput');
+
+    //exper id toggle
+    const expertIdRow = document.getElementById('expertIdRow');
+    
     
     // Update modal title
     modalTitle.textContent = userType === 'admin' ? 'Administrator Access' : 'Expert Access';
+
+    //only expert needed ID (well for now )
+    if (userType === 'expert') {
+        expertIdRow.style.display = 'block';
+        expertIdInput.value = '';
+        expertIdInput.required = true;
+    } else {
+        expertIdRow.style.display = 'none';
+        expertIdInput.value = '';
+        expertIdInput.required = false;
+    }
     
     // Reset form
     passwordInput.value = '';
@@ -38,7 +68,11 @@ function showPasswordModal(userType) {
     
     // Focus on password input
     setTimeout(() => {
-        passwordInput.focus();
+        if(userType === 'expert'){
+            expertIdInput.focus();
+        }else{
+            passwordInput.focus();
+        }
     }, 100);
 }
 
@@ -59,6 +93,7 @@ document.getElementById('passwordForm').addEventListener('submit', async functio
     
     const passwordInput = document.getElementById('passwordInput');
     const errorMessage = document.getElementById('errorMessage');
+    const expertIdInput = document.getElementById('expertIdInput');
     const enteredPassword = passwordInput.value;
     
     // Show loading state
@@ -68,7 +103,19 @@ document.getElementById('passwordForm').addEventListener('submit', async functio
     submitBtn.disabled = true;
     
     try {
-        const result = await verifyPassword(currentUserType, enteredPassword);
+        
+        //admin keeps old flow, expert uses new flow
+        let result;
+        if (currentUserType === 'expert') {
+            const expertId = (expertIdInput?.value || '').trim();
+            if (!expertId) {
+                throw new Error('Expert ID is required.');
+            }
+            result = await loginExpert(expertId, enteredPassword);
+        } else {
+            result = await verifyPassword(currentUserType, enteredPassword);
+        }
+
         
         if (result.success) {
             window.location.href = result.redirect;
@@ -86,7 +133,7 @@ document.getElementById('passwordForm').addEventListener('submit', async functio
             }, 500);
         }
     } catch (error) {
-        errorMessage.textContent = 'Connection error. Please try again.';
+        errorMessage.textContent = error?.message || 'Connection error. Please try again.';
         errorMessage.style.display = 'block';
     } finally {
         // Reset button state
