@@ -11,7 +11,7 @@ from app.services.expert_auth_service import (
     can_expert_access_video,
     claim_video_for_expert,
     ensure_video_assignment_rows,
-    get_video_assignment,
+    list_experts_for_video,
     list_video_assignments,
 )
 
@@ -395,39 +395,19 @@ async def list_expert_videos(request: Request):
                 "questionCount": len(question_files),
             }
         )
-
-    video_ids = [video["id"] for video in videos]
-    ensure_video_assignment_rows(video_ids)
-    assignments_map = {
-        row["video_id"]: row for row in list_video_assignments()
-    }
-
     expert_id = expert_identity["expert_id"]
     filtered: List[Dict[str, Any]] = []
     for video in videos:
-        assignment = assignments_map.get(video["id"])
-        if not assignment:
-            assignment = get_video_assignment(video["id"])
-
-        assigned_expert_id = (assignment or {}).get("expert_id")
-        assigned_to_me = bool(assigned_expert_id == expert_id)
-        claimable = not assigned_expert_id
-
-        if not assigned_to_me and not claimable:
-            continue
-
+        #get all experts assigned to this video from the new many -to - many table
+        assigned_experts = list_experts_for_video(video["id"])
+        assigned_to_me = any(e["expert_id"] == expert_id for e in assigned_experts)
         filtered.append(
             {
                 **video,
-                "expert_id": assigned_expert_id,
-                "expert_name": (assignment or {}).get("expert_name"),
-                "assignment_source": (assignment or {}).get("assignment_source")
-                or "unassigned",
                 "assigned_to_me": assigned_to_me,
-                "claimable": claimable,
+                "assigned_expert_count": len(assigned_experts),
             }
         )
-
     return JSONResponse({"success": True, "videos": filtered})
 
 
@@ -448,18 +428,11 @@ async def claim_expert_video(request: Request, video_id: str):
         )
 
     try:
-        assignment = claim_video_for_expert(expert_identity["expert_id"], normalized_video_id)
-    except RuntimeError as exc:
-        if str(exc) == "assigned_to_other_expert":
-            return JSONResponse(
-                {"success": False, "message": "Video is already assigned to another expert"},
-                status_code=409,
-            )
-        return JSONResponse({"success": False, "message": "Unable to claim video"}, status_code=400)
+        claim_video_for_expert(expert_identity["expert_id"], normalized_video_id)
     except Exception as exc:
         return JSONResponse({"success": False, "message": str(exc)}, status_code=400)
 
-    return JSONResponse({"success": True, "assignment": assignment})
+    return JSONResponse({"success": True})
 
 
 @app.post("/api/tts")

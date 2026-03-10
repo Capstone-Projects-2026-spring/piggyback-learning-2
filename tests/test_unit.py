@@ -3,7 +3,24 @@ import pytest
 from video_quiz_routes import normalize_text
 from app.services.question_generation_service import build_segments_from_duration
 #pytest runs any function starting with test_ 
-
+# Testing assignment service functions
+from app.services.sqlite_store import init_db
+from app.services.expert_auth_service import (
+    add_video_assignment,
+    remove_video_assignment,
+    list_experts_for_video,
+    can_expert_access_video,
+    claim_video_for_expert,
+    create_expert,
+)
+#make a value to test
+def setup_module():
+    init_db()
+    try:
+        create_expert("testexpert1", "Test Expert 1", "password123")
+        create_expert("testexpert2", "Test Expert 2", "password123")
+    except:
+        pass 
 #Testing time_to_seconds
 def test_time_to_seconds_mmss():
     assert time_to_seconds("1:30") == 90
@@ -44,3 +61,23 @@ def test_build_segments_shorter_last():
 
 def test_build_segments_single():
     assert build_segments_from_duration(60, 60) == [(0, 59), (60, 60)]
+
+#Testing services
+def test_add_assignment():
+    add_video_assignment("vid_test", "testexpert1")
+    assert can_expert_access_video("testexpert1", "vid_test") == True
+
+def test_two_experts_same_video():
+    add_video_assignment("vid_test", "testexpert2")
+    experts = list_experts_for_video("vid_test")
+    assert len(experts) == 2
+
+
+def test_remove_assignment():
+    remove_video_assignment("vid_test", "testexpert1")
+    assert can_expert_access_video("testexpert1", "vid_test") == False
+
+def test_claim_is_idempotent():
+    claim_video_for_expert("testexpert2", "vid_test")
+    claim_video_for_expert("testexpert2", "vid_test")  # twice, no error
+    assert can_expert_access_video("testexpert2", "vid_test") == True

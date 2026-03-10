@@ -48,7 +48,7 @@ def init_db() -> None:
             
                 video_id TEXT NOT NULL,
                 expert_id TEXT NOT NULL,
-                assignment_source TEXT NOT NULL CHECK(assignment_source IN ('admin', 'expert_claim', 'unassigned'))
+                assignment_source TEXT NOT NULL CHECK(assignment_source IN ('admin', 'expert_claim', 'unassigned')),
                 assigned_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 PRIMARY KEY (video_id, expert_id),

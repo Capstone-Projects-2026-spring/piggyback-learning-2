@@ -245,7 +245,7 @@ def ensure_video_assignment_rows(video_ids: List[str]) -> None:
 def add_video_assignment(video_id,expert_id,source : str = "admin"):
     # Upsert a video-expert pair into the many-to-many table.
     video_id = (video_id or "").strip()
-    expert_id = (expert_id or "").strip()
+    expert_id = normalize_expert_id(expert_id)
     
     if not video_id:
         raise ValueError ("video_id is required")
@@ -266,121 +266,70 @@ def add_video_assignment(video_id,expert_id,source : str = "admin"):
         updated_at = excluded.updated_at """,(video_id,expert_id,source,now,now))
         conn.commit()
 
+def remove_video_assignment(video_id, expert_id):
+    video_id = (video_id or "").strip()
+    expert_id = (expert_id or "").strip()
+    
+    if not video_id:
+        raise ValueError ("video_id is required")
+    
+    if not expert_id:
+        raise ValueError("expert_id is required")
+    
+    with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM video_expert_assignments WHERE video_id = ? AND expert_id = ?",
+        (video_id, expert_id)
+        )
 
-def get_video_assignment(video_id: str) -> Optional[Dict[str, Any]]:
+        conn.commit()
+
+def list_experts_for_video(video_id:str):
+
     video_id = (video_id or "").strip()
     if not video_id:
-        return None
+        raise ValueError("video_id is required")
 
     with get_conn() as conn:
-        row = conn.execute(
-            """
-            SELECT va.video_id, va.expert_id, va.assignment_source, va.assigned_at, va.updated_at,
-                   e.display_name AS expert_name
-            FROM video_assignments va
-            LEFT JOIN experts e ON e.expert_id = va.expert_id
-            WHERE va.video_id = ?
-            """,
-            (video_id,),
-        ).fetchone()
-
-    if not row:
-        return None
-
-    return {
-        "video_id": row["video_id"],
-        "expert_id": row["expert_id"],
-        "expert_name": row["expert_name"],
-        "assignment_source": row["assignment_source"],
-        "assigned_at": row["assigned_at"],
-        "updated_at": row["updated_at"],
-    }
-
+        rows = conn.execute("""
+            SELECT vea.*, e.display_name AS expert_name
+            FROM video_expert_assignments vea
+            JOIN experts e ON e.expert_id = vea.expert_id
+            WHERE vea.video_id = ?
+        """, (video_id,)).fetchall()   
+    return [dict(row) for row in rows]
 
 def list_video_assignments() -> List[Dict[str, Any]]:
+    # Returns all video-expert pairs — one row per pair, not one row per video.
     with get_conn() as conn:
         rows = conn.execute(
             """
-            SELECT va.video_id, va.expert_id, va.assignment_source, va.assigned_at, va.updated_at,
+            SELECT vea.video_id, vea.expert_id, vea.assignment_source, vea.assigned_at, vea.updated_at,
                    e.display_name AS expert_name
-            FROM video_assignments va
-            LEFT JOIN experts e ON e.expert_id = va.expert_id
-            ORDER BY va.video_id ASC
+            FROM video_expert_assignments vea
+            JOIN experts e ON e.expert_id = vea.expert_id
+            ORDER BY vea.video_id ASC
             """
         ).fetchall()
 
-    return [
-        {
-            "video_id": row["video_id"],
-            "expert_id": row["expert_id"],
-            "expert_name": row["expert_name"],
-            "assignment_source": row["assignment_source"],
-            "assigned_at": row["assigned_at"],
-            "updated_at": row["updated_at"],
-        }
-        for row in rows
-    ]
-
+    return [dict(row) for row in rows]
 
 def can_expert_access_video(expert_id: str, video_id: str) -> bool:
+    # Pair-based check — True if this expert has any assignment row for this video.
     expert_id = normalize_expert_id(expert_id)
     video_id = (video_id or "").strip()
     if not expert_id or not video_id:
         return False
 
-    assignment = get_video_assignment(video_id)
-    if not assignment:
-        return False
-
-    assigned_expert_id = assignment.get("expert_id")
-    return bool(assigned_expert_id and normalize_expert_id(assigned_expert_id) == expert_id)
-
-
-def claim_video_for_expert(expert_id: str, video_id: str) -> Dict[str, Any]:
-    expert_id = normalize_expert_id(expert_id)
-    video_id = (video_id or "").strip()
-    if not expert_id:
-        raise ValueError("expert_id is required")
-    if not video_id:
-        raise ValueError("video_id is required")
-
     with get_conn() as conn:
-        expert_row = conn.execute(
-            "SELECT 1 FROM experts WHERE expert_id = ? AND is_active = 1",
-            (expert_id,),
-        ).fetchone()
-        if not expert_row:
-            raise ValueError("expert account not found or inactive")
-
-        current = conn.execute(
-            "SELECT expert_id FROM video_assignments WHERE video_id = ?",
-            (video_id,),
+        row = conn.execute(
+            "SELECT 1 FROM video_expert_assignments WHERE video_id = ? AND expert_id = ?",
+            (video_id, expert_id),
         ).fetchone()
 
-        now = utc_now_iso()
-        if not current:
-            conn.execute(
-                """
-                INSERT INTO video_assignments (video_id, expert_id, assignment_source, assigned_at, updated_at)
-                VALUES (?, ?, 'expert_claim', ?, ?)
-                """,
-                (video_id, expert_id, now, now),
-            )
-        else:
-            current_expert = current["expert_id"]
-            if current_expert and normalize_expert_id(current_expert) != expert_id:
-                raise RuntimeError("assigned_to_other_expert")
-            conn.execute(
-                """
-                UPDATE video_assignments
-                SET expert_id = ?, assignment_source = 'expert_claim', assigned_at = ?, updated_at = ?
-                WHERE video_id = ?
-                """,
-                (expert_id, now, now, video_id),
-            )
-        conn.commit()
-
-    assignment = get_video_assignment(video_id)
-    if not assignment:
-        raise RuntimeError("claim_failed")
-    return assignment
+    return row is not None
+    
+def claim_video_for_expert(expert_id: str, video_id: str) -> None:
+    # Idempotent — just adds the pair. Never blocks other experts on same video.
+    expert_id = normalize_expert_id(expert_id)
+    add_video_assignment(video_id, expert_id, source="expert_claim")

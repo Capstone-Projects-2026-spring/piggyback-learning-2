@@ -803,6 +803,14 @@
             if (!video) {
                 return;
             }
+            // If not already assigned to me, claim it first
+            if (!video.assigned_to_me) {
+                const res = await fetch(`/api/expert/videos/${videoId}/claim`, { method: 'POST' });
+                if (!res.ok) {
+                    alert('Could not access this video.');
+                    return;
+                }
+            }
 
             await loadVideo(video.id, video.title);
         }

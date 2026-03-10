@@ -21,14 +21,13 @@ from fastapi.templating import Jinja2Templates
 from app.settings import DOWNLOADS_DIR, TEMPLATES_DIR
 
 from app.services.expert_auth_service import (
-    assign_video,
+    add_video_assignment,
     create_expert,
     deactivate_expert,
     list_experts,
     update_expert,
-    ensure_video_assignment_rows,
-    get_video_assignment,
-    list_video_assignments,
+    remove_video_assignment,
+    list_experts_for_video,
 )
 # ----- Local paths (keep consistent with main.py) -----
 #maybe needed if not delete later, should be duplicates with shared setting imports.
@@ -318,21 +317,14 @@ async def api_admin_deactivate_expert(expert_id: str):
         raise HTTPException(status_code=404, detail="expert not found")
     return {"success": True, "expert": expert}
 
-#Admin loads video + current experrt assignment state for assignment UI bootstrap 
+#Admin loads video + current expert assignment state for assignment UI bootstrap
 @router_admin_api.get("/admin/videos/assignments")
 def api_admin_list_video_assignments():
     videos = _collect_downloaded_videos(include_without_frames=True)
-    video_ids = [video["video_id"] for video in videos]
-    ensure_video_assignment_rows(video_ids)
-
-    assignment_lookup = {
-        row["video_id"]: row for row in list_video_assignments()
-    }
 
     rows: List[Dict[str, Any]] = []
     for video in videos:
-        assignment = assignment_lookup.get(video["video_id"], {})
-        expert_id = assignment.get("expert_id")
+        assigned_experts = list_experts_for_video(video["video_id"])
         rows.append(
             {
                 "video_id": video["video_id"],
@@ -340,10 +332,7 @@ def api_admin_list_video_assignments():
                 "duration_formatted": video.get("duration_formatted"),
                 "has_frames": bool(video.get("has_frames")),
                 "has_questions": bool(video.get("has_questions")),
-                "expert_id": expert_id,
-                "expert_name": assignment.get("expert_name"),
-                "assignment_source": assignment.get("assignment_source") or "unassigned",
-                "claimable": not bool(expert_id),
+                "assigned_experts": assigned_experts,
             }
         )
 
@@ -354,40 +343,36 @@ def api_admin_list_video_assignments():
     }
 
 
-# Admin assigns/reassigns/clears video ownership.
+# Admin adds or removes a single expert-video pair.
 @router_admin_api.post("/admin/videos/assignments")
 async def api_admin_set_video_assignment(payload: Dict[str, Any] = Body(...)):
     video_id = str(payload.get("video_id") or "").strip()
-    raw_expert_id = payload.get("expert_id")
-    expert_id = str(raw_expert_id).strip() if raw_expert_id is not None else ""
+    expert_id = str(payload.get("expert_id") or "").strip()
+    op = str(payload.get("op") or "").strip()
 
     if not video_id:
         raise HTTPException(status_code=400, detail="video_id is required")
+    if not expert_id:
+        raise HTTPException(status_code=400, detail="expert_id is required")
+    if op not in {"add", "remove"}:
+        raise HTTPException(status_code=400, detail="op must be 'add' or 'remove'")
 
     video_dir = DOWNLOADS_DIR / video_id
     if not video_dir.exists() or not video_dir.is_dir():
         raise HTTPException(status_code=404, detail="video not found in downloads")
 
     try:
-        if expert_id:
-            assign_video(video_id, expert_id, source="admin")
+        if op == "add":
+            add_video_assignment(video_id, expert_id, source="admin")
         else:
-            assign_video(video_id, None, source="unassigned")
+            remove_video_assignment(video_id, expert_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    assignment = get_video_assignment(video_id)
     return {
         "success": True,
-        "assignment": {
-            "video_id": video_id,
-            "expert_id": assignment.get("expert_id") if assignment else None,
-            "expert_name": assignment.get("expert_name") if assignment else None,
-            "assignment_source": assignment.get("assignment_source") if assignment else "unassigned",
-            "assigned_at": assignment.get("assigned_at") if assignment else None,
-            "updated_at": assignment.get("updated_at") if assignment else None,
-            "claimable": not bool(assignment and assignment.get("expert_id")),
-        },
+        "video_id": video_id,
+        "assigned_experts": list_experts_for_video(video_id),
     }
 
 @router_admin_api.post("/download")
