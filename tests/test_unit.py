@@ -5,6 +5,17 @@ from app.services.question_generation_service import build_segments_from_duratio
 #pytest runs any function starting with test_ 
 # Testing assignment service functions
 from app.services.sqlite_store import init_db
+#Testing for children services
+from uuid import uuid4
+from app.services.children_service import (
+    create_child,
+    deactivate_child,
+    generate_child_id,
+    list_children,
+    update_child,
+)
+
+
 from app.services.expert_auth_service import (
     add_video_assignment,
     remove_video_assignment,
@@ -81,3 +92,54 @@ def test_claim_is_idempotent():
     claim_video_for_expert("testexpert2", "vid_test")
     claim_video_for_expert("testexpert2", "vid_test")  # twice, no error
     assert can_expert_access_video("testexpert2", "vid_test") == True
+    
+    
+#Testing for childrens service
+
+def _new_expert():
+    expert_id = f"exp_{uuid4().hex[:10]}"
+    return create_expert(expert_id, f"Expert {expert_id[-4:]}", "password123")
+
+def test_generate_child_id_is_6_digit():
+    child_id = generate_child_id()
+    assert len(child_id) ==6
+    assert child_id.isdigit()
+    
+def test_create_and_list_child():
+    expert = _new_expert()
+    child = create_child(expert["expert_id"], "Mia", "Lin", "fox")
+    children = list_children(expert_id=expert["expert_id"])
+    assert any(c["child_id"] == child["child_id"] for c in children)
+
+def test_duplicate_child_same_expert_blocked():
+    expert = _new_expert()
+    create_child(expert["expert_id"], "Ava", "Stone", "cat")
+    with pytest.raises(RuntimeError, match="duplicate_child_profile"):
+        create_child(expert["expert_id"], " ava ", " stone ", "cat")
+
+def test_same_name_different_experts_allowed():
+    expert_a = _new_expert()
+    expert_b = _new_expert()
+    child_a = create_child(expert_a["expert_id"], "Noah", "Kim", "bear")
+    child_b = create_child(expert_b["expert_id"], "Noah", "Kim", "bear")
+    assert child_a["child_id"] != child_b["child_id"]
+
+def test_invalid_icon_rejected():
+    expert = _new_expert()
+    with pytest.raises(ValueError, match="icon_key is invalid"):
+        create_child(expert["expert_id"], "Leo", "Park", "dragon")
+        
+def test_update_and_deactivate_child():
+    expert = _new_expert()
+    child = create_child(expert["expert_id"], "Ivy", "Cho", "owl")
+
+    updated = update_child(child["child_id"], first_name="Zoey", icon_key="penguin")
+    assert updated["first_name"] == "Zoey"
+    assert updated["icon_key"] == "penguin"
+
+    deactivate_child(child["child_id"])
+    active_children = list_children(expert_id=expert["expert_id"])
+    all_children = list_children(expert_id=expert["expert_id"], include_inactive=True)
+
+    assert not any(c["child_id"] == child["child_id"] for c in active_children)
+    assert any(c["child_id"] == child["child_id"] and c["is_active"] is False for c in all_children)
