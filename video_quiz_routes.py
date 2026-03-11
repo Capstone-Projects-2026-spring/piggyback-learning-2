@@ -10,6 +10,7 @@ from typing import cast, Any, Dict
 from functools import lru_cache
 from app.settings import BASE_DIR, DOWNLOADS_DIR
 from app.services.clients import OPENAI_CLIENT, get_openai_client
+from app.services.quiz_scoring_service import save_quiz_result, get_child_scores
 
 
 router_video_quiz = APIRouter()
@@ -724,3 +725,31 @@ async def transcribe_audio(file: UploadFile = File(...)):
 async def get_config():
     # Single source of truth for frontend
     return {"skip_prevention": False, "thresholds": GRADING_CONFIG}
+
+# Save quiz score and store results in downloads/quiz_results/
+
+@router_api.post("/save-quiz-score")
+async def api_save_quiz_score(payload: dict = Body(...)):
+    """
+    Save quiz score when child finishes video
+    Implements PIGGY1-26: Scoring and tracking
+    """
+    child_id = payload.get("child_id")
+    video_id = payload.get("video_id")
+    score_data = payload.get("score_data", {})
+    
+    if not child_id or not video_id:
+        return {"success": False, "message": "Missing child_id or video_id"}
+    
+    result = save_quiz_result(child_id, video_id, score_data)
+    return result
+
+
+@router_api.get("/get-quiz-scores/{child_id}")
+def api_get_quiz_scores(child_id: str):
+    """
+    Get all quiz scores for a child
+    Used for viewing score history
+    """
+    result = get_child_scores(child_id)
+    return result

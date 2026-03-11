@@ -1,7 +1,11 @@
 
 
 
-
+        let expertDashboardLoaded = false;
+        let childrenDashboardLoaded = false;
+        let adminExperts = [];
+        let adminAssignments = [];
+        let adminChildren = [];
         let currentStep = 1;
         let currentVideoId = null;
         let generatedQuestions = [];
@@ -9,6 +13,17 @@
         let existingDownloads = [];
         let currentVideoMeta = null;
         let currentVideoHasFrames = false;
+        const CHILD_ICON_EMOJI = {
+            pig: '🐷',
+            fox: '🦊',
+            owl: '🦉',
+            cat: '🐱',
+            bear: '🐻',
+            alligator: '🐊',
+            rabbit: '🐰',
+            lion: '🦁',
+            penguin: '🐧',
+        };
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -45,6 +60,38 @@
             if (refreshExistingBtn) {
                 refreshExistingBtn.addEventListener('click', () => loadExistingDownloads(true));
             }
+
+            //wire form submit + refresh button
+            const createExpertForm = document.getElementById('create-expert-form');
+            if (createExpertForm) {
+                createExpertForm.addEventListener('submit', handleCreateExpert);
+            }
+
+            const refreshAssignmentsBtn = document.getElementById('refresh-assignments-btn');
+            if (refreshAssignmentsBtn) {
+                refreshAssignmentsBtn.addEventListener('click', () => loadExpertDashboard(true));
+            }
+
+            const createChildForm = document.getElementById('create-child-form');
+            if (createChildForm) {
+                createChildForm.addEventListener('submit', handleCreateChild);
+            }
+
+            const refreshChildrenBtn = document.getElementById('refresh-children-btn');
+            if (refreshChildrenBtn) {
+                refreshChildrenBtn.addEventListener('click', () => loadChildrenDashboard(true));
+            }
+
+            const childrenFilterExpert = document.getElementById('children-filter-expert');
+            if (childrenFilterExpert) {
+                childrenFilterExpert.addEventListener('change', () => loadChildrenDashboard(false));
+            }
+
+            const includeInactive = document.getElementById('children-include-inactive');
+            if (includeInactive) {
+                includeInactive.addEventListener('change', () => loadChildrenDashboard(false));
+            }
+
         }
         
         function updateStepDisplay() {
@@ -264,7 +311,7 @@
             const sections = document.querySelectorAll('.admin-section');
 
                 tabButtons.forEach((btn) => {
-                    btn.addEventListener('click', () => {
+                    btn.addEventListener('click', async() => {
                         const targetId = btn.getAttribute('data-target');
 
                         tabButtons.forEach((b) => b.classList.remove('active'));
@@ -273,6 +320,13 @@
                         sections.forEach((section) => {
                             section.classList.toggle('active', section.id === targetId);
                         });
+                        // lazy-load experrt data only when that tab opens
+                        if (targetId === 'assign-experts' && !expertDashboardLoaded){
+                            await loadExpertDashboard(false);
+                        }
+                        if (targetId === 'assign-children' && !childrenDashboardLoaded) {
+                            await loadChildrenDashboard(false);
+                        }
                     });
                 });
             }
@@ -392,7 +446,612 @@
             const url = document.getElementById('youtube_url').value;
             await downloadVideo(url);
         }
-        
+        function setAdminPanelStatus(elementId, message, type = 'info') {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.className = `status-message status-${type}`;
+    el.textContent = message;
+    el.style.display = 'block';
+}
+
+async function loadExpertDashboard(showRefreshMessage = false) {
+    const res = await fetch('/api/admin/videos/assignments');
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+        throw new Error(data.detail || data.message || 'Failed to load expert dashboard');
+    }
+
+    adminExperts = Array.isArray(data.experts) ? data.experts : [];
+    adminAssignments = Array.isArray(data.assignments) ? data.assignments : [];
+    expertDashboardLoaded = true;
+
+    renderExpertTable();
+    renderAssignmentTable();
+    renderChildrenExpertOptions();
+
+    if (showRefreshMessage) {
+        setAdminPanelStatus('assignment-admin-status', 'Assignments refreshed.', 'success');
+    }
+}
+
+function renderExpertTable() {
+    const tbody = document.getElementById('expert-list-tbody');
+    if (!tbody) return;
+
+    if (!adminExperts.length) {
+        tbody.innerHTML = '<tr><td colspan="4">No experts yet.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = adminExperts.map((expert) => `
+        <tr data-expert-id="${expert.expert_id}" data-active="${expert.is_active ? '1' : '0'}">
+            <td>${expert.expert_id}</td>
+            <td><input type="text" data-role="name" value="${expert.display_name || ''}" /></td>
+            <td>${expert.is_active ? 'Active' : 'Inactive'}</td>
+            <td>
+                <input type="password" data-role="password" placeholder="New password (optional)" />
+                <button type="button" class="btn btn-outline" data-action="save-expert">Save</button>
+                <button type="button" class="btn" data-action="toggle-expert">${expert.is_active ? 'Deactivate' : 'Activate'}</button>
+                <button type="button" class="btn btn-danger" data-action="remove-expert">Remove</button>
+            </td>
+        </tr>
+    `).join('');
+
+    tbody.querySelectorAll('[data-action="save-expert"]').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            const row = e.currentTarget.closest('tr');
+            await handleSaveExpert(row);
+        });
+    });
+
+    tbody.querySelectorAll('[data-action="toggle-expert"]').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            const row = e.currentTarget.closest('tr');
+            await handleToggleExpert(row);
+        });
+    });
+    tbody.querySelectorAll('[data-action="remove-expert"]').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+        const row = e.currentTarget.closest('tr');
+        await handleRemoveExpert(row);
+    });
+});
+}
+
+function renderAssignmentTable() {
+    const tbody = document.getElementById('assignment-list-tbody');
+    if (!tbody) return;
+
+    if (!adminAssignments.length) {
+        tbody.innerHTML = '<tr><td colspan="4">No downloaded videos found.</td></tr>';
+        return;
+    }
+
+    const expertOptions = adminExperts
+        .map((expert) => `<option value="${expert.expert_id}">${expert.display_name} (${expert.expert_id})${expert.is_active ? '' : ' [inactive]'}</option>`)
+        .join('');
+
+    tbody.innerHTML = adminAssignments.map((row) => {
+    // build chips for each already-assigned expert
+    const chips = (row.assigned_experts || []).map((e) => `
+        <span class="badge bg-secondary me-1">
+            ${e.expert_name || e.expert_id}
+            <button type="button" class="btn-close btn-close-white btn-sm ms-1"
+                data-action="remove-assignment"
+                data-video-id="${row.video_id}"
+                data-expert-id="${e.expert_id}"
+                aria-label="Remove">
+            </button>
+        </span>
+    `).join('');
+
+    return `
+        <tr data-video-id="${row.video_id}">
+            <td>${row.title || row.video_id}<br><small>${row.video_id}</small></td>
+            <td>${
+    chips
+        ? `<details><summary>${(row.assigned_experts || []).length} expert(s)</summary>${chips}</details>`
+        : '<span class="text-muted">Unassigned</span>'
+    }</td>
+                <td>
+                    <select data-role="assignment-expert">
+                        <option value="">-- select expert --</option>
+                        ${expertOptions}
+                    </select>
+                    <button type="button" class="btn btn-success btn-sm ms-1" data-action="add-assignment">Add</button>
+                </td>
+            </tr>
+        `;
+}).join('');
+
+// Add assignment
+    tbody.querySelectorAll('[data-action="add-assignment"]').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            const row = e.currentTarget.closest('tr');
+            await handleAddAssignment(row);
+        });
+    });
+
+    // Remove assignment
+    tbody.querySelectorAll('[data-action="remove-assignment"]').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            const videoId = e.currentTarget.dataset.videoId;
+            const expertId = e.currentTarget.dataset.expertId;
+            await handleRemoveAssignment(videoId, expertId);
+        });
+    });
+
+}
+
+async function handleCreateExpert(event) {
+    event.preventDefault();
+
+    const expert_id = document.getElementById('new-expert-id').value.trim();
+    const display_name = document.getElementById('new-expert-name').value.trim();
+    const password = document.getElementById('new-expert-password').value;
+
+    const res = await fetch('/api/admin/experts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expert_id, display_name, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+        throw new Error(data.detail || data.message || 'Failed to create expert');
+    }
+
+    event.target.reset();
+    setAdminPanelStatus('expert-admin-status', 'Expert created.', 'success');
+    await loadExpertDashboard(false);
+}
+
+    async function handleSaveExpert(row) {
+        const expertId = row.dataset.expertId;
+        const displayName = row.querySelector('[data-role="name"]').value.trim();
+        const password = row.querySelector('[data-role="password"]').value;
+
+        const payload = { display_name: displayName, is_active: row.dataset.active === '1' };
+        if (password) payload.password = password;
+
+        const res = await fetch(`/api/admin/experts/${encodeURIComponent(expertId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to update expert');
+        }
+
+        setAdminPanelStatus('expert-admin-status', 'Expert updated.', 'success');
+        await loadExpertDashboard(false);
+    }
+
+    async function handleToggleExpert(row) {
+        const expertId = row.dataset.expertId;
+        const isActive = row.dataset.active === '1';
+
+        let res;
+        if (isActive) {
+            res = await fetch(`/api/admin/experts/${encodeURIComponent(expertId)}/deactivate`, { method: 'POST' });
+        } else {
+            res = await fetch(`/api/admin/experts/${encodeURIComponent(expertId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_active: true })
+            });
+        }
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to toggle expert');
+        }
+
+        setAdminPanelStatus('expert-admin-status', isActive ? 'Expert deactivated.' : 'Expert activated.', 'success');
+        await loadExpertDashboard(false);
+    }
+    async function handleRemoveExpert(row) {
+        const expertId = row.dataset.expertId;
+        if (!confirm(`Permanently remove expert "${expertId}"? This cannot be undone.`)) return;
+        try {
+            const resp = await fetch(`/api/admin/experts/${encodeURIComponent(expertId)}`, { method: 'DELETE' });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || !data.success) {
+                throw new Error(data.detail || data.message || 'Failed to remove expert.');
+            }
+
+            // Reload from backend so experts table, assignment table, and child expert dropdowns stay in sync.
+            await loadExpertDashboard(false);
+            if (childrenDashboardLoaded) {
+                await loadChildrenDashboard(false);
+            }
+            setAdminPanelStatus('expert-admin-status', `Expert "${expertId}" deleted.`, 'success');
+        } catch (error) {
+            setAdminPanelStatus('expert-admin-status', error.message || 'Failed to remove expert.', 'error');
+        }
+    }
+    async function handleAddAssignment(row) {
+    const videoId = row.dataset.videoId;
+    const select = row.querySelector('select[data-role="assignment-expert"]');
+    const expertId = select ? select.value : '';
+    if (!expertId) { alert('Select an expert first.'); return; }
+
+    const res = await fetch('/api/admin/videos/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_id: videoId, expert_id: expertId, op: 'add' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || 'Failed to add assignment');
+    await loadExpertDashboard(false);
+}
+
+async function handleRemoveAssignment(videoId, expertId) {
+    const res = await fetch('/api/admin/videos/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video_id: videoId, expert_id: expertId, op: 'remove' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.detail || 'Failed to remove assignment');
+    await loadExpertDashboard(false);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function iconLabel(iconKey) {
+    const key = String(iconKey || '').trim().toLowerCase();
+    const emoji = CHILD_ICON_EMOJI[key] || '👤';
+    const title = key ? `${key.charAt(0).toUpperCase()}${key.slice(1)}` : 'Unknown';
+    return `${emoji} ${title}`;
+}
+
+function renderChildrenExpertOptions() {
+    const createSelect = document.getElementById('child-expert-select');
+    const filterSelect = document.getElementById('children-filter-expert');
+    const experts = Array.isArray(adminExperts) ? adminExperts : [];
+
+    if (createSelect) {
+        const current = createSelect.value || '';
+        createSelect.innerHTML = `
+            <option value="">Select expert...</option>
+            ${experts.map((expert) => `
+                <option value="${expert.expert_id}">
+                    ${escapeHtml(expert.display_name || expert.expert_id)} (${expert.expert_id})${expert.is_active ? '' : ' [inactive]'}
+                </option>
+            `).join('')}
+        `;
+        if (current && experts.some((expert) => expert.expert_id === current)) {
+            createSelect.value = current;
+        }
+    }
+
+    if (filterSelect) {
+        const current = filterSelect.value || '';
+        filterSelect.innerHTML = `
+            <option value="">All experts</option>
+            ${experts.map((expert) => `
+                <option value="${expert.expert_id}">
+                    ${escapeHtml(expert.display_name || expert.expert_id)} (${expert.expert_id})
+                </option>
+            `).join('')}
+        `;
+        if (current && experts.some((expert) => expert.expert_id === current)) {
+            filterSelect.value = current;
+        }
+    }
+}
+
+async function loadChildrenDashboard(showRefreshMessage = false) {
+    try {
+        const filterSelect = document.getElementById('children-filter-expert');
+        const includeInactive = document.getElementById('children-include-inactive');
+        const params = new URLSearchParams();
+
+        if (filterSelect && filterSelect.value) {
+            params.set('expert_id', filterSelect.value);
+        }
+        if (includeInactive && includeInactive.checked) {
+            params.set('include_inactive', 'true');
+        }
+
+        const query = params.toString();
+        const res = await fetch(`/api/admin/children${query ? `?${query}` : ''}`);
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to load children dashboard');
+        }
+
+        adminChildren = Array.isArray(data.children) ? data.children : [];
+        if (Array.isArray(data.experts) && data.experts.length) {
+            adminExperts = data.experts;
+        }
+        childrenDashboardLoaded = true;
+        renderChildrenExpertOptions();
+        renderChildrenTable();
+
+        if (showRefreshMessage) {
+            setAdminPanelStatus('child-admin-status', 'Children list refreshed.', 'success');
+        }
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to load children dashboard', 'error');
+        const tbody = document.getElementById('child-list-tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="7">Unable to load children right now.</td></tr>';
+        }
+    }
+}
+
+function renderChildrenTable() {
+    const tbody = document.getElementById('child-list-tbody');
+    if (!tbody) return;
+
+    if (!adminChildren.length) {
+        tbody.innerHTML = '<tr><td colspan="7">No children found for this filter.</td></tr>';
+        return;
+    }
+
+    const expertLinkOptions = (adminExperts || []).map((expert) => `
+        <option value="${expert.expert_id}">
+            ${escapeHtml(expert.display_name || expert.expert_id)} (${expert.expert_id})${expert.is_active ? '' : ' [inactive]'}
+        </option>
+    `).join('');
+
+    tbody.innerHTML = adminChildren.map((child) => `
+        <tr data-child-id="${child.child_id}" data-active="${child.is_active ? '1' : '0'}">
+            <td><span class="child-id-badge">${child.child_id}</span></td>
+            <td>
+                ${child.expert_id
+                    ? escapeHtml(child.expert_name || child.expert_id)
+                    : `<select data-role="child-link-expert">
+                        <option value="">Select expert...</option>
+                        ${expertLinkOptions}
+                    </select>`
+                }
+            </td>
+            <td><input type="text" data-role="child-first-name" value="${escapeHtml(child.first_name || '')}" /></td>
+            <td><input type="text" data-role="child-last-name" value="${escapeHtml(child.last_name || '')}" /></td>
+            <td>
+                <select data-role="child-icon-key">
+                    ${Object.keys(CHILD_ICON_EMOJI).map((icon) => `
+                        <option value="${icon}" ${icon === child.icon_key ? 'selected' : ''}>
+                            ${iconLabel(icon)}
+                        </option>
+                    `).join('')}
+                </select>
+            </td>
+            <td>${child.is_active ? 'Active' : 'Inactive'}</td>
+            <td>
+                <button type="button" class="btn btn-outline" data-action="save-child">Save</button>
+                ${child.expert_id
+                    ? '<button type="button" class="btn btn-outline" data-action="unlink-child">Unlink</button>'
+                    : '<button type="button" class="btn btn-outline" data-action="link-child">Link</button>'
+                }
+                <button type="button" class="btn ${child.is_active ? '' : 'btn-success'}" data-action="toggle-child">
+                    ${child.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    tbody.querySelectorAll('[data-action="save-child"]').forEach((btn) => {
+        btn.addEventListener('click', async (event) => {
+            const row = event.currentTarget.closest('tr');
+            await handleSaveChild(row);
+        });
+    });
+
+    tbody.querySelectorAll('[data-action="toggle-child"]').forEach((btn) => {
+        btn.addEventListener('click', async (event) => {
+            const row = event.currentTarget.closest('tr');
+            await handleToggleChild(row);
+        });
+    });
+
+    tbody.querySelectorAll('[data-action="unlink-child"]').forEach((btn) => {
+        btn.addEventListener('click', async (event) => {
+            const row = event.currentTarget.closest('tr');
+            await handleUnlinkChild(row);
+        });
+    });
+
+    tbody.querySelectorAll('[data-action="link-child"]').forEach((btn) => {
+        btn.addEventListener('click', async (event) => {
+            const row = event.currentTarget.closest('tr');
+            await handleLinkChild(row);
+        });
+    });
+}
+
+function childMatchesCurrentFilters(child) {
+    const filterExpert = (document.getElementById('children-filter-expert')?.value || '').trim().toLowerCase();
+    const includeInactive = Boolean(document.getElementById('children-include-inactive')?.checked);
+    const childExpert = String(child?.expert_id || '').trim().toLowerCase();
+
+    if (filterExpert && childExpert !== filterExpert) {
+        return false;
+    }
+    if (!includeInactive && !child?.is_active) {
+        return false;
+    }
+    return true;
+}
+
+function applyUpdatedChildToUi(updatedChild) {
+    if (!updatedChild || !updatedChild.child_id) return;
+    const index = adminChildren.findIndex((item) => item.child_id === updatedChild.child_id);
+    if (index === -1) return;
+
+    if (childMatchesCurrentFilters(updatedChild)) {
+        adminChildren[index] = updatedChild;
+    } else {
+        adminChildren.splice(index, 1);
+    }
+    renderChildrenTable();
+}
+
+async function handleCreateChild(event) {
+    event.preventDefault();
+    try {
+        const expert_id = (document.getElementById('child-expert-select')?.value || '').trim();
+        const first_name = (document.getElementById('child-first-name')?.value || '').trim();
+        const last_name = (document.getElementById('child-last-name')?.value || '').trim();
+        const icon_key = (document.getElementById('child-icon-key')?.value || '').trim().toLowerCase();
+
+        const res = await fetch('/api/admin/children', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ expert_id, first_name, last_name, icon_key }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to create child');
+        }
+
+        event.target.reset();
+        setAdminPanelStatus('child-admin-status', `Created child ${data.child.child_id}.`, 'success');
+        await loadChildrenDashboard(false);
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to create child', 'error');
+    }
+}
+
+async function handleSaveChild(row) {
+    const childId = row?.dataset?.childId;
+    if (!childId) return;
+    try {
+        const payload = {
+            first_name: (row.querySelector('[data-role="child-first-name"]')?.value || '').trim(),
+            last_name: (row.querySelector('[data-role="child-last-name"]')?.value || '').trim(),
+            icon_key: (row.querySelector('[data-role="child-icon-key"]')?.value || '').trim().toLowerCase(),
+            is_active: row.dataset.active === '1',
+        };
+        const linkSelect = row.querySelector('[data-role="child-link-expert"]');
+        if (linkSelect) {
+            const selectedExpert = (linkSelect.value || '').trim();
+            if (selectedExpert) {
+                payload.expert_id = selectedExpert;
+            }
+        }
+
+        const res = await fetch(`/api/admin/children/${encodeURIComponent(childId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to update child');
+        }
+
+        setAdminPanelStatus('child-admin-status', `Updated child ${childId}.`, 'success');
+        if (data.child) {
+            applyUpdatedChildToUi(data.child);
+        } else {
+            await loadChildrenDashboard(false);
+        }
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to update child', 'error');
+    }
+}
+
+async function handleToggleChild(row) {
+    const childId = row?.dataset?.childId;
+    if (!childId) return;
+    const isActive = row.dataset.active === '1';
+    try {
+        let res;
+        if (isActive) {
+            res = await fetch(`/api/admin/children/${encodeURIComponent(childId)}/deactivate`, { method: 'POST' });
+        } else {
+            res = await fetch(`/api/admin/children/${encodeURIComponent(childId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_active: true }),
+            });
+        }
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to toggle child');
+        }
+
+        setAdminPanelStatus(
+            'child-admin-status',
+            isActive ? `Deactivated child ${childId}.` : `Activated child ${childId}.`,
+            'success'
+        );
+        if (data.child) {
+            applyUpdatedChildToUi(data.child);
+        } else {
+            await loadChildrenDashboard(false);
+        }
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to toggle child', 'error');
+    }
+}
+
+async function handleUnlinkChild(row) {
+    const childId = row?.dataset?.childId;
+    if (!childId) return;
+    if (!confirm(`Unlink child ${childId} from expert?`)) return;
+    try {
+        const res = await fetch(`/api/admin/children/${encodeURIComponent(childId)}/unlink`, {
+            method: 'POST',
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to unlink child');
+        }
+        setAdminPanelStatus('child-admin-status', `Child ${childId} unlinked.`, 'success');
+        if (data.child) {
+            applyUpdatedChildToUi(data.child);
+        } else {
+            await loadChildrenDashboard(false);
+        }
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to unlink child', 'error');
+    }
+}
+
+async function handleLinkChild(row) {
+    const childId = row?.dataset?.childId;
+    if (!childId) return;
+    const expertId = (row.querySelector('[data-role="child-link-expert"]')?.value || '').trim();
+    if (!expertId) {
+        setAdminPanelStatus('child-admin-status', 'Pick an expert first.', 'error');
+        return;
+    }
+    try {
+        const res = await fetch(`/api/admin/children/${encodeURIComponent(childId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ expert_id: expertId }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to link child');
+        }
+        setAdminPanelStatus('child-admin-status', `Child ${childId} linked to ${expertId}.`, 'success');
+        if (data.child) {
+            applyUpdatedChildToUi(data.child);
+        } else {
+            await loadChildrenDashboard(false);
+        }
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to link child', 'error');
+    }
+}
         async function downloadVideo(url) {
             showLoading('download-loading', true);
             document.getElementById('download-result').style.display = 'block';
@@ -676,16 +1335,7 @@
         }
 
             
-            const newWindow = window.open('', '_blank');
-            newWindow.document.write(`
-                <html>
-                    <head><title>Questions Preview - ${currentVideoId}</title></head>
-                    <body style="font-family: Arial, sans-serif; padding: 20px;">
-                        <h2>Questions Preview</h2>
-                        <pre style="background: #f5f5f5; padding: 20px; border-radius: 8px; overflow: auto;">${JSON.stringify(preview, null, 2)}</pre>
-                    </body>
-                </html>
-            `);
+            
         
         
         

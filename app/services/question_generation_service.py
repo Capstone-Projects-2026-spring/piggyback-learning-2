@@ -308,7 +308,7 @@ Return JSON only (no extra text) in this structure:
                                 "retryable": False,
                             }
                             return None
-                        gemini_model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+                        gemini_model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
                         gemini_model = genai.GenerativeModel(gemini_model_name)
                     
                     #Keep provider output contrtact idential(JSON) , so downstream flow is
@@ -334,28 +334,19 @@ Return JSON only (no extra text) in this structure:
                                 },
                             )
                         result_content = getattr(gemini_resp, "text", None)
-
-                        if not result_content:
-                            try:
-                                parts = gemini_resp.candidates[0].content.parts
-                                result_content = "".join(
-                                getattr(p, "text", "") for p in parts if getattr(p, "text", None)
-                                )
-                            except Exception:
-                                result_content = None
                         finish_reason = None
                 else: # Claude
                     
                     # Check for Claude API key
                     if not ANTHROPIC_API_KEY:
                         last_error_payload = {
-                            "reason": "anthropic_key_missing",
+                            "reason": "anthropic key missing",
                             "retryable": False
                         }
                         return None
                     
                     claude_client = anthropic.Anthropic()
-                    model_name = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-6")
+                    model_name = os.getenv("ANTHROPIC_API_KEY", "claude-opus-4-6")
 
                     # Load Claude prompt
                     prompt_text = ""
@@ -381,7 +372,7 @@ Return JSON only (no extra text) in this structure:
                     
                     # Get Claude response
                     resp = claude_client.messages.create(
-                        model=model_name,
+                        model="claude-opus-4-6",
                         max_tokens=1024,
                         messages=[{"role": "user", "content": parts}]
                     )
@@ -428,7 +419,7 @@ Return JSON only (no extra text) in this structure:
 
                 print(f"[QGEN ERROR] video={video_id} segment={start_time}-{end_time} err={e}")
                 last_error_payload = {
-                    "reason": f"{provider_name}_error",
+                    "reason": "openai_error",
                     "retryable": True,
                     "message": str(e),
                 }

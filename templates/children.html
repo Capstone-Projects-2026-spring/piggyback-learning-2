@@ -4,11 +4,51 @@
 <head>
   <meta charset="utf-8">
   <title>Kids Videos | Piggyback</title>
- <link rel="stylesheet" href="/assets/css/children.css">
+  <link rel="stylesheet" href="/assets/css/children.css">
+  
+  <!-- Quiz scoring CSS -->
+  <style>
+  @keyframes fadeInOut {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  }
+  </style>
 </head>
 
 <body>
   <main class="kids-page">
+  
+    <!-- Score Tracker -->
+    <div id="scoreTracker" style="
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 1000;
+        min-width: 180px;
+        display: none;
+    ">
+        <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 18px;">📊 Your Score</h3>
+        <div style="margin-bottom: 8px;">
+            ✅ <strong>Correct:</strong> 
+            <span id="correctCount" style="color: #28a745; font-weight: bold; font-size: 20px;">0</span>
+        </div>
+        <div style="margin-bottom: 8px;">
+            ❌ <strong>Wrong:</strong> 
+            <span id="wrongCount" style="color: #dc3545; font-weight: bold; font-size: 20px;">0</span>
+        </div>
+        <hr style="margin: 12px 0; border: none; border-top: 2px solid #e9ecef;">
+        <div style="font-size: 16px;">
+            <strong>Total:</strong> 
+            <span id="totalScore" style="font-weight: bold; color: #007bff; font-size: 22px;">0/0</span>
+        </div>
+    </div>
+    
     <header class="kids-top-bar">
       <div class="kids-top-left">
         <button id="back-button" type="button">
@@ -78,13 +118,138 @@
       </div>
     </div>
   </main>
+
 <script src="/assets/js/children.js" defer></script>
+
+<!-- Quiz Scoring System -->
+<script>
+let quizScore = {
+    videoId: null,
+    correct: 0,
+    wrong: 0,
+    total: 0,
+    expectedQuestions: 2,
+    details: []
+};
+
+function startQuizTracking(videoId, expectedQuestions = 2) {
+    quizScore.videoId = videoId;
+    quizScore.correct = 0;
+    quizScore.wrong = 0;
+    quizScore.total = 0;
+    quizScore.expectedQuestions = expectedQuestions;
+    quizScore.details = [];
+    document.getElementById('scoreTracker').style.display = 'block';
+    updateScoreDisplay();
+    console.log('Quiz started:', videoId);
+}
+
+function updateScoreDisplay() {
+    document.getElementById('correctCount').textContent = quizScore.correct;
+    document.getElementById('wrongCount').textContent = quizScore.wrong;
+    document.getElementById('totalScore').textContent = `${quizScore.correct}/${quizScore.total}`;
+}
+
+function recordAnswer(question, expectedAnswer, userAnswer, status, similarity) {
+    if (status === 'correct') {
+        quizScore.correct++;
+    } else {
+        quizScore.wrong++;
+    }
+    quizScore.total++;
+    quizScore.details.push({
+        question: question,
+        expectedAnswer: expectedAnswer,
+        userAnswer: userAnswer,
+        status: status,
+        similarity: similarity,
+        timestamp: new Date().toISOString()
+    });
+    updateScoreDisplay();
+    showQuickFeedback(status);
+    if (quizScore.total >= quizScore.expectedQuestions) {
+        setTimeout(() => showFinalScore(), 1500);
+    }
+}
+
+function showQuickFeedback(status) {
+    const messages = {
+        'correct': { emoji: '🐷', text: 'Correct!', color: '#28a745' },
+        'almost': { emoji: '🐷', text: 'Close!', color: '#ffc107' },
+        'wrong': { emoji: '🐷', text: 'Keep trying!', color: '#dc3545' }
+    };
+    const feedback = messages[status] || messages['wrong'];
+    const el = document.createElement('div');
+    el.style.cssText = `position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: ${feedback.color}; color: white; padding: 25px 40px; border-radius: 12px; font-size: 24px; font-weight: bold; box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 10000; animation: fadeInOut 1.5s ease;`;
+    el.innerHTML = `<span style="font-size: 40px;">${feedback.emoji}</span> ${feedback.text}`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+}
+
+function showFinalScore() {
+    const percentage = Math.round((quizScore.correct / quizScore.total) * 100);
+    let emoji, message;
+    if (percentage >= 80) {
+        emoji = '🎉';
+        message = 'Excellent work!';
+    } else if (percentage >= 60) {
+        emoji = '⭐';
+        message = 'Keep it up!';
+    } else {
+        emoji = '🐷';
+        message = 'Keep practicing!';
+    }
+    const modal = document.createElement('div');
+    modal.id = 'finalScoreModal';
+    modal.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 10001;`;
+    modal.innerHTML = `<div style="background: white; padding: 40px; border-radius: 20px; text-align: center; max-width: 450px;"><div style="font-size: 80px; margin-bottom: 20px;">${emoji}</div><h2 style="color: #2c3e50; margin-bottom: 15px; font-size: 28px;">Quiz Complete!</h2><div style="font-size: 60px; font-weight: bold; color: #007bff; margin: 20px 0;">${percentage}%</div><p style="font-size: 18px; margin-bottom: 15px;"><strong>You got ${quizScore.correct} out of ${quizScore.total} correct!</strong></p><p style="color: #6c757d; margin-bottom: 30px;">${message}</p><button onclick="saveScoreAndClose()" style="background: #28a745; color: white; border: none; padding: 15px 40px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;">Done ✓</button></div>`;
+    document.body.appendChild(modal);
+}
+
+async function saveScoreAndClose() {
+    const childId = getChildId();
+    const percentage = Math.round((quizScore.correct / quizScore.total) * 100);
+    try {
+        const response = await fetch('/api/save-quiz-score', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                child_id: childId,
+                video_id: quizScore.videoId,
+                score_data: {
+                    total: quizScore.total,
+                    correct: quizScore.correct,
+                    wrong: quizScore.wrong,
+                    percentage: percentage,
+                    details: quizScore.details
+                }
+            })
+        });
+        const result = await response.json();
+        if (result.success) {
+            console.log('✅ Saved to:', result.file);
+            alert('Your score has been saved! 🎉');
+          } else {
+            alert('Score could not be saved.');
+        }
+    } catch (error) {
+        console.error('❌ Error:', error);
+    }
+    document.getElementById('finalScoreModal').remove();
+    document.getElementById('scoreTracker').style.display = 'none';
+}
+
+function getChildId() {
+    let id = sessionStorage.getItem('childId');
+    if (!id) {
+        id = 'child_' + Date.now();
+        sessionStorage.setItem('childId', id);
+    }
+    return id;
+}
+
+console.log('✅ Quiz scoring ready!');
+</script>
+
 </body>
-
 </html>
-
-
-
-
-
-

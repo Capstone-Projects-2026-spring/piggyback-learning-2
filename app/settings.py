@@ -13,6 +13,15 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 PUBLIC_ASSETS_DIR = BASE_DIR / "public" / "assets"
 DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
+#Where SQLite file goes
+DATA_DIR = BASE_DIR / "data"
+DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+SESSION_SECRET = os.getenv("SESSION_SECRET", "change-this-session-secret")
+#For expert logins
+SQLITE_PATH = Path(os.getenv("SQLITE_PATH", str(DATA_DIR / "piggyback.db")))
+
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 EXPERT_PASSWORD = os.getenv("EXPERT_PASSWORD", "expert123")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()

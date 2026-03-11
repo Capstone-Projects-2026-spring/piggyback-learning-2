@@ -2,6 +2,7 @@
 import json
 import csv
 import asyncio
+import sqlite3
 from typing import Any, Dict, List, Optional
 from app.services.frame_service import (
     extract_frames_per_second_for_video as extract_frames_per_second_for_video_service,
@@ -15,10 +16,29 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
+
+from app.services.children_service import(
+    ALLOWED_CHILD_ICON_KEYS,
+    create_child,
+    list_children,
+    update_child,
+    deactivate_child,
+)
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 #Pulls shared path from settings.py so all module uses the same directory
 from app.settings import DOWNLOADS_DIR, TEMPLATES_DIR
+
+from app.services.expert_auth_service import (
+    add_video_assignment,
+    create_expert,
+    deactivate_expert,
+    list_experts,
+    delete_expert,
+    update_expert,
+    remove_video_assignment,
+    list_experts_for_video,
+)
 # ----- Local paths (keep consistent with main.py) -----
 #maybe needed if not delete later, should be duplicates with shared setting imports.
 #TODO- might delete this 
@@ -247,6 +267,138 @@ def admin_page(request: Request):
 # =========================================================
 # Admin API
 # =========================================================
+# Admin loads all expert accounts for management UI.
+@router_admin_api.get("/admin/experts")
+def api_admin_list_experts():
+    return {"success": True, "experts": list_experts()}
+
+
+# Admin creates a new expert with ID + display name + password.
+@router_admin_api.post("/admin/experts")
+async def api_admin_create_expert(payload: Dict[str, Any] = Body(...)):
+    expert_id = str(payload.get("expert_id") or "").strip()
+    display_name = str(payload.get("display_name") or "").strip()
+    password = str(payload.get("password") or "")
+
+    try:
+        expert = create_expert(expert_id, display_name, password)
+        return {"success": True, "expert": expert}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        if str(exc) == "duplicate_expert_id":
+            raise HTTPException(status_code=409, detail="expert_id already exists")
+        raise
+
+
+# Admin updates fields selectively (rename, reset password, activate/deactivate).
+@router_admin_api.put("/admin/experts/{expert_id}")
+async def api_admin_update_expert(expert_id: str, payload: Dict[str, Any] = Body(...)):
+    display_name = payload.get("display_name")
+    password = payload.get("password")
+    is_active = payload.get("is_active")
+
+    if display_name is not None:
+        display_name = str(display_name)
+    if password is not None:
+        password = str(password)
+    if is_active is not None and not isinstance(is_active, bool):
+        raise HTTPException(status_code=400, detail="is_active must be true or false")
+
+    try:
+        expert = update_expert(
+            expert_id,
+            display_name=display_name,
+            password=password,
+            is_active=is_active,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    if not expert:
+        raise HTTPException(status_code=404, detail="expert not found")
+    return {"success": True, "expert": expert}
+
+# Explicit deactivate action for a simple one-click admin control.
+@router_admin_api.post("/admin/experts/{expert_id}/deactivate")
+async def api_admin_deactivate_expert(expert_id: str):
+    expert = deactivate_expert(expert_id)
+    if not expert:
+        raise HTTPException(status_code=404, detail="expert not found")
+    return {"success": True, "expert": expert}
+
+#delete
+@router_admin_api.delete("/admin/experts/{expert_id}")
+async def api_admin_delete_expert(expert_id: str):
+    try:
+        deleted = delete_expert(expert_id)
+    except sqlite3.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="cannot delete expert while children are linked; reassign or deactivate children first",
+        )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="expert not found")
+    return {"success": True}
+
+#Admin loads video + current expert assignment state for assignment UI bootstrap
+@router_admin_api.get("/admin/videos/assignments")
+def api_admin_list_video_assignments():
+    videos = _collect_downloaded_videos(include_without_frames=True)
+
+    rows: List[Dict[str, Any]] = []
+    for video in videos:
+        assigned_experts = list_experts_for_video(video["video_id"])
+        rows.append(
+            {
+                "video_id": video["video_id"],
+                "title": video.get("title") or video["video_id"],
+                "duration_formatted": video.get("duration_formatted"),
+                "has_frames": bool(video.get("has_frames")),
+                "has_questions": bool(video.get("has_questions")),
+                "assigned_experts": assigned_experts,
+            }
+        )
+
+    return {
+        "success": True,
+        "experts": list_experts(),
+        "assignments": rows,
+    }
+
+
+# Admin adds or removes a single expert-video pair.
+@router_admin_api.post("/admin/videos/assignments")
+async def api_admin_set_video_assignment(payload: Dict[str, Any] = Body(...)):
+    video_id = str(payload.get("video_id") or "").strip()
+    expert_id = str(payload.get("expert_id") or "").strip()
+    op = str(payload.get("op") or "").strip()
+
+    if not video_id:
+        raise HTTPException(status_code=400, detail="video_id is required")
+    if not expert_id:
+        raise HTTPException(status_code=400, detail="expert_id is required")
+    if op not in {"add", "remove"}:
+        raise HTTPException(status_code=400, detail="op must be 'add' or 'remove'")
+
+    video_dir = DOWNLOADS_DIR / video_id
+    if not video_dir.exists() or not video_dir.is_dir():
+        raise HTTPException(status_code=404, detail="video not found in downloads")
+
+    try:
+        if op == "add":
+            add_video_assignment(video_id, expert_id, source="admin")
+        else:
+            remove_video_assignment(video_id, expert_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    return {
+        "success": True,
+        "video_id": video_id,
+        "assigned_experts": list_experts_for_video(video_id),
+    }
+
 @router_admin_api.post("/download")
 async def api_download(url: str = Form(...)):
     # Lazy import to avoid circular dependency
@@ -259,7 +411,6 @@ async def api_download(url: str = Form(...)):
 @router_admin_api.post("/frames/{video_id}")
 async def api_extract_frames(video_id: str):
     from app.services.frame_service import extract_frames_per_second_for_video
-
     return extract_frames_per_second_for_video(video_id)
 
 
@@ -318,6 +469,105 @@ async def submit_questions(payload: Dict[str, Any] = Body(...)):
         "file_url": f"/downloads/{video_id}/questions/{out_path.name}",
         "file_path": str(out_path),
     }
+
+#learner should only see video inherited from selected child's expert
+
+@router_admin_api.get("/admin/children")
+def api_admin_list_children(
+    expert_id: Optional[str] = None,
+    include_inactive: bool = False,
+):
+    try:
+        children = list_children(expert_id=expert_id, include_inactive=include_inactive)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    return {
+        "success": True,
+        "children": children,
+        "experts": list_experts(),  # for dropdown in admin UI
+        "icon_keys": list(ALLOWED_CHILD_ICON_KEYS),
+        "count": len(children),
+    }
+
+
+@router_admin_api.post("/admin/children")
+async def api_admin_create_child(payload: Dict[str, Any] = Body(...)):
+    expert_id = str(payload.get("expert_id") or "").strip()
+    first_name = str(payload.get("first_name") or "").strip()
+    last_name = str(payload.get("last_name") or "").strip()
+    icon_key = str(payload.get("icon_key") or "").strip().lower()
+
+    try:
+        child = create_child(
+            expert_id=expert_id,
+            first_name=first_name,
+            last_name=last_name,
+            icon_key=icon_key,
+        )
+        return {"success": True, "child": child}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        if str(exc) == "duplicate_child_profile":
+            raise HTTPException(status_code=409, detail="duplicate child profile for this expert")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router_admin_api.put("/admin/children/{child_id}")
+async def api_admin_update_child(child_id: str, payload: Dict[str, Any] = Body(...)):
+    expert_id = payload.get("expert_id")
+    first_name = payload.get("first_name")
+    last_name = payload.get("last_name")
+    icon_key = payload.get("icon_key")
+    is_active = payload.get("is_active")
+
+    if expert_id is not None:
+        expert_id = str(expert_id)
+    if first_name is not None:
+        first_name = str(first_name)
+    if last_name is not None:
+        last_name = str(last_name)
+    if icon_key is not None:
+        icon_key = str(icon_key)
+    if is_active is not None and not isinstance(is_active, bool):
+        raise HTTPException(status_code=400, detail="is_active must be true or false")
+
+    try:
+        child = update_child(
+            child_id=child_id,
+            expert_id=expert_id,
+            first_name=first_name,
+            last_name=last_name,
+            icon_key=icon_key,
+            is_active=is_active,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        if str(exc) == "duplicate_child_profile":
+            raise HTTPException(status_code=409, detail="duplicate child profile for this expert")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    if not child:
+        raise HTTPException(status_code=404, detail="child not found")
+    return {"success": True, "child": child}
+
+
+@router_admin_api.post("/admin/children/{child_id}/unlink")
+async def api_admin_unlink_child(child_id: str):
+    child = update_child(child_id=child_id, expert_id="")
+    if not child:
+        raise HTTPException(status_code=404, detail="child not found")
+    return {"success": True, "child": child}
+
+
+@router_admin_api.post("/admin/children/{child_id}/deactivate")
+async def api_admin_deactivate_child(child_id: str):
+    child = deactivate_child(child_id)
+    if not child:
+        raise HTTPException(status_code=404, detail="child not found")
+    return {"success": True, "child": child}
 
 
 # =========================================================

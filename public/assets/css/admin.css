@@ -352,18 +352,47 @@
             color: #495057;
         }
         
-        input[type="text"], input[type="url"], input[type="number"] {
+        input[type="text"], input[type="url"], input[type="number"], input[type="password"], select {
             padding: 12px;
             border: 2px solid #dee2e6;
             border-radius: 8px;
             font-size: 14px;
             transition: border-color 0.2s;
+            background: #fff;
         }
         
-        input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus {
+        input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, input[type="password"]:focus, select:focus {
             outline: none;
             border-color: #007bff;
             box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+
+        .children-toolbar {
+            display: flex;
+            gap: 16px;
+            align-items: end;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .children-inline-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .child-id-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #eef3ff;
+            color: #2b4d9a;
+            font-weight: 700;
+            margin-right: 6px;
+            font-size: 0.8rem;
         }
         
         .btn {
