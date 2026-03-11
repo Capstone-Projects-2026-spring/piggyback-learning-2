@@ -11,6 +11,7 @@ ALLOWED_CHILD_ICON_KEYS = (
     "owl",
     "cat",
     "bear",
+    "alligator",
     "rabbit",
     "lion",
     "penguin",

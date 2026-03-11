@@ -2,8 +2,10 @@
 
 
         let expertDashboardLoaded = false;
+        let childrenDashboardLoaded = false;
         let adminExperts = [];
-        let adminAssignments = []; 
+        let adminAssignments = [];
+        let adminChildren = [];
         let currentStep = 1;
         let currentVideoId = null;
         let generatedQuestions = [];
@@ -11,6 +13,17 @@
         let existingDownloads = [];
         let currentVideoMeta = null;
         let currentVideoHasFrames = false;
+        const CHILD_ICON_EMOJI = {
+            pig: '🐷',
+            fox: '🦊',
+            owl: '🦉',
+            cat: '🐱',
+            bear: '🐻',
+            alligator: '🐊',
+            rabbit: '🐰',
+            lion: '🦁',
+            penguin: '🐧',
+        };
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -57,6 +70,26 @@
             const refreshAssignmentsBtn = document.getElementById('refresh-assignments-btn');
             if (refreshAssignmentsBtn) {
                 refreshAssignmentsBtn.addEventListener('click', () => loadExpertDashboard(true));
+            }
+
+            const createChildForm = document.getElementById('create-child-form');
+            if (createChildForm) {
+                createChildForm.addEventListener('submit', handleCreateChild);
+            }
+
+            const refreshChildrenBtn = document.getElementById('refresh-children-btn');
+            if (refreshChildrenBtn) {
+                refreshChildrenBtn.addEventListener('click', () => loadChildrenDashboard(true));
+            }
+
+            const childrenFilterExpert = document.getElementById('children-filter-expert');
+            if (childrenFilterExpert) {
+                childrenFilterExpert.addEventListener('change', () => loadChildrenDashboard(false));
+            }
+
+            const includeInactive = document.getElementById('children-include-inactive');
+            if (includeInactive) {
+                includeInactive.addEventListener('change', () => loadChildrenDashboard(false));
             }
 
         }
@@ -291,6 +324,9 @@
                         if (targetId === 'assign-experts' && !expertDashboardLoaded){
                             await loadExpertDashboard(false);
                         }
+                        if (targetId === 'assign-children' && !childrenDashboardLoaded) {
+                            await loadChildrenDashboard(false);
+                        }
                     });
                 });
             }
@@ -432,6 +468,7 @@ async function loadExpertDashboard(showRefreshMessage = false) {
 
     renderExpertTable();
     renderAssignmentTable();
+    renderChildrenExpertOptions();
 
     if (showRefreshMessage) {
         setAdminPanelStatus('assignment-admin-status', 'Assignments refreshed.', 'success');
@@ -653,6 +690,233 @@ async function handleRemoveAssignment(videoId, expertId) {
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.detail || 'Failed to remove assignment');
     await loadExpertDashboard(false);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function iconLabel(iconKey) {
+    const key = String(iconKey || '').trim().toLowerCase();
+    const emoji = CHILD_ICON_EMOJI[key] || '👤';
+    const title = key ? `${key.charAt(0).toUpperCase()}${key.slice(1)}` : 'Unknown';
+    return `${emoji} ${title}`;
+}
+
+function renderChildrenExpertOptions() {
+    const createSelect = document.getElementById('child-expert-select');
+    const filterSelect = document.getElementById('children-filter-expert');
+    const experts = Array.isArray(adminExperts) ? adminExperts : [];
+
+    if (createSelect) {
+        const current = createSelect.value || '';
+        createSelect.innerHTML = `
+            <option value="">Select expert...</option>
+            ${experts.map((expert) => `
+                <option value="${expert.expert_id}">
+                    ${escapeHtml(expert.display_name || expert.expert_id)} (${expert.expert_id})${expert.is_active ? '' : ' [inactive]'}
+                </option>
+            `).join('')}
+        `;
+        if (current && experts.some((expert) => expert.expert_id === current)) {
+            createSelect.value = current;
+        }
+    }
+
+    if (filterSelect) {
+        const current = filterSelect.value || '';
+        filterSelect.innerHTML = `
+            <option value="">All experts</option>
+            ${experts.map((expert) => `
+                <option value="${expert.expert_id}">
+                    ${escapeHtml(expert.display_name || expert.expert_id)} (${expert.expert_id})
+                </option>
+            `).join('')}
+        `;
+        if (current && experts.some((expert) => expert.expert_id === current)) {
+            filterSelect.value = current;
+        }
+    }
+}
+
+async function loadChildrenDashboard(showRefreshMessage = false) {
+    try {
+        const filterSelect = document.getElementById('children-filter-expert');
+        const includeInactive = document.getElementById('children-include-inactive');
+        const params = new URLSearchParams();
+
+        if (filterSelect && filterSelect.value) {
+            params.set('expert_id', filterSelect.value);
+        }
+        if (includeInactive && includeInactive.checked) {
+            params.set('include_inactive', 'true');
+        }
+
+        const query = params.toString();
+        const res = await fetch(`/api/admin/children${query ? `?${query}` : ''}`);
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to load children dashboard');
+        }
+
+        adminChildren = Array.isArray(data.children) ? data.children : [];
+        if (Array.isArray(data.experts) && data.experts.length) {
+            adminExperts = data.experts;
+        }
+        childrenDashboardLoaded = true;
+        renderChildrenExpertOptions();
+        renderChildrenTable();
+
+        if (showRefreshMessage) {
+            setAdminPanelStatus('child-admin-status', 'Children list refreshed.', 'success');
+        }
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to load children dashboard', 'error');
+        const tbody = document.getElementById('child-list-tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="7">Unable to load children right now.</td></tr>';
+        }
+    }
+}
+
+function renderChildrenTable() {
+    const tbody = document.getElementById('child-list-tbody');
+    if (!tbody) return;
+
+    if (!adminChildren.length) {
+        tbody.innerHTML = '<tr><td colspan="7">No children found for this filter.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = adminChildren.map((child) => `
+        <tr data-child-id="${child.child_id}" data-active="${child.is_active ? '1' : '0'}">
+            <td><span class="child-id-badge">${child.child_id}</span></td>
+            <td>${escapeHtml(child.expert_name || child.expert_id)}</td>
+            <td><input type="text" data-role="child-first-name" value="${escapeHtml(child.first_name || '')}" /></td>
+            <td><input type="text" data-role="child-last-name" value="${escapeHtml(child.last_name || '')}" /></td>
+            <td>
+                <select data-role="child-icon-key">
+                    ${Object.keys(CHILD_ICON_EMOJI).map((icon) => `
+                        <option value="${icon}" ${icon === child.icon_key ? 'selected' : ''}>
+                            ${iconLabel(icon)}
+                        </option>
+                    `).join('')}
+                </select>
+            </td>
+            <td>${child.is_active ? 'Active' : 'Inactive'}</td>
+            <td>
+                <button type="button" class="btn btn-outline" data-action="save-child">Save</button>
+                <button type="button" class="btn ${child.is_active ? '' : 'btn-success'}" data-action="toggle-child">
+                    ${child.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    tbody.querySelectorAll('[data-action="save-child"]').forEach((btn) => {
+        btn.addEventListener('click', async (event) => {
+            const row = event.currentTarget.closest('tr');
+            await handleSaveChild(row);
+        });
+    });
+
+    tbody.querySelectorAll('[data-action="toggle-child"]').forEach((btn) => {
+        btn.addEventListener('click', async (event) => {
+            const row = event.currentTarget.closest('tr');
+            await handleToggleChild(row);
+        });
+    });
+}
+
+async function handleCreateChild(event) {
+    event.preventDefault();
+    try {
+        const expert_id = (document.getElementById('child-expert-select')?.value || '').trim();
+        const first_name = (document.getElementById('child-first-name')?.value || '').trim();
+        const last_name = (document.getElementById('child-last-name')?.value || '').trim();
+        const icon_key = (document.getElementById('child-icon-key')?.value || '').trim().toLowerCase();
+
+        const res = await fetch('/api/admin/children', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ expert_id, first_name, last_name, icon_key }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to create child');
+        }
+
+        event.target.reset();
+        setAdminPanelStatus('child-admin-status', `Created child ${data.child.child_id}.`, 'success');
+        await loadChildrenDashboard(false);
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to create child', 'error');
+    }
+}
+
+async function handleSaveChild(row) {
+    const childId = row?.dataset?.childId;
+    if (!childId) return;
+    try {
+        const payload = {
+            first_name: (row.querySelector('[data-role="child-first-name"]')?.value || '').trim(),
+            last_name: (row.querySelector('[data-role="child-last-name"]')?.value || '').trim(),
+            icon_key: (row.querySelector('[data-role="child-icon-key"]')?.value || '').trim().toLowerCase(),
+            is_active: row.dataset.active === '1',
+        };
+
+        const res = await fetch(`/api/admin/children/${encodeURIComponent(childId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to update child');
+        }
+
+        setAdminPanelStatus('child-admin-status', `Updated child ${childId}.`, 'success');
+        await loadChildrenDashboard(false);
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to update child', 'error');
+    }
+}
+
+async function handleToggleChild(row) {
+    const childId = row?.dataset?.childId;
+    if (!childId) return;
+    const isActive = row.dataset.active === '1';
+    try {
+        let res;
+        if (isActive) {
+            res = await fetch(`/api/admin/children/${encodeURIComponent(childId)}/deactivate`, { method: 'POST' });
+        } else {
+            res = await fetch(`/api/admin/children/${encodeURIComponent(childId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_active: true }),
+            });
+        }
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.detail || data.message || 'Failed to toggle child');
+        }
+
+        setAdminPanelStatus(
+            'child-admin-status',
+            isActive ? `Deactivated child ${childId}.` : `Activated child ${childId}.`,
+            'success'
+        );
+        await loadChildrenDashboard(false);
+    } catch (error) {
+        setAdminPanelStatus('child-admin-status', error.message || 'Failed to toggle child', 'error');
+    }
 }
         async function downloadVideo(url) {
             showLoading('download-loading', true);
