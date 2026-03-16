@@ -21,6 +21,13 @@ GRADING_CONFIG = {
     'ai_timeout': 10,
 }
 
+DISTRACTION_CONFIG = {
+    'pause_threshold_seconds': 0.5,      # gaps longer than 0.5 secs = pause
+    'filler_ratio_threshold': 0.2,        # greater than 20% filler words = distracted
+    'max_pause_count': 3,                  # more than 3 pauses = distracted
+    'min_words_for_analysis': 5,           # short responses = ignored (short responses don't count)
+}
+
 NUM_WORDS = {
     'zero': 0,
     'one': 1,
@@ -48,56 +55,16 @@ NUM_WORDS = {
 SCALE_WORDS = {'hundred': 100, 'thousand': 1000, 'million': 1_000_000}
 
 STOPWORDS = {
-    'the',
-    'a',
-    'an',
-    'is',
-    'are',
-    'and',
-    'of',
-    'to',
-    'it',
-    'in',
-    'on',
-    'at',
-    'for',
-    'was',
-    'were',
-    'be',
-    'being',
-    'been',
-    'am',
-    'do',
-    'did',
-    'does',
-    'done',
-    'they',
-    'them',
-    'their',
-    'there',
-    'here',
-    'that',
-    'this',
-    'these',
-    'those',
-    'i',
-    'you',
-    'he',
-    'she',
-    'we',
-    'me',
-    'my',
-    'your',
-    'his',
-    'her',
-    'our',
-    'ours',
-    'with',
-    'by',
-    'from',
+    'the', 'a', 'an', 'is', 'are', 'and', 'of', 'to', 'it', 'in', 'on', 'at',
+    'for', 'was', 'were', 'be', 'being', 'been', 'am', 'do', 'did', 'does',
+    'done', 'they', 'them', 'their', 'there', 'here', 'that', 'this', 'these',
+    'those', 'i', 'you', 'he', 'she', 'we', 'me', 'my', 'your', 'his', 'her',
+    'our', 'ours', 'with', 'by', 'from',
 }
 
 FILLER_WORDS = {'um', 'uh', 'like', 'you know', 'hmm', 'well', 'okay', 'so'}
+
+SINGLE_FILLERS = {w for w in FILLER_WORDS if ' ' not in w}
 
 SYNONYMS = {
     'scared': 'afraid',
@@ -401,6 +368,7 @@ class TranscribeAPIView(APIView):
         """
         POST /api/transcribe
         multipart/form-data: file=<audio>
+        Optionally: analyze_distraction=true (form field)
         """
         f = request.FILES.get('file')
         if not f:
@@ -408,14 +376,62 @@ class TranscribeAPIView(APIView):
                 {'success': False, 'error': 'Missing file'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        analyze_distraction = request.POST.get('analyze_distraction', '').lower() == 'true'
+
         try:
             client = get_openai_client()
             audio_bytes = io.BytesIO(f.read())
-            transcription = client.audio.transcriptions.create(
-                model='whisper-1',
-                file=(f.name or 'speech.webm', audio_bytes, f.content_type),
-            )
-            return Response({'success': True, 'text': transcription.text})
+
+            transcribe_args = {
+                'model': 'whisper-1',
+                'file': (f.name or 'speech.webm', audio_bytes, f.content_type),
+            }
+
+            if analyze_distraction:
+                transcribe_args['timestamp_granularities'] = ['word']
+
+            transcription = client.audio.transcriptions.create(**transcribe_args)
+
+            response_data = {'success': True, 'text': transcription.text}
+
+            if analyze_distraction and hasattr(transcription, 'words') and transcription.words:
+                words = transcription.words
+                total_words = len(words)
+
+                filler_count = sum(1 for w in words if w.word.lower() in SINGLE_FILLERS)
+
+                pauses = []
+                for i in range(1, len(words)):
+                    gap = words[i].start - words[i-1].end
+                    if gap > DISTRACTION_CONFIG['pause_threshold_seconds']:
+                        pauses.append({
+                            'start': words[i-1].end,
+                            'end': words[i].start,
+                            'duration': gap,
+                        })
+                pause_count = len(pauses)
+
+                if total_words < DISTRACTION_CONFIG['min_words_for_analysis']:
+                    distracted = False
+                else:
+                    filler_ratio = filler_count / total_words
+                    distracted = (
+                        filler_ratio > DISTRACTION_CONFIG['filler_ratio_threshold'] or
+                        pause_count > DISTRACTION_CONFIG['max_pause_count']
+                    )
+
+                response_data['analysis'] = {
+                    'total_words': total_words,
+                    'filler_words': filler_count,
+                    'filler_ratio': round(filler_count / total_words, 3) if total_words else 0,
+                    'pause_count': pause_count,
+                    'pauses': pauses,  
+                    'distracted': distracted,
+                }
+
+            return Response(response_data)
+
         except Exception as e:
             return Response(
                 {'success': False, 'error': str(e)},
