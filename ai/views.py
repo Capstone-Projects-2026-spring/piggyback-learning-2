@@ -55,11 +55,53 @@ NUM_WORDS = {
 SCALE_WORDS = {'hundred': 100, 'thousand': 1000, 'million': 1_000_000}
 
 STOPWORDS = {
-    'the', 'a', 'an', 'is', 'are', 'and', 'of', 'to', 'it', 'in', 'on', 'at',
-    'for', 'was', 'were', 'be', 'being', 'been', 'am', 'do', 'did', 'does',
-    'done', 'they', 'them', 'their', 'there', 'here', 'that', 'this', 'these',
-    'those', 'i', 'you', 'he', 'she', 'we', 'me', 'my', 'your', 'his', 'her',
-    'our', 'ours', 'with', 'by', 'from',
+    'the',
+    'a',
+    'an',
+    'is',
+    'are',
+    'and',
+    'of',
+    'to',
+    'it',
+    'in',
+    'on',
+    'at',
+    'for',
+    'was',
+    'were',
+    'be',
+    'being',
+    'been',
+    'am',
+    'do',
+    'did',
+    'does',
+    'done',
+    'they',
+    'them',
+    'their',
+    'there',
+    'here',
+    'that',
+    'this',
+    'these',
+    'those',
+    'i',
+    'you',
+    'he',
+    'she',
+    'we',
+    'me',
+    'my',
+    'your',
+    'his',
+    'her',
+    'our',
+    'ours',
+    'with',
+    'by',
+    'from',
 }
 
 FILLER_WORDS = {'um', 'uh', 'like', 'you know', 'hmm', 'well', 'okay', 'so'}
@@ -368,7 +410,7 @@ class TranscribeAPIView(APIView):
         """
         POST /api/transcribe
         multipart/form-data: file=<audio>
-        Optionally: analyze_distraction=true (form field)
+        Optional: analyze_distraction=true (form field) #(basically the on/off button for "mood detection")
         """
         f = request.FILES.get('file')
         if not f:
