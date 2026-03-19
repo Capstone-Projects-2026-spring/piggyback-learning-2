@@ -1,8 +1,8 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from quizgen.models import Segment, SubmittedQuestionSet
 
-from quizgen.models import Segment
 from videos.models import Video
 
 from .models import (
@@ -283,13 +283,14 @@ class SaveFinalQuestionsAPIView(APIView):
 
         final_set = FinalQuestionSet.objects.create(video=video, payload=payload)
 
-        # Normalize
         for seg in segments:
             if not isinstance(seg, dict):
                 continue
+
             start = int(seg.get('start') or 0)
             end = int(seg.get('end') or 0)
             seg_index = seg.get('segmentIndex', seg.get('segment_index'))
+
             try:
                 seg_index = int(seg_index) if seg_index is not None else None
             except Exception:
@@ -307,6 +308,7 @@ class SaveFinalQuestionsAPIView(APIView):
                 for q in ai_qs:
                     if not isinstance(q, dict):
                         continue
+
                     FinalAIQuestion.objects.create(
                         final_segment=fs,
                         qtype=(q.get('questionType') or q.get('qtype') or '')
@@ -331,14 +333,6 @@ class SaveFinalQuestionsAPIView(APIView):
 
 
 class FinalQuestionsForKidsAPIView(APIView):
-    """
-    GET /api/final-questions/{video_id}
-    Mirrors FastAPI behavior:
-      - choose best LLM-ranked question per segment (lowest llm_ranking)
-      - skip trashed
-      - exclude the final segment (drops last item)
-    """
-
     authentication_classes = []
     permission_classes = []
 
@@ -348,31 +342,116 @@ class FinalQuestionsForKidsAPIView(APIView):
             .order_by('-saved_at')
             .first()
         )
-        if not final_set:
-            return Response(
-                {'success': False, 'error': 'final_questions not found'}, status=404
+
+        if final_set:
+            selected_segments = []
+            segments = final_set.segments.all().order_by(
+                'start_seconds', 'end_seconds'
             )
 
-        selected_segments = []
-        segments = final_set.segments.all().order_by('start_seconds', 'end_seconds')
+            for seg in segments:
+                qs = seg.ai_questions.filter(trashed=False).order_by(
+                    'llm_ranking', 'id'
+                )
+                best = qs.first()
+                if not best:
+                    continue
 
-        for seg in segments:
-            qs = seg.ai_questions.filter(trashed=False).order_by('llm_ranking', 'id')
-            best = qs.first()
-            if not best:
-                continue
-            selected_segments.append(
-                {
-                    'segment_range_start': seg.start_seconds,
-                    'segment_range_end': seg.end_seconds,
-                    'question': best.question,
-                    'answer': best.answer,
-                    'llm_ranking': best.llm_ranking,
-                    'expert_ranking': best.expert_ranking,
-                }
+                selected_segments.append(
+                    {
+                        'segment_range_start': seg.start_seconds,
+                        'segment_range_end': seg.end_seconds,
+                        'question': best.question,
+                        'answer': best.answer,
+                        'llm_ranking': best.llm_ranking,
+                        'expert_ranking': best.expert_ranking,
+                    }
+                )
+
+            if len(selected_segments) > 1:
+                selected_segments = selected_segments[:-1]
+
+            return Response({'success': True, 'segments': selected_segments})
+
+        submitted_set = (
+            SubmittedQuestionSet.objects.filter(video_id=video_id)
+            .order_by('-id')
+            .first()
+        )
+
+        if submitted_set:
+            payload = (
+                submitted_set.payload
+                if isinstance(submitted_set.payload, dict)
+                else {}
             )
+            segments = payload.get('segments', [])
+            selected_segments = []
 
-        if selected_segments:
-            selected_segments = selected_segments[:-1]
+            for seg in segments:
+                if not isinstance(seg, dict):
+                    continue
 
-        return Response({'success': True, 'segments': selected_segments})
+                start = seg.get('start', 0)
+                end = seg.get('end', 0)
+
+                result = seg.get('result') or {}
+                questions = result.get('questions') or {}
+                best_question_text = (result.get('best_question') or '').strip()
+
+                if not isinstance(questions, dict) or not questions:
+                    continue
+
+                best_q = None
+
+                if best_question_text:
+                    for _, qdata in questions.items():
+                        if not isinstance(qdata, dict):
+                            continue
+                        if (qdata.get('q') or '').strip() == best_question_text:
+                            best_q = qdata
+                            break
+
+                if best_q is None:
+                    ranked = []
+                    for _, qdata in questions.items():
+                        if not isinstance(qdata, dict):
+                            continue
+                        try:
+                            rank = int(qdata.get('rank', 999999))
+                        except Exception:
+                            rank = 999999
+                        ranked.append((rank, qdata))
+
+                    if not ranked:
+                        continue
+
+                    ranked.sort(key=lambda x: x[0])
+                    best_q = ranked[0][1]
+
+                question = (best_q.get('q') or '').strip()
+                answer = (best_q.get('a') or '').strip()
+
+                if not question or not answer:
+                    continue
+
+                selected_segments.append(
+                    {
+                        'segment_range_start': start,
+                        'segment_range_end': end,
+                        'question': question,
+                        'answer': answer,
+                        'llm_ranking': best_q.get('rank'),
+                        'expert_ranking': None,
+                    }
+                )
+
+            if len(selected_segments) > 1:
+                selected_segments = selected_segments[:-1]
+
+            return Response({'success': True, 'segments': selected_segments})
+
+        return Response(
+            {'success': False, 'error': 'final_questions not found'},
+            status=404,
+        )
