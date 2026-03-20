@@ -432,6 +432,7 @@ class TranscribeAPIView(APIView):
 
             if analyze_distraction:
                 transcribe_args['timestamp_granularities'] = ['word']
+                transcribe_args['response_format'] = 'verbose_json'
 
             transcription = client.audio.transcriptions.create(**transcribe_args)
 

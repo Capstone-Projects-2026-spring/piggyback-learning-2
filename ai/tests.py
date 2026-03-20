@@ -1,8 +1,15 @@
+from urllib import response
 from django.test import TestCase, Client
 from django.urls import reverse
 from rest_framework import status
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from rest_framework.test import APITestCase
 
 import json
+import os
+import time
+import unittest
 
 from .views import (
 CheckAnswerAPIView
@@ -178,3 +185,53 @@ class CheckAnswerAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertIn(data['status'], ['almost', 'wrong'])
+    
+#These compare the speed of mood detection vs no mood detection
+#These tests are skipped if API key doesn't exist.
+@unittest.skipIf(not os.getenv('OPENAI_API_KEY'), "OPENAI_API_KEY environment variable not set.")    
+class MoodDetectionTests(APITestCase):
+    def setUp(self):
+        self.url = reverse('transcribe')
+
+    def get_audio_file(self):
+        file_path = os.path.join(os.path.dirname(__file__), 'Test_audio.mp3')
+        with open(file_path, 'rb') as f:
+            return SimpleUploadedFile("Test_audio.mp3", f.read(), content_type="audio/mpeg")
+
+    def test_live_transcribe_without_distraction(self):
+        print("\nRunning without mood detection.")
+        audio_file = self.get_audio_file()
+            
+        start_time = time.time()
+        response = self.client.post(self.url, {
+            'file': audio_file,
+            'analyze_distraction': 'false'
+        }, format='multipart')
+        end_time = time.time()
+
+        runtime = end_time - start_time
+        print(f"No mood detection took: {runtime:.4f} seconds")
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get('success'))
+        self.assertNotIn('analysis', response.data)
+
+    def test_live_transcribe_with_distraction(self):
+        print("\nRunning with mood detection.")
+        audio_file = self.get_audio_file()
+        
+        start_time = time.time()
+        response = self.client.post(self.url, {
+            'file': audio_file,
+            'analyze_distraction': 'true'
+        }, format='multipart')
+        end_time = time.time()
+
+        runtime = end_time - start_time
+        print(f"With mood detection took:  {runtime:.4f} seconds")
+        if response.status_code == 500:
+            print(f"\n--- SERVER ERROR DETAIL ---")
+            print(response.data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get('success'))

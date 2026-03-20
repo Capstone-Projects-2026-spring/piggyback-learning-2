@@ -24,3 +24,4 @@ all_cookies.txt
 node_modules/
 *.sqlite3
 AGENTS.md
+cookies.txt
