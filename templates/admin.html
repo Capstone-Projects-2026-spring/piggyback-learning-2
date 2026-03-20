@@ -722,7 +722,6 @@
         <div class="header">
             <h1>Video Processing Dashboard</h1>
             <p>Download, extract frames, and generate educational questions from YouTube videos</p>
-            <p>Download, extract frames, and generate educational questions from YouTube videos</p>
         </div>
         
         <div class="progress-container">
@@ -733,7 +732,6 @@
             </div>
             <div class="step-labels">
                 <div class="step-label active">Download & Select</div>
-                <div class="step-label active">Download & Select</div>
                 <div class="step-label">Extract Frames</div>
                 <div class="step-label">Generate Questions</div>
             </div>
@@ -741,9 +739,7 @@
         
         <div class="main-content">
             <!-- Step 1: Download & Select -->
-            <!-- Step 1: Download & Select -->
             <div id="step-1" class="step-content active">
-                <h2 class="step-title">Step 1: Download or Select Video</h2>
                 <h2 class="step-title">Step 1: Download or Select Video</h2>
                 
                 <div class="step-tabs">
@@ -755,7 +751,7 @@
                         <div class="tab-panel active" id="tab-download-new">
                             <div class="search-container">
                                 <h3>Option 1: Direct YouTube URL</h3>
-                                <h3>Option 1: Direct YouTube URL</h3>
+                                <!-- <h3>Option 1: Direct YouTube URL</h3> -->
                                 <form id="download-form" class="search-form">
                                     <div class="form-group flex-1">
                                         <label for="youtube_url">YouTube URL</label>
@@ -789,7 +785,6 @@
                         </div>
                         <div class="tab-panel" id="tab-use-existing">
                             <div class="search-container existing-download-panel">
-                                <h3>Option 2: Use Existing Download</h3>
                                 <h3>Option 2: Use Existing Download</h3>
                                 <p style="margin-bottom: 15px; color: #6c757d;">
                                     Reuse a video that already lives in the downloads folder. When you submit fresh questions, the previous JSON (if any) will be overwritten.
@@ -875,6 +870,10 @@
                                 <input type="checkbox" id="full_duration" />
                                 <span>Generate for full duration</span>
                             </label>
+                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; margin-top: 25px;">
+                                <input type="checkbox" id="show_followups" name="show_followups">
+                                <span>Show follow-up questions</span>
+                            </label>
                         </div>
                         <div class="form-group">
                             <button type="button" class="btn btn-success" id="generate-questions-btn" disabled style="margin-top: 20px;">
@@ -937,6 +936,8 @@
         let existingDownloads = [];
         let currentVideoMeta = null;
         let currentVideoHasFrames = false;
+        let showFollowups = false;
+
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -945,6 +946,21 @@
             initStepOneTabs();
             loadExistingDownloads();
         });
+
+        //event listener for the toggle 
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('show_followups').addEventListener('change', (e) => {
+                showFollowups = e.target.checked;
+                toggleFollowupVisibility();
+            });
+        });
+
+        //toggle visibility of follow-up rows
+        function toggleFollowupVisibility() {
+            document.querySelectorAll('.followup-row').forEach(row => {
+                row.style.display = showFollowups ? 'table-row' : 'none';
+            });
+        }
         
         function bindEventListeners() {
             // Download functionality
@@ -1700,6 +1716,27 @@
                         <td><span class="status-completed">✓</span></td>
                     `;
                     resultsTbody.appendChild(row);
+
+                    //add follow-up row if followup exists
+                    if (questionData.followup && questionData.followup.q) {
+                        const followupRow = document.createElement('tr');
+                        followupRow.setAttribute('data-segment', segmentKey);
+                        followupRow.classList.add('followup-row');
+                        followupRow.style.display = showFollowups ? 'table-row' : 'none';  // Initial visibility
+                        
+                        followupRow.innerHTML = `
+                            <td></td>
+                            <td>
+                                <span class="question-category">${category} follow-up</span>
+                                ${isBestQuestion ? '<span class="best-question-marker">BEST</span>' : ''}
+                            </td>
+                            <td class="question-text">${questionData.followup.q}</td>
+                            <td class="answer-text">${questionData.followup.a || 'No answer provided'}</td>
+                            <td><span class="status-completed">✓</span></td>
+                        `;
+                        resultsTbody.appendChild(followupRow);
+                    }
+
                     firstRow = false;
                 }
             });

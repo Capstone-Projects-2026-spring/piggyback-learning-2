@@ -48,6 +48,7 @@ def generate_questions_for_segment(
     start_time: int,
     end_time: int,
     polite_first: bool = False,
+    question_layering: bool = True,
 ) -> str:
     """
     DB-backed generation using ExtractedFrame rows, Gemini-only.
@@ -78,8 +79,13 @@ def generate_questions_for_segment(
     duration = end_time - start_time + 1
 
     system_message = GenerationPrompts.SYSTEM_MESSAGE
-    base_prompt = GenerationPrompts.get_generation_prompt(transcript, duration, start_time, end_time)
-    polite_prompt = GenerationPrompts.get_polite_generation_prompt(transcript, duration, start_time, end_time)
+
+    if question_layering:
+        base_prompt = GenerationPrompts.get_generation_prompt_with_layering(transcript, duration, start_time, end_time)
+        polite_prompt = GenerationPrompts.get_polite_generation_prompt_with_layering(transcript, duration, start_time, end_time)
+    else:
+        base_prompt = GenerationPrompts.get_generation_prompt(transcript, duration, start_time, end_time)
+        polite_prompt = GenerationPrompts.get_polite_generation_prompt(transcript, duration, start_time, end_time)
 
     sampled = _sample_frames(frames, max_frames=5)
 
