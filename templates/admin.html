@@ -741,9 +741,7 @@
         
         <div class="main-content">
             <!-- Step 1: Download & Select -->
-            <!-- Step 1: Download & Select -->
             <div id="step-1" class="step-content active">
-                <h2 class="step-title">Step 1: Download or Select Video</h2>
                 <h2 class="step-title">Step 1: Download or Select Video</h2>
                 
                 <div class="step-tabs">
@@ -754,7 +752,6 @@
                     <div class="tab-panels">
                         <div class="tab-panel active" id="tab-download-new">
                             <div class="search-container">
-                                <h3>Option 1: Direct YouTube URL</h3>
                                 <h3>Option 1: Direct YouTube URL</h3>
                                 <form id="download-form" class="search-form">
                                     <div class="form-group flex-1">
@@ -789,7 +786,6 @@
                         </div>
                         <div class="tab-panel" id="tab-use-existing">
                             <div class="search-container existing-download-panel">
-                                <h3>Option 2: Use Existing Download</h3>
                                 <h3>Option 2: Use Existing Download</h3>
                                 <p style="margin-bottom: 15px; color: #6c757d;">
                                     Reuse a video that already lives in the downloads folder. When you submit fresh questions, the previous JSON (if any) will be overwritten.
@@ -876,9 +872,12 @@
                                 <span>Generate for full duration</span>
                             </label>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="flex-direction: row; gap: 15px;">
                             <button type="button" class="btn btn-success" id="generate-questions-btn" disabled style="margin-top: 20px;">
                                 Start Question Generation
+                            </button>
+                            <button type="button" class="btn btn-outline" id="use-saved-questions-btn" style="margin-top: 20px; display: none; border-color: #17a2b8; color: #17a2b8;">
+                                Use Saved Questions
                             </button>
                         </div>
                     </div>
@@ -960,6 +959,17 @@
             // Question generation
             document.getElementById('generate-questions-btn').addEventListener('click', generateQuestions);
 
+            // NEW: Use Saved Questions skip button
+            const useSavedBtn = document.getElementById('use-saved-questions-btn');
+            if (useSavedBtn) {
+                useSavedBtn.addEventListener('click', () => {
+                    if (currentVideoId) {
+                        // Navigate directly to the expert preview page
+                        window.location.href = `/expert-preview?video=${currentVideoId}`;
+                    }
+                });
+            }
+
             const existingSelect = document.getElementById('existing-download-select');
             if (existingSelect) {
                 existingSelect.addEventListener('change', handleExistingDownloadChange);
@@ -1018,6 +1028,7 @@
         function updateButtonStates() {
             const extractBtn = document.getElementById('extract-frames-btn');
             const generateBtn = document.getElementById('generate-questions-btn');
+            const useSavedBtn = document.getElementById('use-saved-questions-btn');
             
             if (extractBtn) {
                 extractBtn.disabled = !currentVideoId;
@@ -1025,6 +1036,15 @@
             
             if (generateBtn) {
                 generateBtn.disabled = !(currentVideoId && currentVideoHasFrames);
+            }
+
+            // NEW: Show "Use Saved Questions" only if questions exist
+            if (useSavedBtn) {
+                if (currentVideoMeta && currentVideoMeta.has_questions) {
+                    useSavedBtn.style.display = 'inline-block';
+                } else {
+                    useSavedBtn.style.display = 'none';
+                }
             }
 
             updateVideoInfoPanel();
