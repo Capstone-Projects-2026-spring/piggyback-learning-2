@@ -2152,8 +2152,10 @@ select {
         let expertSaveInProgress = false;
         let pendingSegmentIndices = [];
         let llmQuestionEdits = {}; // Store ranking/trash decisions for LLM questions
-                 let manualQuestionTimestamp = null; // Store timestamp for manual questions
+        let manualQuestionTimestamp = null; // Store timestamp for manual questions
         const REVIEW_TOLERANCE_BEFORE = 0.25;
+
+        let openAccordionIndex = 0;
 
         let llmModalState = {
             open: false,
@@ -5029,7 +5031,7 @@ if (expertTypeSelect) {
                 // Create accordion header
                 const header = document.createElement('div');
                 header.className = 'accordion-header';
-                if (index === 0) {
+                if (index === openAccordionIndex) {
                     header.classList.add('active');
                 }
                 
@@ -5051,7 +5053,7 @@ if (expertTypeSelect) {
                 // Create accordion content
                 const content = document.createElement('div');
                 content.className = 'accordion-content';
-                if (index === 0) {
+                if (index === openAccordionIndex) {
                     content.classList.add('active');
                 }
                 
@@ -5230,8 +5232,9 @@ if (expertTypeSelect) {
             
             headers.forEach((header, i) => {
                 if (i === index) {
-                    header.classList.toggle('active');
+                    const isActive = header.classList.toggle('active');
                     contents[i].classList.toggle('active');
+                    openAccordionIndex = isActive ? index : null;
                 } else {
                     header.classList.remove('active');
                     contents[i].classList.remove('active');
