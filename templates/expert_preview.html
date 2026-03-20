@@ -5182,11 +5182,14 @@ if (expertTypeSelect) {
                         
                         editableDiv.innerHTML = `
                             <div class="question-header">
-                                <div class="question-summary">
-                                    <div>
-                                        <span class="question-type-label">${type}</span>
-                                        ${isAIBestQuestion ? '<span class="best-indicator">AI BEST</span>' : ''}
-                                        ${isExpertBestQuestion ? '<span class="best-indicator" style="background: #27ae60;">EXPERT BEST</span>' : ''}
+                                <div class="question-summary" style="width: 100%;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <div>
+                                            <span class="question-type-label">${type}</span>
+                                            ${isAIBestQuestion ? '<span class="best-indicator">AI BEST</span>' : ''}
+                                            ${isExpertBestQuestion ? '<span class="best-indicator" style="background: #27ae60;">EXPERT BEST</span>' : ''}
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="replaceExpertQuestion(${index}, '${type}', event)">Use This</button>
                                     </div>
                                     <div class="question-preview">${currentQuestion}</div>
                                     <div class="answer-preview">${currentAnswer}</div>
@@ -5333,16 +5336,56 @@ if (expertTypeSelect) {
             renderReviewQuestions();
         }
 
+        window.replaceExpertQuestion = async function(segmentIndex, aiType, event) {
+            // Prevent the click from expanding/collapsing the accordion
+            if (event) event.stopPropagation(); 
+
+            const segment = currentSegments[segmentIndex];
+            if (!segment) return;
+
+            // Fetch the AI questions for this segment
+            const aiQuestions = await resolveSegmentQuestions(segment);
+            
+            if (aiQuestions && aiQuestions[aiType]) {
+                const data = aiQuestions[aiType];
+                
+                // 1. ONLY update the local UI state. (Use standard camelCase keys)
+                setExpertQuestionForSegment(segment, {
+                    videoId: currentVideoId,
+                    segmentStart: segment.start,
+                    segmentEnd: segment.end,
+                    timestamp: segment.end,
+                    questionType: aiType,
+                    question: data.q,
+                    answer: data.a,
+                    skipReason: '',
+                    updatedAt: new Date().toISOString(),
+                    isManual: false 
+                });
+
+                // 2. Visually mark this specific AI question as the "Expert Best"
+                const segmentKey = getSegmentKey(segment);
+                setExpertBestQuestion(segmentKey, `${segmentKey}_${aiType}`); 
+                
+                showStatus(`Expert question successfully replaced with AI ${aiType} question.`, 'success');
+            }
+        };
+
         async function saveAllLLMEdits() {
             if (!currentVideoId) {
                 showStatus('No video selected', 'error');
                 return;
             }
 
-            // Ensure all segments are approved            // Build final JSON payload
-            const finalQuestions = {
-                videoId: currentVideoId,
-                timestamp: new Date().toISOString(),
+            const btn = document.querySelector('.btn-save-changes');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Submitting...';
+            }
+
+            // Build final JSON payload matching your Django exactly
+            const payload = {
+                video_id: currentVideoId,
                 segments: []
             };
 
@@ -5354,27 +5397,25 @@ if (expertTypeSelect) {
                     segmentIndex: index,
                     start: segment.start,
                     end: segment.end,
-                    aiQuestions: [],
-                    aiOriginalBest: null,
-                    approved: true
+                    aiQuestions: []
                 };
 
                 const questions = await resolveSegmentQuestions(segment);
                 if (questions) {
-                    if (segment.result && segment.result.best_question) {
-                        segmentData.aiOriginalBest = segment.result.best_question;
-                    }
-
                     // Get ranking info
                     const rankingInfo = llmQuestionEdits[currentVideoId] && 
                                     llmQuestionEdits[currentVideoId][`${segmentKey}_ranking`];
+
+                    // Check which question the expert selected via "Use This"
+                    const expertBestKey = llmQuestionEdits[currentVideoId] && 
+                                         llmQuestionEdits[currentVideoId][`${segmentKey}_expertBest`];
 
                     Object.entries(questions).forEach(([type, data]) => {
                         const questionKey = `${segmentKey}_${type}`;
                         const edits = (llmQuestionEdits[currentVideoId] &&
                                     llmQuestionEdits[currentVideoId][questionKey]) || {};
 
-                        // Determine ranking
+                        // Determine LLM Ranking
                         let ranking = 0;
                         if (rankingInfo && rankingInfo.order) {
                             const rankIndex = rankingInfo.order.indexOf(questionKey);
@@ -5383,68 +5424,45 @@ if (expertTypeSelect) {
                             }
                         }
                         
-                        // If trashed, ranking is 0
                         if (edits.trashed || (rankingInfo && rankingInfo.trashed && 
                             rankingInfo.trashed.includes(questionKey))) {
                             ranking = 0;
                         }
 
-                        const questionData = {
-                            type,
-                            question: data.q || '',
-                            answer: data.a || '',
-                            trashed: edits.trashed || false,
-                            modified: edits.modified || false,
-                            ranking: ranking // Add ranking here
-                        };
+                        // Mark expert ranking (1 if selected, null if not)
+                        const expertRanking = (expertBestKey === questionKey) ? 1 : null;
 
-                        if (edits.timestamp) {
-                            questionData.lastModified = edits.timestamp;
-                        }
+                        const questionData = {
+                            questionType: type,          // Matches Python: q.get('questionType')
+                            question: edits.question || data.q || '', // Uses expert edit if exists, else original
+                            answer: edits.answer || data.a || '',     // Uses expert edit if exists, else original
+                            trashed: edits.trashed || false,
+                            llm_ranking: ranking,        // Matches Python: q.get('llm_ranking')
+                            expert_ranking: expertRanking // Matches Python: q.get('expert_ranking')
+                        };
 
                         segmentData.aiQuestions.push(questionData);
                     });
-
-                    // Add ranking comment if exists
-                    if (rankingInfo) {
-                        if (rankingInfo.triageComment) {
-                            segmentData.triageComment = rankingInfo.triageComment;
-                        }
-                        const resolvedRankingComment = rankingInfo.rankingComment || rankingInfo.comment;
-                        if (resolvedRankingComment) {
-                            segmentData.rankingComment = resolvedRankingComment;
-                        }
-                    }
                 }
 
-                finalQuestions.segments.push(segmentData);
+                payload.segments.push(segmentData);
             }
 
             try {
-                // Use the new dedicated endpoint
+                // Send the exact payload structure your Python code expects
                 const response = await fetch('/api/save-final-questions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        videoId: currentVideoId,
-                        data: finalQuestions
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
 
                 if (response.ok && result.success) {
                     showStatus('Thank you! Final questions saved successfully.', 'success');
-                    console.log('Saved to:', result.filepath);
 
-                    // Save to localStorage as backup
-                    localStorage.setItem(`final_questions_${currentVideoId}`, JSON.stringify(finalQuestions));
-
-                    // Update button to show success
-                    const btn = document.querySelector('.btn-save-changes');
                     if (btn) {
-                        btn.disabled = true;
-                        btn.textContent = 'Saved to final_questions ?';
+                        btn.textContent = 'Saved successfully!';
                         setTimeout(() => {
                             btn.disabled = false;
                             btn.textContent = 'Finalize questions and submit';
@@ -5453,15 +5471,17 @@ if (expertTypeSelect) {
 
                     setTimeout(() => {
                         window.location.href = '/';
-                    }, 400);
+                    }, 800);
                 } else {
                     throw new Error(result.message || 'Server save failed');
                 }
             } catch (error) {
                 console.error('Error saving final questions:', error);
-                // Fallback to localStorage
-                localStorage.setItem(`final_questions_${currentVideoId}`, JSON.stringify(finalQuestions));
-                showStatus('Saved to browser storage. Error: ' + error.message, 'warning');
+                showStatus('Error: ' + error.message, 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Finalize questions and submit';
+                }
             }
         }
 
