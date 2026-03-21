@@ -8,8 +8,9 @@ from typing import Any, Dict, List, Optional
 from django.conf import settings
 from google import genai
 from google.genai import types
-
 from videos.models import ExtractedFrame, Video
+from quizgen.stringResources.generationPrompts import GenerationPrompts
+
 
 
 def get_gemini_client():
@@ -47,6 +48,7 @@ def generate_questions_for_segment(
     start_time: int,
     end_time: int,
     polite_first: bool = False,
+    question_layering: bool = True,
 ) -> str:
     """
     DB-backed generation using ExtractedFrame rows, Gemini-only.
@@ -76,84 +78,14 @@ def generate_questions_for_segment(
     transcript = _build_transcript_from_frames(frames)
     duration = end_time - start_time + 1
 
-    system_message = (
-        'You are a safe, child-focused educational assistant. '
-        "The content is a children's educational video. "
-        'Follow all safety policies and avoid disallowed content. '
-        'Provide age-appropriate, neutral, factual responses only.'
-    )
+    system_message = GenerationPrompts.SYSTEM_MESSAGE
 
-    base_prompt = f"""You are an early childhood educator designing comprehension questions for children ages 6–8.
-Analyze the video content using both the visual frames and the complete transcript provided below.
-
-COMPLETE TRANSCRIPT:
-==========================================
-{transcript}
-==========================================
-
-TASK:
-I am providing you with sequential frames from a {duration}-second segment ({start_time}s to {end_time}s).
-
-1. Provide ONE short, child-friendly comprehension question for EACH category:
-   - Character
-   - Setting
-   - Feeling
-   - Action
-   - Causal Relationship
-   - Outcome
-   - Prediction
-
-2. Rank the questions (best = 1)
-
-3. Return JSON only in this structure:
-{{
-  "questions": {{
-    "character": {{ "q": "...", "a": "...", "rank": "" }},
-    "setting": {{ "q": "...", "a": "...", "rank": "" }},
-    "feeling": {{ "q": "...", "a": "...", "rank": "" }},
-    "action": {{ "q": "...", "a": "...", "rank": "" }},
-    "causal": {{ "q": "...", "a": "...", "rank": "" }},
-    "outcome": {{ "q": "...", "a": "...", "rank": "" }},
-    "prediction": {{ "q": "...", "a": "...", "rank": "" }}
-  }},
-  "best_question": "..."
-}}
-"""
-
-    polite_prompt = f"""You are helping create educational questions for young children. This is a children's educational video with no violence or inappropriate content.
-
-COMPLETE TRANSCRIPT:
-==========================================
-{transcript}
-==========================================
-
-I am providing you with sequential frames from a {duration}-second segment ({start_time}s to {end_time}s).
-
-Create ONE short, child-friendly comprehension question for EACH category:
-- Character
-- Setting
-- Feeling
-- Action
-- Causal Relationship
-- Outcome
-- Prediction
-
-Rank the questions (best = 1)
-
-Return JSON only in this structure:
-{{
-  "questions": {{
-    "character": {{ "q": "...", "a": "...", "rank": "" }},
-    "setting": {{ "q": "...", "a": "...", "rank": "" }},
-    "feeling": {{ "q": "...", "a": "...", "rank": "" }},
-    "action": {{ "q": "...", "a": "...", "rank": "" }},
-    "causal": {{ "q": "...", "a": "...", "rank": "" }},
-    "outcome": {{ "q": "...", "a": "...", "rank": "" }},
-    "prediction": {{ "q": "...", "a": "...", "rank": "" }}
-  }},
-  "best_question": "..."
-}}
-"""
+    if question_layering:
+        base_prompt = GenerationPrompts.get_generation_prompt_with_layering(transcript, duration, start_time, end_time)
+        polite_prompt = GenerationPrompts.get_polite_generation_prompt_with_layering(transcript, duration, start_time, end_time)
+    else:
+        base_prompt = GenerationPrompts.get_generation_prompt(transcript, duration, start_time, end_time)
+        polite_prompt = GenerationPrompts.get_polite_generation_prompt(transcript, duration, start_time, end_time)
 
     sampled = _sample_frames(frames, max_frames=5)
 
