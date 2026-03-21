@@ -2013,6 +2013,8 @@
               const endSec = normalizeToSeconds(seg.segment_range_end);
               const questionText = (seg.question || "").trim();
               const answerText = (seg.answer || "").trim();
+              const followupQuestionText = (seg.followup_question || "").trim();
+              const followupAnswerText = (seg.followup_answer || "").trim();
               if (!questionText || !answerText) return null;
               const rawTrigger = endSec > 0 ? endSec : startSec;
               const triggerSec = Math.max(0, Math.round(rawTrigger));
@@ -2024,7 +2026,16 @@
                 trigger_sec: triggerSec,
                 ques_time: secondsToTimestamp(triggerSec),
                 question: questionText,
-                answer: answerText
+                answer: answerText,
+                followup_question: followupQuestionText,
+                followup_answer: followupAnswerText
+                // followup: qObj.followup
+                //   ? {
+                //       question: (qObj.followup.q || "").trim(),
+                //       answer: (qObj.followup.a || "").trim(),
+                //       rank: parseInt(qObj.followup.rank),
+                //     }
+                //   : null,
               };
             })
             .filter(Boolean)
@@ -2489,10 +2500,61 @@
     // ===============================
     // Asking + Answering Questions
     // ===============================
-    function askQuestion(q, segStart, segEnd) {
+    function askQuestion(q, segStart, segEnd, isFollowup = false) {
       activeQuestion = true;
       lockVideoControls();
       pauseVideo();
+      console.log("TESTING QUESTION", q);
+
+      let question = "";
+      if (isFollowup) {
+        question = q.followup_question;
+      } else {
+        question = q.question;
+      }
+
+      console.log("isFollowup: ", isFollowup, " question: ", question);
+
+
+      currentQuestionContext = { q, segStart, segEnd };
+      currentListenAttempt = 0;
+      hideQuestionActions();
+      const currentIndex = segments.indexOf(q);
+      if (currentIndex >= 0) {
+        prefetchUpcomingQuestions(currentIndex + 1);
+      }
+
+      document.getElementById("question").innerText = question;
+      document.getElementById("question-box").style.display = "flex";
+      document.getElementById("timestamp").innerHTML =
+        `Appears at <a onclick="seekWithBypass(${toSeconds(q.ques_time)})">${q.ques_time}</a>`;
+      const feedbackEl = document.getElementById("feedback");
+      feedbackEl.innerText = "Let me read the question for you...";
+      feedbackEl.style.color = "#384b87";
+      setQuestionOverlay(true);
+      speakQuestionText(question)
+        .then(shouldContinue => {
+          if (!shouldContinue) {
+            return;
+          }
+          feedbackEl.innerText = "Listening...";
+          feedbackEl.style.color = "#384b87";
+          startListening(q, segStart, segEnd, 0, isFollowup);
+        })
+        .catch(err => {
+          console.warn("Unable to speak question via TTS:", err);
+          feedbackEl.innerText = "Listening...";
+          feedbackEl.style.color = "#384b87";
+          startListening(q, segStart, segEnd, 0, isFollowup);
+        });
+    }
+
+    
+    function askFollowupQuestion(q, segStart, segEnd) {
+      activeQuestion = true;
+      lockVideoControls();
+      pauseVideo();
+      console.log("TESTING FOLLOWUP", q);
 
       currentQuestionContext = { q, segStart, segEnd };
       currentListenAttempt = 0;
@@ -2503,14 +2565,14 @@
       }
 
       document.getElementById("question-box").style.display = "flex";
-      document.getElementById("question").innerText = q.question;
+      document.getElementById("question").innerText = q.followup_question;
       document.getElementById("timestamp").innerHTML =
         `Appears at <a onclick="seekWithBypass(${toSeconds(q.ques_time)})">${q.ques_time}</a>`;
       const feedbackEl = document.getElementById("feedback");
       feedbackEl.innerText = "Let me read the question for you...";
       feedbackEl.style.color = "#384b87";
       setQuestionOverlay(true);
-      speakQuestionText(q.question)
+      speakQuestionText(q.followup_question)
         .then(shouldContinue => {
           if (!shouldContinue) {
             return;
@@ -2530,7 +2592,7 @@
     // ===============================
     // Whisper Recording + Transcription
     // ===============================
-    async function startListening(q, segStart, segEnd, attempt = 0) {
+    async function startListening(q, segStart, segEnd, attempt = 0, isFollowup = false) {
       const feedbackEl = document.getElementById("feedback");
       currentListenAttempt = attempt;
       currentQuestionContext = { q, segStart, segEnd };
@@ -2752,7 +2814,7 @@
           if (data.success && data.text.trim()) {
             feedbackEl.innerText = `You said: "${data.text.trim()}"`;
             feedbackEl.style.color = "#384b87";
-            await processAnswer(data.text.trim().toLowerCase(), q, segStart, segEnd);
+            await processAnswer(data.text.trim().toLowerCase(), q, segStart, segEnd, isFollowup);
             return;
           } else {
             return handleListeningFailure(q, segStart, segEnd, attempt, {
@@ -2823,23 +2885,30 @@
       });
     }
 
-    async function processAnswer(spoken, q, segStart, segEnd) {
+    let numberOfTimesAskedSoFar = 0;
+    let maxTimesToAsk = 1;
+
+    async function processAnswer(spoken, q, segStart, segEnd, isFollowup = false) {
       const quesSec = toSeconds(q.ques_time);
       const askedInSegment = Array.from(asked).filter(t => t >= segStart && t <= segEnd);
+      const question = isFollowup ? q.followup_question : q.question;
+      const answer = isFollowup ? q.followup_answer : q.answer;
 
-      console.log("Heard (final):", spoken, " | Expected:", q.answer);
+      console.log("Heard (final):", spoken, " | Expected:", answer);
 
       try {
         const response = await fetch("/api/check_answer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ expected: q.answer, user: spoken, question: q.question })
+          body: JSON.stringify({ expected: answer, user: spoken, question: question })
         });
         const data = await response.json();
         console.log("Local check response:", data);
 
         const sim = parseFloat(data.similarity || 0);
         let status = typeof data.status === "string" ? data.status.toLowerCase() : "";
+        // temp hard coded correct for testing TODO: remove this
+        // status = "correct";
         if (!status) {
           const t = data.is_numeric ? THRESHOLDS.number : THRESHOLDS.phrase;
           if (sim >= t.correct) {
@@ -2867,6 +2936,14 @@
 
           await wait(200);
           resumeVideo();
+
+          if (numberOfTimesAskedSoFar < maxTimesToAsk) {
+            numberOfTimesAskedSoFar++;
+            // getFollowup(q)
+            askQuestion(q, segStart, segEnd, true);
+
+          }
+          
           return;
         }
 
