@@ -2766,9 +2766,9 @@
         console.log("Local check response:", data);
 
         const sim = parseFloat(data.similarity || 0);
-        // let status = typeof data.status === "string" ? data.status.toLowerCase() : "";
+        let status = typeof data.status === "string" ? data.status.toLowerCase() : "";
         // temp hard coded correct for testing TODO: remove this
-        status = "correct";
+        // status = "correct";
         if (!status) {
           const t = data.is_numeric ? THRESHOLDS.number : THRESHOLDS.phrase;
           if (sim >= t.correct) {
