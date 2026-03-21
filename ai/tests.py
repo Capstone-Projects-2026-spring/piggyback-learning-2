@@ -198,8 +198,8 @@ class MoodDetectionTests(APITestCase):
         with open(file_path, 'rb') as f:
             return SimpleUploadedFile("Test_audio.mp3", f.read(), content_type="audio/mpeg")
 
-    def test_live_transcribe_without_distraction(self):
-        print("\nRunning without mood detection.")
+    def test_transcribe_without_distraction(self):
+        #print("\nRunning without mood detection.")
         audio_file = self.get_audio_file()
             
         start_time = time.time()
@@ -216,8 +216,8 @@ class MoodDetectionTests(APITestCase):
         self.assertTrue(response.data.get('success'))
         self.assertNotIn('analysis', response.data)
 
-    def test_live_transcribe_with_distraction(self):
-        print("\nRunning with mood detection.")
+    def test_transcribe_with_distraction(self):
+        #print("\nRunning with mood detection.")
         audio_file = self.get_audio_file()
         
         start_time = time.time()
@@ -229,9 +229,6 @@ class MoodDetectionTests(APITestCase):
 
         runtime = end_time - start_time
         print(f"With mood detection took:  {runtime:.4f} seconds")
-        if response.status_code == 500:
-            print(f"\n--- SERVER ERROR DETAIL ---")
-            print(response.data)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data.get('success'))
