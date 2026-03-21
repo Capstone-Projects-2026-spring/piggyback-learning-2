@@ -751,7 +751,6 @@
                         <div class="tab-panel active" id="tab-download-new">
                             <div class="search-container">
                                 <h3>Option 1: Direct YouTube URL</h3>
-                                <!-- <h3>Option 1: Direct YouTube URL</h3> -->
                                 <form id="download-form" class="search-form">
                                     <div class="form-group flex-1">
                                         <label for="youtube_url">YouTube URL</label>
@@ -875,9 +874,12 @@
                                 <span>Show follow-up questions</span>
                             </label>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="flex-direction: row; gap: 15px;">
                             <button type="button" class="btn btn-success" id="generate-questions-btn" disabled style="margin-top: 20px;">
                                 Start Question Generation
+                            </button>
+                            <button type="button" class="btn btn-outline" id="use-saved-questions-btn" style="margin-top: 20px; display: none; border-color: #17a2b8; color: #17a2b8;">
+                                Use Saved Questions
                             </button>
                         </div>
                     </div>
@@ -976,6 +978,17 @@
             // Question generation
             document.getElementById('generate-questions-btn').addEventListener('click', generateQuestions);
 
+            // NEW: Use Saved Questions skip button
+            const useSavedBtn = document.getElementById('use-saved-questions-btn');
+            if (useSavedBtn) {
+                useSavedBtn.addEventListener('click', () => {
+                    if (currentVideoId) {
+                        // Navigate directly to the expert preview page
+                        window.location.href = `/expert-preview?video=${currentVideoId}`;
+                    }
+                });
+            }
+
             const existingSelect = document.getElementById('existing-download-select');
             if (existingSelect) {
                 existingSelect.addEventListener('change', handleExistingDownloadChange);
@@ -1034,6 +1047,7 @@
         function updateButtonStates() {
             const extractBtn = document.getElementById('extract-frames-btn');
             const generateBtn = document.getElementById('generate-questions-btn');
+            const useSavedBtn = document.getElementById('use-saved-questions-btn');
             
             if (extractBtn) {
                 extractBtn.disabled = !currentVideoId;
@@ -1041,6 +1055,15 @@
             
             if (generateBtn) {
                 generateBtn.disabled = !(currentVideoId && currentVideoHasFrames);
+            }
+
+            // NEW: Show "Use Saved Questions" only if questions exist
+            if (useSavedBtn) {
+                if (currentVideoMeta && currentVideoMeta.has_questions) {
+                    useSavedBtn.style.display = 'inline-block';
+                } else {
+                    useSavedBtn.style.display = 'none';
+                }
             }
 
             updateVideoInfoPanel();
