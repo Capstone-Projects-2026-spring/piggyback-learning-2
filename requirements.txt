@@ -10,3 +10,6 @@ pillow==12.1.1
 python-dotenv==1.2.1
 RapidFuzz==3.14.3
 yt-dlp==2026.2.21
+psycopg2-binary==2.9.11
+dj-database-url==3.1.2
+
