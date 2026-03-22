@@ -13,6 +13,7 @@ certifi==2026.2.25
 cffi==2.0.0
 channels==4.3.2
 charset-normalizer==3.4.5
+click==8.3.1
 constantly==23.10.4
 cryptography==46.0.5
 daphne==4.2.1
@@ -24,6 +25,7 @@ drf-spectacular==0.29.0
 frozenlist==1.8.0
 google-auth==2.49.0
 google-genai==1.64.0
+gunicorn==25.1.0
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
@@ -69,6 +71,7 @@ typing_extensions==4.15.0
 ujson==5.11.0
 uritemplate==4.2.0
 urllib3==2.6.3
+uvicorn==0.42.0
 websockets==15.0.1
 whitenoise==6.12.0
 yarl==1.23.0
