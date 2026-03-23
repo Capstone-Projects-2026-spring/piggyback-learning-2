@@ -102,9 +102,9 @@ def download_youtube(url: str) -> Dict[str, Any]:
             ydl_opts['external_deps'] = {'ejs': 'github'}
 
         cookies_file = (
-            os.getenv('YTDLP_COOKIEFILE') or os.getenv('YTDLP_COOKIES_FILE') or ''
+            os.getenv('YTDLP_COOKIEFILE') or os.getenv('YTDLP_COOKIES_FILE') or '/etc/secrets/cookies.txt'
         ).strip()
-        print(cookies_file)
+        print('Cookie file:', cookies_file)
 
         if cookies_file:
             ydl_opts['cookiefile'] = cookies_file
