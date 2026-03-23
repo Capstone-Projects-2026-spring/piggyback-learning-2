@@ -104,6 +104,8 @@ def download_youtube(url: str) -> Dict[str, Any]:
         cookies_file = (
             os.getenv('YTDLP_COOKIEFILE') or os.getenv('YTDLP_COOKIES_FILE') or ''
         ).strip()
+        print(cookies_file)
+
         if cookies_file:
             ydl_opts['cookiefile'] = cookies_file
 
