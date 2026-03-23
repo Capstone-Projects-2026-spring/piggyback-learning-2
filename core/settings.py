@@ -18,7 +18,7 @@ SECRET_KEY = 'django-insecure-8p!c_i)v%r$3ba^7+#uq%)+!8k3kjw#8%1g_f!5x@-qj=yv%k0
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -145,9 +145,3 @@ DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '').strip()
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash-lite')
-
-# YT-DLP Settings
-ydl_opts = {
-    "cookiefile": "/etc/secrets/cookies.txt",
-}
-
