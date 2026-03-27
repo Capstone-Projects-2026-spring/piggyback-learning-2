@@ -420,7 +420,7 @@ class TranscribeAPIView(APIView):
             )
 
         analyze_distraction = request.POST.get('analyze_distraction', '').lower() == 'true'
-
+        #analyze_distraction = True #Force true or false for testing
         try:
             client = get_openai_client()
             audio_bytes = io.BytesIO(f.read())
