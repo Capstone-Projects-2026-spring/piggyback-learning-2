@@ -108,20 +108,22 @@ class GenerationPrompts:
             - Outcome
             - Prediction
 
-            2. For EACH question, also provide ONE short, child-friendly follow-up question that builds on it (e.g., if the original was "Is the man wearing a hat?", the follow-up could be "What color is the hat?").
+            2. For EACH question, also provide TWO short, child-friendly follow-up questions that build on it. 
+                a. The first followup question will only be used if the original question is answered correctly, so it should expand on the original answer.
+                b. The second followup question will only be used if the original question is answered incorrectly, so it should guide the child towards the correct answer
 
             3. Rank the questions (best = 1) and the follow-ups (best = 1).
 
             4. Return JSON only in this structure:
             {{
             "questions": {{
-                "character": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "setting": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "feeling": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "action": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "causal": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "outcome": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "prediction": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }}
+                "character": {{ "q": "...", "a": "...", "rank": "", "followupForCorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "setting": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "feeling": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "action": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "causal": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "outcome": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "prediction": {{ "q": "...", "a": "...", "rank": "", "followupForCorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }}
             }},
             "best_question": "..."
             }}
@@ -146,20 +148,22 @@ class GenerationPrompts:
             - Outcome
             - Prediction
 
-            For EACH question, also provide ONE short, child-friendly follow-up question that builds on it (e.g., if the original was "Is the man wearing a hat?", the follow-up could be "What color is the hat?").
+            For EACH question, also provide TWO short, child-friendly follow-up questions that build on it. 
+            The first followup question will only be used if the original question is answered correctly, so it should expand on the original answer.
+            The second followup question will only be used if the original question is answered incorrectly, so it should guide the child towards the correct answer
 
             Rank the questions (best = 1) and the follow-ups (best = 1).
 
             Return JSON only in this structure:
             {{
             "questions": {{
-                "character": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "setting": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "feeling": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "action": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "causal": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "outcome": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }},
-                "prediction": {{ "q": "...", "a": "...", "rank": "", "followup": {{ "q": "...", "a": "...", "rank": "" }} }}
+                "character": {{ "q": "...", "a": "...", "rank": "", "followupForCorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "setting": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "feeling": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "action": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "causal": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "outcome": {{ "q": "...", "a": "...", "rank": "", "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }},
+                "prediction": {{ "q": "...", "a": "...", "rank": "", "followupForCorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }}, "followupForIncorrectAnswer": {{ "q": "...", "a": "...", "rank": "" }} }}
             }},
             "best_question": "..."
             }}
