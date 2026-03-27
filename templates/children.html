@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <title>Kids Videos | Piggyback</title>
- <link rel="stylesheet" href="/assets/css/children.css">
+  <link rel="stylesheet" href="/assets/css/children.css">
   <style>
     * {
       box-sizing: border-box;
@@ -284,6 +284,7 @@
       gap: 0;
       width: 100%;
     }
+
     /* Video container */
     #video-container {
       position: relative;
@@ -731,6 +732,113 @@
       display: none !important;
     }
 
+    .lock-pin-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 9999;
+    }
+
+    .lock-pin-modal.hidden {
+      display: none;
+    }
+
+    .lock-pin-box {
+      background: #111;
+      padding: 24px;
+      border-radius: 14px;
+      width: 320px;
+      max-width: 90%;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      animation: popIn 0.2s ease;
+      color: #ffffff;
+    }
+
+    #lock-pin-input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #000;
+      color: #fff;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .lock-pin-error {
+      color: #ff4d4d;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .lock-pin-actions {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .lock-pin-actions button {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    #lock-pin-cancel {
+      background: #333;
+      color: #fff;
+    }
+
+    #lock-pin-submit {
+      background: #4caf50;
+      color: #fff;
+    }
+
+    @keyframes popIn {
+      from {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes shake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      25% {
+        transform: translateX(-6px);
+      }
+
+      75% {
+        transform: translateX(6px);
+      }
+    }
+
+    .lock-pin-box.shake {
+      animation: shake 0.3s;
+    }
+
     /* Responsive tweaks */
     @media (max-width: 1024px) {
       .kids-top-bar {
@@ -901,7 +1009,6 @@
     <!-- Quiz Player -->
     <div id="player-container">
       <div id="video-wrapper">
-        <!-- Video on the left -->
         <div id="video-container" tabindex="0" aria-label="Video player">
           <div id="player" aria-label="YouTube video player"></div>
           <div id="yt-logo-blocker" aria-hidden="true"></div>
@@ -909,84 +1016,78 @@
           <div id="yt-logo-blocker-bottom" aria-hidden="true"></div>
           <div id="yt-end-blocker" role="button" aria-label="Replay video">Tap to replay</div>
           <div id="yt-pause-blocker" role="button" aria-label="Resume video">Tap to continue</div>
+
           <div id="embed-fallback" class="embed-fallback" role="status" aria-live="polite">
             <span>Having trouble playing the embed?</span>
             <button id="use-local-video-btn" type="button">Play downloaded video</button>
           </div>
+
           <div id="question-overlay" aria-hidden="true"></div>
           <div id="blocker" aria-hidden="true"></div>
-          <div id="question-box" role="dialog" aria-live="assertive" aria-labelledby="question" aria-describedby="timestamp feedback">
+
+          <div id="question-box" role="dialog" aria-live="assertive" aria-labelledby="question"
+            aria-describedby="timestamp feedback">
             <div class="question-character">
               <video src="/assets/asking_question.webm" autoplay loop muted playsinline></video>
             </div>
-            <div class="question-bubble">
-              <h3 id="question"></h3>
-              <p id="timestamp"></p>
-              <p id="feedback"></p>
-              <div id="question-actions" class="question-actions">
-                <button id="retry-answer-btn" class="retry-btn" type="button">Try again</button>
-                <button id="skip-answer-btn" class="skip-btn" type="button">Skip for now</button>
-              </div>
-            </div>
-          </div>
-          <div class="video-floating-controls">
-            <button id="toggle-sidebar" type="button" title="Toggle question list" aria-label="Toggle question list">&#128472;</button>
-          </div>
-          <div class="video-fullscreen-hitbox">
-            <button id="custom-fullscreen-btn" type="button" aria-label="Toggle fullscreen">
-              <span class="icon-enter">&#x26F6;</span>
-              <span class="icon-exit">&#x2715;</span>
-            </button>
-          </div>
-        </div>
-      </div>
-        <div id="video-container" tabindex="0" aria-label="Video player">
-          <div id="player" aria-label="YouTube video player"></div>
-          <div id="yt-logo-blocker" aria-hidden="true"></div>
-          <div id="yt-logo-blocker-left" aria-hidden="true"></div>
-          <div id="yt-logo-blocker-bottom" aria-hidden="true"></div>
-          <div id="yt-end-blocker" role="button" aria-label="Replay video">Tap to replay</div>
-          <div id="yt-pause-blocker" role="button" aria-label="Resume video">Tap to continue</div>
-          <div id="embed-fallback" class="embed-fallback" role="status" aria-live="polite">
-            <span>Having trouble playing the embed?</span>
-            <button id="use-local-video-btn" type="button">Play downloaded video</button>
-          </div>
-          <div id="question-overlay" aria-hidden="true"></div>
-          <div id="blocker" aria-hidden="true"></div>
-          <div id="question-box" role="dialog" aria-live="assertive" aria-labelledby="question" aria-describedby="timestamp feedback">
-            <div class="question-character">
-              <video src="/assets/asking_question.webm" autoplay loop muted playsinline></video> <!-- mascot overlay already exists-->
-            </div>
-            <div class="question-bubble">
-              <h3 id="question"></h3>
-              <p id="timestamp"></p>
-              <p id="feedback"></p>
-              <div id="question-actions" class="question-actions">
-                <button id="retry-answer-btn" class="retry-btn" type="button">Try again</button>
-                <button id="skip-answer-btn" class="skip-btn" type="button">Skip for now</button>
-              </div>
-            </div>
-          </div>
-          <div class="video-floating-controls">
-            <button id="toggle-sidebar" type="button" title="Toggle question list" aria-label="Toggle question list">&#128472;</button>
-          </div>
-          <div class="video-fullscreen-hitbox">
-            <button id="custom-fullscreen-btn" type="button" aria-label="Toggle fullscreen">
-              <span class="icon-enter">&#x26F6;</span>
-              <span class="icon-exit">&#x2715;</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
-      <!-- Sidebar -->
-      <div id="sidebar" class="hidden">
-        <h3>&#128220; Questions</h3>
-        <ul id="question-list"></ul>
+            <div class="question-bubble">
+              <h3 id="question"></h3>
+              <p id="timestamp"></p>
+              <p id="feedback"></p>
+
+              <div id="question-actions" class="question-actions">
+                <button id="retry-answer-btn" class="retry-btn" type="button">Try again</button>
+                <button id="skip-answer-btn" class="skip-btn" type="button">Skip for now</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="video-floating-controls">
+            <button id="lock-player-btn" type="button" title="Lock player" aria-label="Lock player">
+              🔒
+            </button>
+
+            <button id="toggle-sidebar" type="button" title="Toggle question list" aria-label="Toggle question list">
+              &#128472;
+            </button>
+          </div>
+
+          <div id="lock-pin-modal" class="lock-pin-modal hidden">
+            <div class="lock-pin-box">
+              <h3>Unlock Player</h3>
+              <p>Enter PIN to unlock</p>
+
+              <input id="lock-pin-input" type="password" inputmode="numeric" maxlength="8" placeholder="Enter PIN"
+                autocomplete="off" />
+
+              <div id="lock-pin-error" class="lock-pin-error"></div>
+
+              <div class="lock-pin-actions">
+                <button id="lock-pin-cancel" type="button">Cancel</button>
+                <button id="lock-pin-submit" type="button">Unlock</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="video-fullscreen-hitbox">
+            <button id="custom-fullscreen-btn" type="button" aria-label="Toggle fullscreen">
+              <span class="icon-enter">&#x26F6;</span>
+              <span class="icon-exit">&#x2715;</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
+
+    <!-- Sidebar -->
+    <div id="sidebar" class="hidden">
+      <h3>&#128220; Questions</h3>
+      <ul id="question-list"></ul>
+    </div>
+    </div>
   </main>
-<script src="/assets/js/children.js" defer></script>
+  <script src="/assets/js/children.js" defer></script>
 
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script>
@@ -1912,6 +2013,8 @@
               const endSec = normalizeToSeconds(seg.segment_range_end);
               const questionText = (seg.question || "").trim();
               const answerText = (seg.answer || "").trim();
+              const followupQuestionText = (seg.followup_question || "").trim();
+              const followupAnswerText = (seg.followup_answer || "").trim();
               if (!questionText || !answerText) return null;
               const rawTrigger = endSec > 0 ? endSec : startSec;
               const triggerSec = Math.max(0, Math.round(rawTrigger));
@@ -1923,7 +2026,16 @@
                 trigger_sec: triggerSec,
                 ques_time: secondsToTimestamp(triggerSec),
                 question: questionText,
-                answer: answerText
+                answer: answerText,
+                followup_question: followupQuestionText,
+                followup_answer: followupAnswerText
+                // followup: qObj.followup
+                //   ? {
+                //       question: (qObj.followup.q || "").trim(),
+                //       answer: (qObj.followup.a || "").trim(),
+                //       rank: parseInt(qObj.followup.rank),
+                //     }
+                //   : null,
               };
             })
             .filter(Boolean)
@@ -2388,10 +2500,61 @@
     // ===============================
     // Asking + Answering Questions
     // ===============================
-    function askQuestion(q, segStart, segEnd) {
+    function askQuestion(q, segStart, segEnd, isFollowup = false) {
       activeQuestion = true;
       lockVideoControls();
       pauseVideo();
+      console.log("TESTING QUESTION", q);
+
+      let question = "";
+      if (isFollowup) {
+        question = q.followup_question;
+      } else {
+        question = q.question;
+      }
+
+      console.log("isFollowup: ", isFollowup, " question: ", question);
+
+
+      currentQuestionContext = { q, segStart, segEnd };
+      currentListenAttempt = 0;
+      hideQuestionActions();
+      const currentIndex = segments.indexOf(q);
+      if (currentIndex >= 0) {
+        prefetchUpcomingQuestions(currentIndex + 1);
+      }
+
+      document.getElementById("question").innerText = question;
+      document.getElementById("question-box").style.display = "flex";
+      document.getElementById("timestamp").innerHTML =
+        `Appears at <a onclick="seekWithBypass(${toSeconds(q.ques_time)})">${q.ques_time}</a>`;
+      const feedbackEl = document.getElementById("feedback");
+      feedbackEl.innerText = "Let me read the question for you...";
+      feedbackEl.style.color = "#384b87";
+      setQuestionOverlay(true);
+      speakQuestionText(question)
+        .then(shouldContinue => {
+          if (!shouldContinue) {
+            return;
+          }
+          feedbackEl.innerText = "Listening...";
+          feedbackEl.style.color = "#384b87";
+          startListening(q, segStart, segEnd, 0, isFollowup);
+        })
+        .catch(err => {
+          console.warn("Unable to speak question via TTS:", err);
+          feedbackEl.innerText = "Listening...";
+          feedbackEl.style.color = "#384b87";
+          startListening(q, segStart, segEnd, 0, isFollowup);
+        });
+    }
+
+    
+    function askFollowupQuestion(q, segStart, segEnd) {
+      activeQuestion = true;
+      lockVideoControls();
+      pauseVideo();
+      console.log("TESTING FOLLOWUP", q);
 
       currentQuestionContext = { q, segStart, segEnd };
       currentListenAttempt = 0;
@@ -2402,14 +2565,14 @@
       }
 
       document.getElementById("question-box").style.display = "flex";
-      document.getElementById("question").innerText = q.question;
+      document.getElementById("question").innerText = q.followup_question;
       document.getElementById("timestamp").innerHTML =
         `Appears at <a onclick="seekWithBypass(${toSeconds(q.ques_time)})">${q.ques_time}</a>`;
       const feedbackEl = document.getElementById("feedback");
       feedbackEl.innerText = "Let me read the question for you...";
       feedbackEl.style.color = "#384b87";
       setQuestionOverlay(true);
-      speakQuestionText(q.question)
+      speakQuestionText(q.followup_question)
         .then(shouldContinue => {
           if (!shouldContinue) {
             return;
@@ -2429,7 +2592,7 @@
     // ===============================
     // Whisper Recording + Transcription
     // ===============================
-    async function startListening(q, segStart, segEnd, attempt = 0) {
+    async function startListening(q, segStart, segEnd, attempt = 0, isFollowup = false) {
       const feedbackEl = document.getElementById("feedback");
       currentListenAttempt = attempt;
       currentQuestionContext = { q, segStart, segEnd };
@@ -2652,7 +2815,7 @@
           if (data.success && data.text.trim()) {
             feedbackEl.innerText = `You said: "${data.text.trim()}"`;
             feedbackEl.style.color = "#384b87";
-            await processAnswer(data.text.trim().toLowerCase(), q, segStart, segEnd);
+            await processAnswer(data.text.trim().toLowerCase(), q, segStart, segEnd, isFollowup);
             return;
           } else {
             return handleListeningFailure(q, segStart, segEnd, attempt, {
@@ -2723,23 +2886,30 @@
       });
     }
 
-    async function processAnswer(spoken, q, segStart, segEnd) {
+    let numberOfTimesAskedSoFar = 0;
+    let maxTimesToAsk = 1;
+
+    async function processAnswer(spoken, q, segStart, segEnd, isFollowup = false) {
       const quesSec = toSeconds(q.ques_time);
       const askedInSegment = Array.from(asked).filter(t => t >= segStart && t <= segEnd);
+      const question = isFollowup ? q.followup_question : q.question;
+      const answer = isFollowup ? q.followup_answer : q.answer;
 
-      console.log("Heard (final):", spoken, " | Expected:", q.answer);
+      console.log("Heard (final):", spoken, " | Expected:", answer);
 
       try {
         const response = await fetch("/api/check_answer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ expected: q.answer, user: spoken, question: q.question })
+          body: JSON.stringify({ expected: answer, user: spoken, question: question })
         });
         const data = await response.json();
         console.log("Local check response:", data);
 
         const sim = parseFloat(data.similarity || 0);
         let status = typeof data.status === "string" ? data.status.toLowerCase() : "";
+        // temp hard coded correct for testing TODO: remove this
+        // status = "correct";
         if (!status) {
           const t = data.is_numeric ? THRESHOLDS.number : THRESHOLDS.phrase;
           if (sim >= t.correct) {
@@ -2767,6 +2937,14 @@
 
           await wait(200);
           resumeVideo();
+
+          if (numberOfTimesAskedSoFar < maxTimesToAsk) {
+            numberOfTimesAskedSoFar++;
+            // getFollowup(q)
+            askQuestion(q, segStart, segEnd, true);
+
+          }
+          
           return;
         }
 
@@ -2907,8 +3085,258 @@
       const blocker = document.getElementById("blocker");
       blocker.style.display = "none";
     }
+    let playerLocked = false;
+    const lockPin = "1234";
 
+    const lockBtn = document.getElementById("lock-player-btn");
 
+    const pinModal = document.getElementById("lock-pin-modal");
+    const pinInput = document.getElementById("lock-pin-input");
+    const pinError = document.getElementById("lock-pin-error");
+    const pinCancelBtn = document.getElementById("lock-pin-cancel");
+    const pinSubmitBtn = document.getElementById("lock-pin-submit");
+    const pinBox = document.querySelector(".lock-pin-box");
+
+    let unlockResolver = null;
+    let lastAllowedTime = 0;
+
+    function getActiveVideoElement() {
+      return document.querySelector("#video-container video");
+    }
+
+    function getFullscreenTarget() {
+      return document.getElementById("video-container");
+    }
+
+    async function enterFullscreen() {
+      const target = getFullscreenTarget();
+      if (!target) return;
+
+      try {
+        if (!document.fullscreenElement && target.requestFullscreen) {
+          await target.requestFullscreen();
+        }
+      } catch (err) {
+        console.log("Fullscreen failed:", err);
+      }
+    }
+
+    async function exitFullscreen() {
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      } catch (err) {
+        console.log("Exit fullscreen failed:", err);
+      }
+    }
+
+    function shakePinBox() {
+      if (!pinBox) return;
+
+      pinBox.classList.remove("shake");
+      void pinBox.offsetWidth;
+      pinBox.classList.add("shake");
+
+      setTimeout(() => {
+        pinBox.classList.remove("shake");
+      }, 300);
+    }
+
+    function showPinModal() {
+      return new Promise((resolve) => {
+        unlockResolver = resolve;
+        pinError.textContent = "";
+        pinInput.value = "";
+        pinModal.classList.remove("hidden");
+
+        setTimeout(() => {
+          pinInput.focus();
+        }, 0);
+      });
+    }
+
+    function closePinModal() {
+      pinModal.classList.add("hidden");
+      pinError.textContent = "";
+      pinInput.value = "";
+    }
+
+    function submitPin() {
+      if (!unlockResolver) return;
+
+      const enteredPin = pinInput.value.trim();
+
+      if (enteredPin === lockPin) {
+        closePinModal();
+        const resolve = unlockResolver;
+        unlockResolver = null;
+        resolve(true);
+      } else {
+        pinError.textContent = "Wrong PIN";
+        pinInput.value = "";
+        pinInput.focus();
+        shakePinBox();
+      }
+    }
+
+    function cancelPin() {
+      if (!unlockResolver) return;
+
+      closePinModal();
+      const resolve = unlockResolver;
+      unlockResolver = null;
+      resolve(false);
+    }
+
+    async function requestUnlock() {
+      return await showPinModal();
+    }
+
+    async function lockPlayer() {
+      playerLocked = true;
+      document.body.classList.add("player-locked");
+      lockBtn.textContent = "🔐";
+
+      const video = getActiveVideoElement();
+      if (video) {
+        lastAllowedTime = video.currentTime;
+      }
+
+      await enterFullscreen();
+    }
+
+    function unlockPlayer() {
+      playerLocked = false;
+      document.body.classList.remove("player-locked");
+      lockBtn.textContent = "🔒";
+      closePinModal();
+    }
+
+    lockBtn.onclick = async () => {
+      if (!playerLocked) {
+        await lockPlayer();
+        return;
+      }
+
+      const ok = await requestUnlock();
+      if (ok) {
+        unlockPlayer();
+        await exitFullscreen();
+      }
+    };
+
+    pinSubmitBtn.addEventListener("click", submitPin);
+    pinCancelBtn.addEventListener("click", cancelPin);
+
+    pinInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        submitPin();
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cancelPin();
+      }
+    });
+
+    document.addEventListener(
+      "keydown",
+      (e) => {
+        if (!playerLocked) return;
+
+        const blockedKeys = [
+          " ",
+          "ArrowLeft",
+          "ArrowRight",
+          "ArrowUp",
+          "ArrowDown",
+          "j",
+          "k",
+          "l",
+          "J",
+          "K",
+          "L",
+          "f",
+          "F",
+          "Escape"
+        ];
+
+        const modalOpen = !pinModal.classList.contains("hidden");
+        if (modalOpen && e.target === pinInput) return;
+
+        if (blockedKeys.includes(e.key)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      true
+    );
+
+    document.addEventListener(
+      "click",
+      (e) => {
+        if (!playerLocked) return;
+
+        const activeVideo = getActiveVideoElement();
+        const lockButton = document.getElementById("lock-player-btn");
+
+        if (e.target === lockButton) return;
+        if (pinModal.contains(e.target)) return;
+
+        if (
+          activeVideo &&
+          (e.target === activeVideo ||
+            (typeof activeVideo.contains === "function" && activeVideo.contains(e.target)))
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      true
+    );
+
+    document.addEventListener(
+      "seeking",
+      (e) => {
+        if (!playerLocked) return;
+
+        const video = getActiveVideoElement();
+        if (!video) return;
+
+        if (e.target === video) {
+          if (video.currentTime > lastAllowedTime + 0.2) {
+            video.currentTime = lastAllowedTime;
+          }
+        }
+      },
+      true
+    );
+
+    document.addEventListener("timeupdate", () => {
+      const video = getActiveVideoElement();
+      if (!video || !playerLocked) return;
+      lastAllowedTime = video.currentTime;
+    });
+
+    document.addEventListener("fullscreenchange", async () => {
+      if (!playerLocked) return;
+
+      if (!document.fullscreenElement) {
+        const ok = await requestUnlock();
+
+        if (ok) {
+          unlockPlayer();
+        } else {
+          await enterFullscreen();
+        }
+      }
+    });
+
+    // Init
+    loadConfig();
+    loadVideos();
 
     // Init
     loadConfig();
@@ -2919,9 +3347,3 @@
 </body>
 
 </html>
-
-
-
-
-
-

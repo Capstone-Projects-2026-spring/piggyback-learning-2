@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from quizgen.serializers import SubmittedQuestionSetSerializer
 from videos.models import Video
 from videos.services.download import download_youtube
 from videos.services.frames import extract_frames_per_second_for_video
@@ -101,6 +102,17 @@ class SubmitQuestionsAPIView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class VideoQuestionsAPIView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    serializer_class = SubmittedQuestionSetSerializer
+
+    def get(self, request, video_id):
+        qs = SubmittedQuestionSet.objects.filter(video__id=video_id)
+        serializer = SubmittedQuestionSetSerializer(qs, many=True)
+        return Response(serializer.data)
 
 
 class DownloadAPIView(APIView):

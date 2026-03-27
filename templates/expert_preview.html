@@ -2152,8 +2152,10 @@ select {
         let expertSaveInProgress = false;
         let pendingSegmentIndices = [];
         let llmQuestionEdits = {}; // Store ranking/trash decisions for LLM questions
-                 let manualQuestionTimestamp = null; // Store timestamp for manual questions
+        let manualQuestionTimestamp = null; // Store timestamp for manual questions
         const REVIEW_TOLERANCE_BEFORE = 0.25;
+
+        let openAccordionIndex = 0;
 
         let llmModalState = {
             open: false,
@@ -2404,6 +2406,59 @@ select {
                     llmModalState.rankingComment = llmRankingCommentInput.value;
                 });
             }
+
+            const expertTypeSelect = document.getElementById('expert-question-type');
+if (expertTypeSelect) {
+    expertTypeSelect.addEventListener('change', async function(event) {
+        // Ensure we check in lowercase to exactly match the JSON keys (e.g., "action")
+        const selectedType = event.target.value.toLowerCase();
+        const questionInput = document.getElementById('expert-question-text');
+        const answerInput = document.getElementById('expert-answer-text');
+
+        if (!selectedType) {
+            if (questionInput) questionInput.value = '';
+            if (answerInput) answerInput.value = '';
+            setExpertFormFeedback('');
+            return;
+        }
+
+        const segment = currentSegments[currentSegmentIndex];
+        if (!segment) return;
+
+        // 1. Try the default resolution
+        let aiQuestions = await resolveSegmentQuestions(segment);
+        
+        // 2. ROBUST NESTING CHECK: If questions weren't found at the top level, 
+        // dig into the payload object based on your specific JSON structure
+        if (!aiQuestions && segment.result) {
+            // Check if it's buried in result.payload.segments
+            if (segment.result.payload && Array.isArray(segment.result.payload.segments)) {
+                // Find the segment that matches our current time block
+                const matchingSeg = segment.result.payload.segments.find(s => s.start === segment.start);
+                if (matchingSeg && matchingSeg.result && matchingSeg.result.questions) {
+                    aiQuestions = matchingSeg.result.questions;
+                }
+            } 
+            // Fallback: Check if it's just nested one level down inside result.result
+            else if (segment.result.result && segment.result.result.questions) {
+                aiQuestions = segment.result.result.questions;
+            }
+        }
+
+        // 3. Now check if we found the questions AND if the selected category exists
+        if (aiQuestions && aiQuestions[selectedType]) {
+            if (questionInput) questionInput.value = aiQuestions[selectedType].q || '';
+            if (answerInput) answerInput.value = aiQuestions[selectedType].a || '';
+            
+            setExpertFormFeedback(`Auto-filled with AI suggestion for ${selectedType}.`, 'success');
+        } else {
+            if (questionInput) questionInput.value = '';
+            if (answerInput) answerInput.value = '';
+            setExpertFormFeedback(`No AI suggestion found for ${selectedType}. Please enter manually.`, 'error');
+            console.warn("Could not find question data for type:", selectedType, "in object:", aiQuestions);
+        }
+    });
+}
         });
         
         function initStepNavigation() {
@@ -2884,39 +2939,22 @@ select {
 
             if (existing) {
                 if (existing.skipped) {
-                    if (typeSelect) {
-                        typeSelect.value = '';
-                    }
-                    if (questionInput) {
-                        questionInput.value = '';
-                    }
-                    if (answerInput) {
-                        answerInput.value = '';
-                    }
+                    if (typeSelect) typeSelect.value = '';
+                    if (questionInput) questionInput.value = '';
+                    if (answerInput) answerInput.value = '';
                     setExpertFormFeedback('This segment is marked as skipped. Add a question to replace it or skip again.');
                 } else {
-                    if (typeSelect) {
-                        typeSelect.value = normalizeQuestionType(existing.questionType);
-                    }
-                    if (questionInput) {
-                        questionInput.value = existing.question || '';
-                    }
-                    if (answerInput) {
-                        answerInput.value = existing.answer || '';
-                    }
+                    if (typeSelect) typeSelect.value = normalizeQuestionType(existing.questionType);
+                    if (questionInput) questionInput.value = existing.question || '';
+                    if (answerInput) answerInput.value = existing.answer || '';
                     setExpertFormFeedback('Existing question loaded for this segment.', 'success');
                 }
             } else {
-                if (typeSelect) {
-                    typeSelect.value = '';
-                }
-                if (questionInput) {
-                    questionInput.value = '';
-                }
-                if (answerInput) {
-                    answerInput.value = '';
-                }
-                setExpertFormFeedback('');
+                // Start completely blank for new segments
+                if (typeSelect) typeSelect.value = '';
+                if (questionInput) questionInput.value = '';
+                if (answerInput) answerInput.value = '';
+                setExpertFormFeedback('Select a Question Type to see AI suggestions.');
             }
 
             expertSaveInProgress = false;
@@ -4993,7 +5031,7 @@ select {
                 // Create accordion header
                 const header = document.createElement('div');
                 header.className = 'accordion-header';
-                if (index === 0) {
+                if (index === openAccordionIndex) {
                     header.classList.add('active');
                 }
                 
@@ -5015,7 +5053,7 @@ select {
                 // Create accordion content
                 const content = document.createElement('div');
                 content.className = 'accordion-content';
-                if (index === 0) {
+                if (index === openAccordionIndex) {
                     content.classList.add('active');
                 }
                 
@@ -5146,11 +5184,14 @@ select {
                         
                         editableDiv.innerHTML = `
                             <div class="question-header">
-                                <div class="question-summary">
-                                    <div>
-                                        <span class="question-type-label">${type}</span>
-                                        ${isAIBestQuestion ? '<span class="best-indicator">AI BEST</span>' : ''}
-                                        ${isExpertBestQuestion ? '<span class="best-indicator" style="background: #27ae60;">EXPERT BEST</span>' : ''}
+                                <div class="question-summary" style="width: 100%;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <div>
+                                            <span class="question-type-label">${type}</span>
+                                            ${isAIBestQuestion ? '<span class="best-indicator">AI BEST</span>' : ''}
+                                            ${isExpertBestQuestion ? '<span class="best-indicator" style="background: #27ae60;">EXPERT BEST</span>' : ''}
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="replaceExpertQuestion(${index}, '${type}', event)">Use This</button>
                                     </div>
                                     <div class="question-preview">${currentQuestion}</div>
                                     <div class="answer-preview">${currentAnswer}</div>
@@ -5191,8 +5232,9 @@ select {
             
             headers.forEach((header, i) => {
                 if (i === index) {
-                    header.classList.toggle('active');
+                    const isActive = header.classList.toggle('active');
                     contents[i].classList.toggle('active');
+                    openAccordionIndex = isActive ? index : null;
                 } else {
                     header.classList.remove('active');
                     contents[i].classList.remove('active');
@@ -5297,16 +5339,56 @@ select {
             renderReviewQuestions();
         }
 
+        window.replaceExpertQuestion = async function(segmentIndex, aiType, event) {
+            // Prevent the click from expanding/collapsing the accordion
+            if (event) event.stopPropagation(); 
+
+            const segment = currentSegments[segmentIndex];
+            if (!segment) return;
+
+            // Fetch the AI questions for this segment
+            const aiQuestions = await resolveSegmentQuestions(segment);
+            
+            if (aiQuestions && aiQuestions[aiType]) {
+                const data = aiQuestions[aiType];
+                
+                // 1. ONLY update the local UI state. (Use standard camelCase keys)
+                setExpertQuestionForSegment(segment, {
+                    videoId: currentVideoId,
+                    segmentStart: segment.start,
+                    segmentEnd: segment.end,
+                    timestamp: segment.end,
+                    questionType: aiType,
+                    question: data.q,
+                    answer: data.a,
+                    skipReason: '',
+                    updatedAt: new Date().toISOString(),
+                    isManual: false 
+                });
+
+                // 2. Visually mark this specific AI question as the "Expert Best"
+                const segmentKey = getSegmentKey(segment);
+                setExpertBestQuestion(segmentKey, `${segmentKey}_${aiType}`); 
+                
+                showStatus(`Expert question successfully replaced with AI ${aiType} question.`, 'success');
+            }
+        };
+
         async function saveAllLLMEdits() {
             if (!currentVideoId) {
                 showStatus('No video selected', 'error');
                 return;
             }
 
-            // Ensure all segments are approved            // Build final JSON payload
-            const finalQuestions = {
-                videoId: currentVideoId,
-                timestamp: new Date().toISOString(),
+            const btn = document.querySelector('.btn-save-changes');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Submitting...';
+            }
+
+            // Build final JSON payload matching your Django exactly
+            const payload = {
+                video_id: currentVideoId,
                 segments: []
             };
 
@@ -5318,27 +5400,25 @@ select {
                     segmentIndex: index,
                     start: segment.start,
                     end: segment.end,
-                    aiQuestions: [],
-                    aiOriginalBest: null,
-                    approved: true
+                    aiQuestions: []
                 };
 
                 const questions = await resolveSegmentQuestions(segment);
                 if (questions) {
-                    if (segment.result && segment.result.best_question) {
-                        segmentData.aiOriginalBest = segment.result.best_question;
-                    }
-
                     // Get ranking info
                     const rankingInfo = llmQuestionEdits[currentVideoId] && 
                                     llmQuestionEdits[currentVideoId][`${segmentKey}_ranking`];
+
+                    // Check which question the expert selected via "Use This"
+                    const expertBestKey = llmQuestionEdits[currentVideoId] && 
+                                         llmQuestionEdits[currentVideoId][`${segmentKey}_expertBest`];
 
                     Object.entries(questions).forEach(([type, data]) => {
                         const questionKey = `${segmentKey}_${type}`;
                         const edits = (llmQuestionEdits[currentVideoId] &&
                                     llmQuestionEdits[currentVideoId][questionKey]) || {};
 
-                        // Determine ranking
+                        // Determine LLM Ranking
                         let ranking = 0;
                         if (rankingInfo && rankingInfo.order) {
                             const rankIndex = rankingInfo.order.indexOf(questionKey);
@@ -5347,68 +5427,45 @@ select {
                             }
                         }
                         
-                        // If trashed, ranking is 0
                         if (edits.trashed || (rankingInfo && rankingInfo.trashed && 
                             rankingInfo.trashed.includes(questionKey))) {
                             ranking = 0;
                         }
 
-                        const questionData = {
-                            type,
-                            question: data.q || '',
-                            answer: data.a || '',
-                            trashed: edits.trashed || false,
-                            modified: edits.modified || false,
-                            ranking: ranking // Add ranking here
-                        };
+                        // Mark expert ranking (1 if selected, null if not)
+                        const expertRanking = (expertBestKey === questionKey) ? 1 : null;
 
-                        if (edits.timestamp) {
-                            questionData.lastModified = edits.timestamp;
-                        }
+                        const questionData = {
+                            questionType: type,          // Matches Python: q.get('questionType')
+                            question: edits.question || data.q || '', // Uses expert edit if exists, else original
+                            answer: edits.answer || data.a || '',     // Uses expert edit if exists, else original
+                            trashed: edits.trashed || false,
+                            llm_ranking: ranking,        // Matches Python: q.get('llm_ranking')
+                            expert_ranking: expertRanking // Matches Python: q.get('expert_ranking')
+                        };
 
                         segmentData.aiQuestions.push(questionData);
                     });
-
-                    // Add ranking comment if exists
-                    if (rankingInfo) {
-                        if (rankingInfo.triageComment) {
-                            segmentData.triageComment = rankingInfo.triageComment;
-                        }
-                        const resolvedRankingComment = rankingInfo.rankingComment || rankingInfo.comment;
-                        if (resolvedRankingComment) {
-                            segmentData.rankingComment = resolvedRankingComment;
-                        }
-                    }
                 }
 
-                finalQuestions.segments.push(segmentData);
+                payload.segments.push(segmentData);
             }
 
             try {
-                // Use the new dedicated endpoint
+                // Send the exact payload structure your Python code expects
                 const response = await fetch('/api/save-final-questions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        videoId: currentVideoId,
-                        data: finalQuestions
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
 
                 if (response.ok && result.success) {
                     showStatus('Thank you! Final questions saved successfully.', 'success');
-                    console.log('Saved to:', result.filepath);
 
-                    // Save to localStorage as backup
-                    localStorage.setItem(`final_questions_${currentVideoId}`, JSON.stringify(finalQuestions));
-
-                    // Update button to show success
-                    const btn = document.querySelector('.btn-save-changes');
                     if (btn) {
-                        btn.disabled = true;
-                        btn.textContent = 'Saved to final_questions ?';
+                        btn.textContent = 'Saved successfully!';
                         setTimeout(() => {
                             btn.disabled = false;
                             btn.textContent = 'Finalize questions and submit';
@@ -5417,15 +5474,17 @@ select {
 
                     setTimeout(() => {
                         window.location.href = '/';
-                    }, 400);
+                    }, 800);
                 } else {
                     throw new Error(result.message || 'Server save failed');
                 }
             } catch (error) {
                 console.error('Error saving final questions:', error);
-                // Fallback to localStorage
-                localStorage.setItem(`final_questions_${currentVideoId}`, JSON.stringify(finalQuestions));
-                showStatus('Saved to browser storage. Error: ' + error.message, 'warning');
+                showStatus('Error: ' + error.message, 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Finalize questions and submit';
+                }
             }
         }
 
@@ -5469,20 +5528,25 @@ select {
                 return segment.result.questions;
             }
 
-            const filename = `questions_${String(segment.start).padStart(5, '0')}-${String(segment.end).padStart(5, '0')}.json`;
-
             try {
-                const response = await fetch(`/downloads/${currentVideoId}/questions/${filename}`);
+                if (!currentVideoId) return null;
+                
+                const response = await fetch(`/api/questions/${currentVideoId}`);
                 if (response.ok) {
                     const data = await response.json();
-                    ensureSegmentResultObject(segment);
-                    if (data.questions) {
-                        segment.result.questions = data.questions;
+                    
+                    if (Array.isArray(data)) {
+                        for (const item of data) {
+                            if (item.payload && Array.isArray(item.payload.segments)) {
+                                const matchingSeg = item.payload.segments.find(s => s.start === segment.start);
+                                if (matchingSeg && matchingSeg.result && matchingSeg.result.questions) {
+                                    segment.result.questions = matchingSeg.result.questions;
+                                    segment.result.best_question = matchingSeg.result.best_question;
+                                    return segment.result.questions;
+                                }
+                            }
+                        }
                     }
-                    if (data.best_question && !segment.result.best_question) {
-                        segment.result.best_question = data.best_question;
-                    }
-                    return segment.result.questions || null;
                 }
             } catch (error) {
                 console.warn('Unable to resolve questions for segment', error);
@@ -6003,45 +6067,45 @@ select {
 
         
         async function loadFromQuestionFiles(videoId) {
-            try {
-                // Simple approach - look for video_id.json file
-                const filename = `${videoId}.json`;
+    try {
+        const response = await fetch(`/api/questions/${videoId}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (Array.isArray(data)) {
+                let extractedSegments = [];
                 
-                console.log(`Trying to load: /downloads/${videoId}/questions/${filename}`);
-                const response = await fetch(`/downloads/${videoId}/questions/${filename}`);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log(`Successfully loaded data from ${filename}:`, data);
-                    
-                    // Check for segments array
-                    if (data.segments && Array.isArray(data.segments) && data.segments.length > 0) {
-                        currentSegments = data.segments;
-                        console.log('Successfully loaded segments:', currentSegments);
-                        return;
-                    } else {
-                        console.log(`File ${filename} doesn't have segments array or it's empty`);
+                data.forEach(item => {
+                    if (item.payload && Array.isArray(item.payload.segments)) {
+                        extractedSegments = extractedSegments.concat(item.payload.segments);
                     }
-                } else {
-                    console.log(`Failed to fetch ${filename}: ${response.status}`);
+                });
+                
+                if (extractedSegments.length > 0) {
+                    extractedSegments.sort((a, b) => a.start - b.start);
+                    currentSegments = extractedSegments;
+                    return; // Success!
                 }
-                
-                // If video_id.json not found, try individual question files
-                console.log('No video_id.json file found, trying individual files');
-                await loadFromIndividualQuestionFiles(videoId);
-                
-            } catch (error) {
-                console.error('Error in loadFromQuestionFiles:', error);
-                currentSegments = [];
+            } 
+            else if (data.segments && Array.isArray(data.segments) && data.segments.length > 0) {
+                currentSegments = data.segments;
+                return; // Success!
             }
         }
         
+        await loadFromIndividualQuestionFiles(videoId);
+        
+    } catch (error) {
+        console.error('Error in loadFromQuestionFiles:', error);
+        currentSegments = [];
+    }
+}
+        
         async function loadFromIndividualQuestionFiles(videoId) {
             try {
-                // Try to find individual question files like questions_00000-00060.json
                 const segments = [];
                 
-                // Try common time intervals
                 const commonIntervals = [
                     { start: 0, end: 59 },
                     { start: 60, end: 119 }, 
@@ -6054,7 +6118,7 @@ select {
                 for (const interval of commonIntervals) {
                     const filename = `questions_${String(interval.start).padStart(5, '0')}-${String(interval.end).padStart(5, '0')}.json`;
                     try {
-                        const response = await fetch(`/downloads/${videoId}/questions/${filename}`);
+                        const response = await fetch(`/api/questions/${videoId}`);
                         if (response.ok) {
                             const data = await response.json();
                             segments.push({
@@ -6073,7 +6137,6 @@ select {
                     return;
                 }
                 
-                // Final fallback - no questions found
                 currentSegments = [];
                 
             } catch (error) {

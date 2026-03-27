@@ -124,4 +124,7 @@ class FinalAIQuestion(models.Model):
     llm_ranking = models.IntegerField(null=True, blank=True)
     expert_ranking = models.IntegerField(null=True, blank=True)
 
+    followup_question = models.TextField(blank=True, null=True)
+    followup_answer = models.TextField(blank=True, null=True)
+
     trashed = models.BooleanField(default=False)
