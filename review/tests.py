@@ -193,9 +193,15 @@ class SaveFinalQuestionsAPIViewTestCase(BaseAPITestCase):
                                     "q": "What?",
                                     "a": "Answer",
                                     "rank": 1,
-                                    "followup": {
+                                    "followupForCorrectAnswer": {
                                         "q": "Why?",
                                         "a": "Because",
+                                        "rank": 1,
+                                    },
+                                    "followupForIncorrectAnswer": {
+                                        "q": "Try again?",
+                                        "a": "Think again",
+                                        "rank": 1,
                                     },
                                 }
                             }

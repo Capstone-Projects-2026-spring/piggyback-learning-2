@@ -318,9 +318,18 @@ class SaveFinalQuestionsAPIView(APIView):
                 if not question:
                     continue
 
-                followup = qdata.get('followup') or {}
-                followup_q = (followup.get('q') or '').strip()
-                followup_a = (followup.get('a') or '').strip()
+                # followups for correct / incorrect answers:
+                # JSON structure:
+                #   "followupForCorrectAnswer": { "q": "", "a": "", "rank": "" },
+                followup_for_correct = qdata.get('followupForCorrectAnswer') or {}
+                followup_for_correct_q = (followup_for_correct.get('q') or '').strip()
+                followup_for_correct_a = (followup_for_correct.get('a') or '').strip()
+
+                # JSON structure:
+                #   "followupForIncorrectAnswer": { "q": "", "a": "", "rank": "" }
+                followup_for_incorrect = qdata.get('followupForIncorrectAnswer') or {}
+                followup_for_incorrect_q = (followup_for_incorrect.get('q') or '').strip()
+                followup_for_incorrect_a = (followup_for_incorrect.get('a') or '').strip()
 
                 try:
                     rank = int(qdata.get('rank'))
@@ -335,9 +344,10 @@ class SaveFinalQuestionsAPIView(APIView):
                     llm_ranking=rank,
                     expert_ranking=None,
                     trashed=False,
-
-                    followup_question=followup_q,
-                    followup_answer=followup_a,
+                    followup_for_correct_q=followup_for_correct_q,
+                    followup_for_correct_a=followup_for_correct_a,
+                    followup_for_incorrect_q=followup_for_incorrect_q,
+                    followup_for_incorrect_a=followup_for_incorrect_a
                 )
 
         return Response(
@@ -378,8 +388,10 @@ class FinalQuestionsForKidsAPIView(APIView):
                         'answer': best.answer,
                         'llm_ranking': best.llm_ranking,
                         'expert_ranking': best.expert_ranking,
-                        'followup_question': best.followup_question,
-                        'followup_answer': best.followup_answer,
+                        'followup_for_correct_q': best.followup_for_correct_q,
+                        'followup_for_correct_a': best.followup_for_correct_a,
+                        'followup_for_incorrect_q': best.followup_for_incorrect_q,
+                        'followup_for_incorrect_a': best.followup_for_incorrect_a,
                     }
                 )
 
@@ -450,15 +462,26 @@ class FinalQuestionsForKidsAPIView(APIView):
                 if not question or not answer:
                     continue
 
-                followup = best_q.get('followup') or {}
-
-                if (followup):
-                    followup_question = (followup.get('q') or '').strip()
-                    followup_answer = (followup.get('a') or '').strip()
+                # followups for correct / incorrect answers:
+                # JSON structure:
+                #   "followupForCorrectAnswer": { "q": "", "a": "", "rank": "" },
+                followup_for_correct = best_q.get('followupForCorrectAnswer') or {}
+                if (followup_for_correct):
+                    followup_for_correct_q = (followup_for_correct.get('q') or '').strip()
+                    followup_for_correct_a = (followup_for_correct.get('a') or '').strip()
                 else:
-                    followup_question = ''
-                    followup_answer = ''
+                    followup_for_correct_q = ''
+                    followup_for_correct_a = ''
 
+                # JSON structure:
+                #   "followupForIncorrectAnswer": { "q": "", "a": "", "rank": "" },
+                followup_for_incorrect = best_q.get('followupForIncorrectAnswer') or {}
+                if (followup_for_incorrect):
+                    followup_for_incorrect_q = (followup_for_incorrect.get('q') or '').strip()
+                    followup_for_incorrect_a = (followup_for_incorrect.get('a') or '').strip()
+                else:
+                    followup_for_incorrect_q = ''
+                    followup_for_incorrect_a = ''
 
                 selected_segments.append(
                     {
@@ -468,8 +491,10 @@ class FinalQuestionsForKidsAPIView(APIView):
                         'answer': answer,
                         'llm_ranking': best_q.get('rank'),
                         'expert_ranking': None,
-                        'followup_question': followup_question,
-                        'followup_answer': followup_answer,
+                        'followup_for_correct_q': followup_for_correct_q,
+                        'followup_for_correct_a': followup_for_correct_a,
+                        'followup_for_incorrect_q': followup_for_incorrect_q,
+                        'followup_for_incorrect_a': followup_for_incorrect_a,
                     }
                 )
 
