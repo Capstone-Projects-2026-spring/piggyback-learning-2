@@ -210,7 +210,7 @@ class MoodDetectionTests(APITestCase):
         end_time = time.time()
 
         runtime = end_time - start_time
-        print(f"No mood detection took: {runtime:.4f} seconds")
+        print(f"No mood detection took: {runtime:.3f} seconds")
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data.get('success'))
@@ -228,7 +228,7 @@ class MoodDetectionTests(APITestCase):
         end_time = time.time()
 
         runtime = end_time - start_time
-        print(f"With mood detection took:  {runtime:.4f} seconds")
+        print(f"With mood detection took:  {runtime:.3f} seconds")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data.get('success'))

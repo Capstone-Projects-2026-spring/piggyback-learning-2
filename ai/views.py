@@ -3,6 +3,7 @@ import io
 import os
 import re
 from functools import lru_cache
+import time
 
 from openai import OpenAI
 from rapidfuzz import fuzz
@@ -401,7 +402,7 @@ class CheckAnswerAPIView(APIView):
             }
         )
 
-
+#note, time function import only exists for testing purposes, remove later
 class TranscribeAPIView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -429,7 +430,8 @@ class TranscribeAPIView(APIView):
                 'model': 'whisper-1',
                 'file': (f.name or 'speech.webm', audio_bytes, f.content_type),
             }
-
+            start_time = time.time()
+            
             if analyze_distraction:
                 transcribe_args['timestamp_granularities'] = ['word']
                 transcribe_args['response_format'] = 'verbose_json'
@@ -472,6 +474,9 @@ class TranscribeAPIView(APIView):
                     'pauses': pauses,  
                     'distracted': distracted,
                 }
+                end_time = time.time()
+                total_time = end_time - start_time
+                print(f"Transcription time: {total_time:.3f} seconds. total_words: {total_words}. filler_words: {filler_count}. filler_ratio: {round(filler_count / total_words, 3) if total_words else 0}. pause_count: {pause_count}. distracted: {distracted}")
 
             return Response(response_data)
 
