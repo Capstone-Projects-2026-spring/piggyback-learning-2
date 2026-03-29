@@ -31,14 +31,12 @@ pub fn download_video(url: &str) -> Option<(String, String, String, i32, String)
         }
     }
 
-    if Path::new(&dir_path).exists() {
+    let video_path = format!("{}/{}.mp4", dir_path, title);
+    if Path::new(&video_path).exists() {
         println!("Video already downloaded, skipping...");
 
         return None;
     }
-
-    // Download video
-    let output_template = format!("downloads/{}/%(title)s.%(ext)s", video_id);
 
     let res = Command::new("yt-dlp")
         .arg(url)
@@ -47,15 +45,12 @@ pub fn download_video(url: &str) -> Option<(String, String, String, i32, String)
         .arg("--merge-output-format")
         .arg("mp4")
         .arg("-o")
-        .arg(&output_template)
+        .arg(&video_path)
         .status();
     if res.is_err() {
         println!("Error during download: {:#?}", res);
         return None;
     }
 
-    // Build local path
-    let local_path = format!("downloads/{}/", video_id);
-
-    Some((video_id, title, thumbnail, duration, local_path))
+    Some((video_id, title, thumbnail, duration, video_path))
 }
