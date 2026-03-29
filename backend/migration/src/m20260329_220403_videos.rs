@@ -9,12 +9,13 @@ impl MigrationTrait for Migration {
     async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
         create_table(
             m,
-            "parents",
+            "videos",
             &[
-                ("id", ColType::PkAuto),
-                ("username", ColType::String),
-                ("password_hash", ColType::String),
-                ("name", ColType::String),
+                ("id", ColType::StringUniq),
+                ("title", ColType::StringNull),
+                ("thumbnail_url", ColType::StringNull),
+                ("duration_seconds", ColType::IntegerNull),
+                ("local_video_path", ColType::StringNull),
             ],
             &[],
         )
@@ -22,6 +23,6 @@ impl MigrationTrait for Migration {
     }
 
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
-        drop_table(m, "parents").await
+        drop_table(m, "videos").await
     }
 }
