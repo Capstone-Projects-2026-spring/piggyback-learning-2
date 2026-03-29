@@ -4,3 +4,4 @@ pub use super::kid_tags::Entity as KidTags;
 pub use super::kids::Entity as Kids;
 pub use super::parents::Entity as Parents;
 pub use super::tags::Entity as Tags;
+pub use super::videos::Entity as Videos;
