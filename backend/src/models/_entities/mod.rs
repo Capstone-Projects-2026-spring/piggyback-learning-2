@@ -2,5 +2,7 @@
 
 pub mod prelude;
 
+pub mod kid_tags;
 pub mod kids;
 pub mod parents;
+pub mod tags;

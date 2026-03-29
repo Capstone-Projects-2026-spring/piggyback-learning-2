@@ -4,40 +4,24 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "kids")]
+#[sea_orm(table_name = "tags")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub username: String,
-    pub password_hash: String,
+    #[sea_orm(unique)]
     pub name: String,
-    pub parent_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(has_many = "super::kid_tags::Entity")]
     KidTags,
-    #[sea_orm(
-        belongs_to = "super::parents::Entity",
-        from = "Column::ParentId",
-        to = "super::parents::Column::Id",
-        on_update = "Cascade",
-        on_delete = "Cascade"
-    )]
-    Parents,
 }
 
 impl Related<super::kid_tags::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::KidTags.def()
-    }
-}
-
-impl Related<super::parents::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Parents.def()
     }
 }
