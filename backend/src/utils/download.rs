@@ -31,7 +31,7 @@ pub fn download_video(url: &str) -> Option<(String, String, String, i32, String)
         }
     }
 
-    let video_path = format!("{}/{}.mp4", dir_path, title);
+    let video_path = format!("{}/{}.mp4", dir_path, video_id);
     if Path::new(&video_path).exists() {
         println!("Video already downloaded, skipping...");
 
