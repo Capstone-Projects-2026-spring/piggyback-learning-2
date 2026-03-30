@@ -18,10 +18,18 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::kid_tags::Entity")]
     KidTags,
+    #[sea_orm(has_many = "super::video_tags::Entity")]
+    VideoTags,
 }
 
 impl Related<super::kid_tags::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::KidTags.def()
+    }
+}
+
+impl Related<super::video_tags::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::VideoTags.def()
     }
 }
