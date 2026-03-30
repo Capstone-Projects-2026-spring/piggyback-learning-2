@@ -1,5 +1,5 @@
 use loco_rs::prelude::*;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{sea_query::OnConflict, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -46,10 +46,6 @@ struct TagResponse {
     name: String,
 }
 
-#[derive(Deserialize)]
-struct AddTagsRequest {
-    tag_ids: Vec<i32>,
-}
 async fn get_video_tags(
     State(ctx): State<AppContext>,
     Path(video_id): Path<String>,
@@ -72,27 +68,39 @@ async fn get_video_tags(
     format::json(tags)
 }
 
+#[derive(Deserialize)]
+pub struct AddTagsRequest {
+    pub tags: Vec<i32>,
+}
+
 async fn add_video_tags(
     State(ctx): State<AppContext>,
     Path(video_id): Path<String>,
     Json(data): Json<AddTagsRequest>,
 ) -> Result<Response> {
-    for tag_id in data.tag_ids {
-        // Prevent duplicates
-        let exists = video_tags::Entity::find()
-            .filter(video_tags::Column::VideoId.eq(video_id.clone()))
-            .filter(video_tags::Column::TagId.eq(tag_id))
-            .one(&ctx.db)
-            .await?;
+    let models = data.tags.into_iter().map(|tag_id| video_tags::ActiveModel {
+        video_id: Set(video_id.clone()),
+        tag_id: Set(tag_id),
+        ..Default::default()
+    });
 
-        if exists.is_none() {
-            video_tags::Entity::insert(video_tags::ActiveModel {
-                video_id: Set(video_id.clone()),
-                tag_id: Set(tag_id),
-                ..Default::default()
-            })
-            .exec(&ctx.db)
-            .await?;
+    match video_tags::Entity::insert_many(models)
+        .on_conflict(
+            OnConflict::columns([video_tags::Column::VideoId, video_tags::Column::TagId])
+                .do_nothing()
+                .to_owned(),
+        )
+        .exec(&ctx.db)
+        .await
+    {
+        Ok(_) => {}
+        Err(sea_orm::DbErr::RecordNotInserted) => {
+            // This means all rows already existed totally fine
+        }
+        Err(_) => {
+            return format::json(
+                serde_json::json!({"success": false, "msg": "Unknown error occurred"}),
+            );
         }
     }
 
