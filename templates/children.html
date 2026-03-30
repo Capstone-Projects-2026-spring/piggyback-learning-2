@@ -2002,22 +2002,36 @@
 
       // Load matching questions
       fetch(`/api/final-questions/${encodeURIComponent(video.video_id)}?nocache=${Date.now()}`)
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          return res.json();
+        })
         .then(data => {
-          if (!data.success) throw new Error(data.error || "Missing final questions");
+          // 1. Check if Django sent us our segments array directly
+          let segmentsData = [];
+          if (data && Array.isArray(data.segments)) {
+              segmentsData = data.segments;
+          }
 
-          const entries = Array.isArray(data.segments) ? data.segments : [];
-          segments = entries
+          if (segmentsData.length === 0) {
+              throw new Error("No segments found in the API response.");
+          }
+
+          // 2. Map the clean Django data into the player's format
+          segments = segmentsData
             .map((seg, idx) => {
-              const startSec = normalizeToSeconds(seg.segment_range_start);
-              const endSec = normalizeToSeconds(seg.segment_range_end);
+              // Django is already giving us the exact keys we need!
+              const startSec = parseFloat(seg.segment_range_start ?? seg.start ?? 0);
+              const endSec = parseFloat(seg.segment_range_end ?? seg.end ?? 0);
+              
               const questionText = (seg.question || "").trim();
               const answerText = (seg.answer || "").trim();
-              const followupQuestionText = (seg.followup_question || "").trim();
-              const followupAnswerText = (seg.followup_answer || "").trim();
+              
               if (!questionText || !answerText) return null;
+
               const rawTrigger = endSec > 0 ? endSec : startSec;
               const triggerSec = Math.max(0, Math.round(rawTrigger));
+              
               return {
                 id: `segment_${idx + 1}`,
                 index: idx,
@@ -2027,15 +2041,8 @@
                 ques_time: secondsToTimestamp(triggerSec),
                 question: questionText,
                 answer: answerText,
-                followup_question: followupQuestionText,
-                followup_answer: followupAnswerText
-                // followup: qObj.followup
-                //   ? {
-                //       question: (qObj.followup.q || "").trim(),
-                //       answer: (qObj.followup.a || "").trim(),
-                //       rank: parseInt(qObj.followup.rank),
-                //     }
-                //   : null,
+                followup_question: (seg.followup_question || "").trim(),
+                followup_answer: (seg.followup_answer || "").trim()
               };
             })
             .filter(Boolean)
@@ -2046,7 +2053,7 @@
           updateProgress();
 
           if (!segments.length) {
-            throw new Error("No eligible questions found in final_questions.json");
+            throw new Error("Mapping completed, but resulted in 0 valid questions.");
           }
 
           lastPrefetchedIndex = -1;
