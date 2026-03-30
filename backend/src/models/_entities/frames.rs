@@ -12,6 +12,7 @@ pub struct Model {
     pub id: i32,
     pub video_id: String,
     pub frame_number: i32,
+    #[sea_orm(unique)]
     pub timestamp_seconds: i32,
     pub timestamp_formatted: String,
     pub filename: String,
