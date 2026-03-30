@@ -640,7 +640,7 @@
                     const blob = new Blob(chunks, { type: "audio/webm;codecs=opus" });
                     const formData = new FormData();
                     formData.append("file", blob, "speech.webm");
-                    formData.append("analyze_distraction", "true");
+                    
                     fetch("/api/transcribe", { method: "POST", body: formData })
                         .then(res => res.json())
                         .then(data => {
