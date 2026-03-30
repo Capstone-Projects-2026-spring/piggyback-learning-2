@@ -1,3 +1,5 @@
+use std::env;
+
 use loco_rs::prelude::*;
 use loco_rs::{auth::jwt, hash};
 use serde::Deserialize;
@@ -26,14 +28,18 @@ fn hash_password(password: &str) -> String {
 }
 
 fn verify_password(hash: &str, password: &str) -> bool {
-    hash::verify_password(hash, password)
+    hash::verify_password(password, hash)
 }
 
 pub fn generate_jwt(id: i32) -> ModelResult<String> {
-    let secret = "secret";
-    let expiration = 12;
-    jwt::JWT::new(secret)
-        .generate_token(expiration, id.to_string(), Map::new())
+    let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set.");
+    let expiration = env::var("JWT_EXPIRATION").expect("JWT_EXPIRATION must be set.");
+    jwt::JWT::new(&secret)
+        .generate_token(
+            expiration.parse::<u64>().unwrap(),
+            id.to_string(),
+            Map::new(),
+        )
         .map_err(ModelError::from)
 }
 
