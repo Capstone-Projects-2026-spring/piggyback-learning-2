@@ -9,7 +9,7 @@ pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(primary_key, auto_increment = false)]
-    pub video_id: i32,
+    pub video_id: String,
     #[sea_orm(primary_key, auto_increment = false)]
     pub tag_id: i32,
 }
