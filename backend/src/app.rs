@@ -43,6 +43,7 @@ impl Hooks for App {
         AppRoutes::with_default_routes()
             .prefix("/api")
             .add_route(controllers::auth::routes())
+            .add_route(controllers::tags::routes())
             .add_route(controllers::videos::routes())
     }
 
