@@ -1,4 +1,5 @@
 use loco_rs::prelude::*;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set};
 use serde::{Deserialize, Serialize};
 
 use crate::models::_entities::{kid_tags, tags};
@@ -38,23 +39,30 @@ async fn add_kid_tags(
     Path(kid_id): Path<i32>,
     Json(data): Json<AddTagsRequest>,
 ) -> Result<Response> {
-    for tag_id in data.tags {
-        // Prevent duplicates
-        let exists = kid_tags::Entity::find()
-            .filter(kid_tags::Column::KidId.eq(kid_id))
-            .filter(kid_tags::Column::TagId.eq(tag_id))
-            .one(&ctx.db)
-            .await?;
+    let tag_ids = data.tags;
 
-        if exists.is_none() {
-            kid_tags::Entity::insert(kid_tags::ActiveModel {
-                kid_id: Set(kid_id),
-                tag_id: Set(tag_id),
-                ..Default::default()
-            })
-            .exec(&ctx.db)
-            .await?;
-        }
+    let existing: Vec<i32> = kid_tags::Entity::find()
+        .select_only()
+        .column(kid_tags::Column::TagId)
+        .filter(kid_tags::Column::KidId.eq(kid_id))
+        .filter(kid_tags::Column::TagId.is_in(tag_ids.clone()))
+        .into_tuple()
+        .all(&ctx.db)
+        .await?;
+
+    let new_tags: Vec<i32> = tag_ids
+        .into_iter()
+        .filter(|id| !existing.contains(id))
+        .collect();
+
+    if !new_tags.is_empty() {
+        let models = new_tags.into_iter().map(|tag_id| kid_tags::ActiveModel {
+            kid_id: Set(kid_id),
+            tag_id: Set(tag_id),
+            ..Default::default()
+        });
+
+        kid_tags::Entity::insert_many(models).exec(&ctx.db).await?;
     }
 
     format::json(serde_json::json!({
