@@ -8,6 +8,7 @@ mod m20260329_211415_tags;
 mod m20260329_212214_kid_tags;
 mod m20260329_220403_videos;
 mod m20260330_034450_video_tags;
+mod m20260330_052503_frames;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -20,6 +21,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260329_212214_kid_tags::Migration),
             Box::new(m20260329_220403_videos::Migration),
             Box::new(m20260330_034450_video_tags::Migration),
+            Box::new(m20260330_052503_frames::Migration),
             // inject-above (do not remove this comment)
         ]
     }
