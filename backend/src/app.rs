@@ -44,6 +44,7 @@ impl Hooks for App {
             .prefix("/api")
             .add_route(controllers::auth::routes())
             .add_route(controllers::frames::routes())
+            .add_route(controllers::openai::routes())
             .add_route(controllers::kids::routes())
             .add_route(controllers::tags::routes())
             .add_route(controllers::videos::routes())
