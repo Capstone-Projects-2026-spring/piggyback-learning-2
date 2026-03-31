@@ -11,7 +11,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub kid_id: i32,
     #[sea_orm(primary_key, auto_increment = false)]
-    pub video_id: i32,
+    pub video_id: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -72,7 +72,7 @@ async fn add_kid_tags(
 
 #[derive(Deserialize)]
 pub struct CreateVideoAssignmentRequest {
-    pub video_id: i32,
+    pub video_id: String,
 }
 
 async fn create_video_assignment(
@@ -130,13 +130,9 @@ async fn get_video_assignments(
         .all(&ctx.db)
         .await?;
 
-    // Extract only videos (skip None just in case)
     let videos: Vec<videos::Model> = results.into_iter().filter_map(|(_, video)| video).collect();
 
-    format::json(GetVideosResponse {
-        success: true,
-        data: videos,
-    })
+    format::json(videos)
 }
 
 pub fn routes() -> Routes {
