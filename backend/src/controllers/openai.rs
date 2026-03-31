@@ -21,8 +21,14 @@ pub async fn generate_questions(
     let result =
         generate_and_store_questions(&ctx.db, &openai_client, video_id, params.start, params.end)
             .await;
+    if result.is_err() {
+        println!("{:#?}", result);
+        return format::json(
+            serde_json::json!({"success": false, "msg": "Unknown error occurred"}),
+        );
+    }
 
-    format::json(result)
+    format::json(result.unwrap())
 }
 
 pub fn routes() -> Routes {

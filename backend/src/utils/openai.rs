@@ -1,9 +1,11 @@
 use async_openai::{config::OpenAIConfig, Client as OpenAIClient};
 use base64::{engine::general_purpose, Engine as _};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Insert, QueryFilter,
+    QueryOrder, Set,
 };
-use serde_json::{json, Value};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::{fs, sync::Arc};
 
 use crate::models::_entities::{
@@ -15,7 +17,52 @@ use crate::models::_entities::{
     },
 };
 
-use loco_rs::prelude::*;
+#[derive(Serialize, Deserialize, Debug)]
+pub struct QuestionItem {
+    pub qtype: String,
+    pub question: String,
+    pub answer: String,
+    pub rank: Option<i32>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SegmentResponse {
+    pub id: i32,
+    pub video_id: String,
+    pub start_seconds: i32,
+    pub end_seconds: i32,
+    pub best_question: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct QuestionsResponse {
+    pub segment: SegmentResponse,
+    pub questions: Vec<QuestionItem>,
+}
+
+#[derive(Deserialize)]
+struct OpenAIQuestionItem {
+    q: String,
+    a: String,
+    rank: Option<i32>,
+}
+
+#[derive(Deserialize)]
+struct OpenAIQuestions {
+    character: OpenAIQuestionItem,
+    setting: OpenAIQuestionItem,
+    feeling: OpenAIQuestionItem,
+    action: OpenAIQuestionItem,
+    causal: OpenAIQuestionItem,
+    outcome: OpenAIQuestionItem,
+    prediction: OpenAIQuestionItem,
+}
+
+#[derive(Deserialize)]
+pub struct OpenAIResponse {
+    questions: OpenAIQuestions,
+    best_question: String,
+}
 
 fn build_prompt(transcript: &str, duration: i32, start: i32, end: i32) -> String {
     format!(
@@ -49,13 +96,13 @@ IMPORTANT:
 Return JSON:
 {{
 "questions": {{
-    "character": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "" }},
-    "setting": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "" }},
-    "feeling": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "" }},
-    "action": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "" }},
-    "causal": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "" }},
-    "outcome": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "" }},
-    "prediction": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "" }}
+    "character": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
+    "setting": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
+    "feeling": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
+    "action": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
+    "causal": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
+    "outcome": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
+    "prediction": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }}
 }},
 "best_question": "..."
 }}"#,
@@ -64,15 +111,18 @@ Return JSON:
 }
 
 fn build_transcript(frames: &[Frame]) -> String {
-    let mut parts = Vec::new();
-
-    for f in frames {
-        if let Some(txt) = &f.subtitle_text {
-            if !txt.trim().is_empty() {
-                parts.push(format!("[{}] {}", f.timestamp_formatted, txt));
-            }
-        }
-    }
+    let parts: Vec<String> = frames
+        .iter()
+        .filter_map(|f| {
+            f.subtitle_text.as_ref().and_then(|txt| {
+                if txt.trim().is_empty() {
+                    None
+                } else {
+                    Some(format!("[{}] {}", f.timestamp_formatted, txt))
+                }
+            })
+        })
+        .collect();
 
     if parts.is_empty() {
         "No transcript available.".to_string()
@@ -94,7 +144,7 @@ pub async fn call_openai(
     client: &Arc<OpenAIClient<OpenAIConfig>>,
     prompt: String,
     image_paths: Vec<String>,
-) -> Result<String, String> {
+) -> Result<OpenAIResponse, String> {
     let mut content = vec![json!({
         "type": "text",
         "text": prompt
@@ -116,6 +166,9 @@ pub async fn call_openai(
 
     let request_body = json!({
         "model": "gpt-4o-mini",
+        "temperature": 0.2,
+        "max_tokens": 1500,
+        "response_format": { "type": "json_object" },
         "messages": [
             {
                 "role": "system",
@@ -125,20 +178,23 @@ pub async fn call_openai(
                 "role": "user",
                 "content": content
             }
-        ],
-        "temperature": 0.2,
-        "max_tokens": 1500,
-        "response_format": { "type": "json_object" }
+        ]
     });
 
-    let response: Value = client.chat().create_byot(request_body).await.unwrap();
+    let response: serde_json::Value = client
+        .chat()
+        .create_byot(request_body)
+        .await
+        .map_err(|e| format!("OpenAI error: {}", e))?;
 
     let text = response["choices"][0]["message"]["content"]
         .as_str()
-        .unwrap_or("")
-        .to_string();
+        .ok_or("Invalid OpenAI response")?;
 
-    Ok(text)
+    let parsed: OpenAIResponse =
+        serde_json::from_str(text).map_err(|_| "Invalid JSON structure".to_string())?;
+
+    Ok(parsed)
 }
 
 pub async fn generate_and_store_questions(
@@ -147,7 +203,7 @@ pub async fn generate_and_store_questions(
     video_id: String,
     start: i32,
     end: i32,
-) -> Result<String, String> {
+) -> Result<QuestionsResponse, String> {
     if let Some(segment) = Segments::find()
         .filter(SegmentColumn::VideoId.eq(&video_id))
         .filter(SegmentColumn::StartSeconds.eq(start))
@@ -162,14 +218,24 @@ pub async fn generate_and_store_questions(
             .await
             .map_err(|e| format!("DB error: {}", e))?;
 
-        let response = json!({
-            "cached": true,
-            "segment_id": segment.id,
-            "best_question": segment.best_question,
-            "questions": questions
+        return Ok(QuestionsResponse {
+            segment: SegmentResponse {
+                id: segment.id,
+                video_id: segment.video_id,
+                start_seconds: segment.start_seconds,
+                end_seconds: segment.end_seconds,
+                best_question: segment.best_question,
+            },
+            questions: questions
+                .into_iter()
+                .map(|q| QuestionItem {
+                    qtype: q.qtype,
+                    question: q.question,
+                    answer: q.answer,
+                    rank: q.rank,
+                })
+                .collect(),
         });
-
-        return Ok(response.to_string());
     }
 
     let frames = Frames::find()
@@ -182,51 +248,73 @@ pub async fn generate_and_store_questions(
         .map_err(|e| format!("DB error: {}", e))?;
 
     if frames.is_empty() {
-        return Ok(r#"{"error":"no_frames"}"#.to_string());
+        return Err("no_frames".into());
     }
 
     let transcript = build_transcript(&frames);
     let sampled = sample_frames(&frames, 5);
+
     let prompt = build_prompt(&transcript, end - start, start, end);
     let image_paths: Vec<String> = sampled.iter().map(|f| f.file_path.clone()).collect();
 
-    let raw = call_openai(client, prompt, image_paths).await?;
-
-    let parsed: Value =
-        serde_json::from_str(&raw).unwrap_or_else(|_| json!({ "error": "invalid_json" }));
-
-    let best_question = parsed["best_question"].as_str().unwrap_or("").to_string();
+    let parsed = call_openai(client, prompt, image_paths).await?;
 
     let segment: SegmentModel = SegmentActive {
         video_id: Set(video_id.clone()),
         start_seconds: Set(start),
         end_seconds: Set(end),
-        best_question: Set(Some(best_question)),
+        best_question: Set(Some(parsed.best_question.clone())),
         ..Default::default()
     }
     .insert(db)
     .await
-    .map_err(|e| format!("Failed to insert segment: {}", e))?;
+    .map_err(|e| format!("Insert segment failed: {}", e))?;
 
-    if let Some(qmap) = parsed["questions"].as_object() {
-        for (qtype, val) in qmap {
-            let q = val["q"].as_str().unwrap_or("");
-            let a = val["a"].as_str().unwrap_or("");
-            let rank = val["rank"].as_str().and_then(|r| r.parse::<i32>().ok());
+    let question_models = vec![
+        ("character", parsed.questions.character),
+        ("setting", parsed.questions.setting),
+        ("feeling", parsed.questions.feeling),
+        ("action", parsed.questions.action),
+        ("causal", parsed.questions.causal),
+        ("outcome", parsed.questions.outcome),
+        ("prediction", parsed.questions.prediction),
+    ];
 
-            let _ = QuestionActive {
-                segment_id: Set(segment.id),
-                qtype: Set(qtype.clone()),
-                question: Set(q.to_string()),
-                answer: Set(a.to_string()),
-                rank: Set(rank),
-                ..Default::default()
-            }
-            .insert(db)
-            .await
-            .map_err(|e| format!("Failed to insert question: {}", e))?;
-        }
-    }
+    let active_models: Vec<QuestionActive> = question_models
+        .iter()
+        .map(|(qtype, item)| QuestionActive {
+            segment_id: Set(segment.id),
+            qtype: Set(qtype.to_string()),
+            question: Set(item.q.clone()),
+            answer: Set(item.a.clone()),
+            rank: Set(item.rank),
+            ..Default::default()
+        })
+        .collect();
 
-    Ok(raw.to_string())
+    Insert::many(active_models)
+        .exec(db)
+        .await
+        .map_err(|e| format!("Batch insert failed: {}", e))?;
+
+    let questions = question_models
+        .into_iter()
+        .map(|(qtype, item)| QuestionItem {
+            qtype: qtype.to_string(),
+            question: item.q,
+            answer: item.a,
+            rank: item.rank,
+        })
+        .collect();
+
+    Ok(QuestionsResponse {
+        segment: SegmentResponse {
+            id: segment.id,
+            video_id,
+            start_seconds: start,
+            end_seconds: end,
+            best_question: Some(parsed.best_question),
+        },
+        questions,
+    })
 }
