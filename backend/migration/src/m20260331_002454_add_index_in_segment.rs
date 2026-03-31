@@ -9,10 +9,10 @@ impl MigrationTrait for Migration {
         m.create_index(
             Index::create()
                 .name("idx-unique-segment")
-                .table(Segment::Table)
-                .col(Segment::VideoId)
-                .col(Segment::StartSeconds)
-                .col(Segment::EndSeconds)
+                .table(Segments::Table)
+                .col(Segments::VideoId)
+                .col(Segments::StartSeconds)
+                .col(Segments::EndSeconds)
                 .unique()
                 .to_owned(),
         )
@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
         m.drop_index(
             Index::drop()
                 .name("idx-unique-segment")
-                .table(Segment::Table)
+                .table(Segments::Table)
                 .to_owned(),
         )
         .await
@@ -31,7 +31,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(Iden)]
-enum Segment {
+enum Segments {
     Table,
     VideoId,
     StartSeconds,
