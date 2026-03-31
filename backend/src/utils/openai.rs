@@ -1,10 +1,10 @@
-use async_openai::Client as OpenAIClient;
+use async_openai::{config::OpenAIConfig, Client as OpenAIClient};
 use base64::{engine::general_purpose, Engine as _};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, Set,
 };
 use serde_json::{json, Value};
-use std::fs;
+use std::{fs, sync::Arc};
 
 use crate::models::_entities::{
     frames::{Column as FrameColumn, Entity as Frames, Model as Frame},
@@ -90,9 +90,11 @@ fn sample_frames(frames: &[Frame], max: usize) -> Vec<Frame> {
     frames.iter().step_by(step).take(max).cloned().collect()
 }
 
-pub async fn call_openai(prompt: String, image_paths: Vec<String>) -> Result<String, String> {
-    let client = OpenAIClient::new();
-
+pub async fn call_openai(
+    client: &Arc<OpenAIClient<OpenAIConfig>>,
+    prompt: String,
+    image_paths: Vec<String>,
+) -> Result<String, String> {
     let mut content = vec![json!({
         "type": "text",
         "text": prompt
@@ -141,6 +143,7 @@ pub async fn call_openai(prompt: String, image_paths: Vec<String>) -> Result<Str
 
 pub async fn generate_and_store_questions(
     db: &DatabaseConnection,
+    client: &Arc<OpenAIClient<OpenAIConfig>>,
     video_id: String,
     start: i32,
     end: i32,
@@ -187,7 +190,7 @@ pub async fn generate_and_store_questions(
     let prompt = build_prompt(&transcript, end - start, start, end);
     let image_paths: Vec<String> = sampled.iter().map(|f| f.file_path.clone()).collect();
 
-    let raw = call_openai(prompt, image_paths).await?;
+    let raw = call_openai(client, prompt, image_paths).await?;
 
     let parsed: Value =
         serde_json::from_str(&raw).unwrap_or_else(|_| json!({ "error": "invalid_json" }));

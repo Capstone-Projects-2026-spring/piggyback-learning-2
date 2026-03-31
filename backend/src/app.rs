@@ -1,4 +1,6 @@
+use async_openai::{config::OpenAIConfig, Client};
 use async_trait::async_trait;
+use axum::Extension;
 use loco_rs::{
     app::{AppContext, Hooks},
     boot::{create_app, BootResult, StartMode},
@@ -10,9 +12,12 @@ use loco_rs::{
     Result,
 };
 use migration::Migrator;
-use std::path::Path;
+use once_cell::sync::Lazy;
+use std::{path::Path, sync::Arc};
 
 use crate::controllers;
+
+pub static OPENAI_CLIENT: Lazy<Arc<Client<OpenAIConfig>>> = Lazy::new(|| Arc::new(Client::new()));
 
 pub struct App;
 #[async_trait]
@@ -48,6 +53,10 @@ impl Hooks for App {
             .add_route(controllers::kids::routes())
             .add_route(controllers::tags::routes())
             .add_route(controllers::videos::routes())
+    }
+
+    async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
+        Ok(router.layer(Extension(OPENAI_CLIENT.clone())))
     }
 
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {

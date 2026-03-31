@@ -1,4 +1,8 @@
+use std::sync::Arc;
+
 use crate::utils::openai::generate_and_store_questions;
+use async_openai::{config::OpenAIConfig, Client};
+use axum::Extension;
 use loco_rs::prelude::*;
 use serde::Deserialize;
 
@@ -12,8 +16,11 @@ pub async fn generate_questions(
     State(ctx): State<AppContext>,
     Path(video_id): Path<String>,
     Query(params): Query<SegmentQuery>,
+    Extension(openai_client): Extension<Arc<Client<OpenAIConfig>>>,
 ) -> Result<Response> {
-    let result = generate_and_store_questions(&ctx.db, video_id, params.start, params.end).await;
+    let result =
+        generate_and_store_questions(&ctx.db, &openai_client, video_id, params.start, params.end)
+            .await;
 
     format::json(result)
 }
