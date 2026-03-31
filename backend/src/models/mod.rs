@@ -8,3 +8,4 @@ pub mod segments;
 pub mod tags;
 pub mod video_tags;
 pub mod videos;
+pub mod video_assignments;

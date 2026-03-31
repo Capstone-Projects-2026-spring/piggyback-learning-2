@@ -28,6 +28,8 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Parents,
+    #[sea_orm(has_many = "super::video_assignments::Entity")]
+    VideoAssignments,
 }
 
 impl Related<super::kid_tags::Entity> for Entity {
@@ -39,5 +41,11 @@ impl Related<super::kid_tags::Entity> for Entity {
 impl Related<super::parents::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Parents.def()
+    }
+}
+
+impl Related<super::video_assignments::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::VideoAssignments.def()
     }
 }

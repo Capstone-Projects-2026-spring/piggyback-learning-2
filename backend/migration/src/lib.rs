@@ -15,6 +15,7 @@ mod m20260330_165514_add_index_in_video_tags;
 mod m20260330_234807_segments;
 mod m20260331_001127_questions;
 mod m20260331_002454_add_index_in_segment;
+mod m20260331_144037_video_assignments;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -34,6 +35,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260330_234807_segments::Migration),
             Box::new(m20260331_001127_questions::Migration),
             Box::new(m20260331_002454_add_index_in_segment::Migration),
+            Box::new(m20260331_144037_video_assignments::Migration),
             // inject-above (do not remove this comment)
         ]
     }

@@ -7,5 +7,6 @@ pub use super::parents::Entity as Parents;
 pub use super::questions::Entity as Questions;
 pub use super::segments::Entity as Segments;
 pub use super::tags::Entity as Tags;
+pub use super::video_assignments::Entity as VideoAssignments;
 pub use super::video_tags::Entity as VideoTags;
 pub use super::videos::Entity as Videos;

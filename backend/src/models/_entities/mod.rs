@@ -9,5 +9,6 @@ pub mod parents;
 pub mod questions;
 pub mod segments;
 pub mod tags;
+pub mod video_assignments;
 pub mod video_tags;
 pub mod videos;
