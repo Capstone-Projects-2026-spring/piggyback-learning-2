@@ -13,13 +13,11 @@ pub struct Model {
     pub start_seconds: i32,
     pub end_seconds: i32,
     pub best_question: Option<String>,
-    pub video_id: i32,
+    pub video_id: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::generated_questions::Entity")]
-    GeneratedQuestions,
     #[sea_orm(has_many = "super::questions::Entity")]
     Questions,
     #[sea_orm(
@@ -30,12 +28,6 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Videos,
-}
-
-impl Related<super::generated_questions::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::GeneratedQuestions.def()
-    }
 }
 
 impl Related<super::questions::Entity> for Entity {
