@@ -12,6 +12,8 @@ mod m20260330_053736_frames;
 mod m20260330_055308_add_index_in_frame;
 mod m20260330_164331_add_index_in_kid_tags;
 mod m20260330_165514_add_index_in_video_tags;
+mod m20260330_234807_segments;
+mod m20260331_001127_questions;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -28,6 +30,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20260330_055308_add_index_in_frame::Migration),
             Box::new(m20260330_164331_add_index_in_kid_tags::Migration),
             Box::new(m20260330_165514_add_index_in_video_tags::Migration),
+            Box::new(m20260330_234807_segments::Migration),
+            Box::new(m20260331_001127_questions::Migration),
             // inject-above (do not remove this comment)
         ]
     }

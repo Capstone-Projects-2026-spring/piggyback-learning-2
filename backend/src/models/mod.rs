@@ -6,3 +6,6 @@ pub mod kid_tags;
 pub mod videos;
 pub mod video_tags;
 pub mod frames;
+pub mod segments;
+pub mod generated_questions;
+pub mod questions;

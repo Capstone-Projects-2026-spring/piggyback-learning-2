@@ -4,34 +4,33 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "videos")]
+#[sea_orm(table_name = "questions")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(primary_key)]
-    pub id: String,
-    pub title: Option<String>,
-    pub thumbnail_url: Option<String>,
-    pub duration_seconds: Option<i32>,
-    pub local_video_path: Option<String>,
+    pub id: i32,
+    pub qtype: String,
+    pub question: String,
+    pub answer: String,
+    pub rank: Option<i32>,
+    pub segment_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::segments::Entity")]
+    #[sea_orm(
+        belongs_to = "super::segments::Entity",
+        from = "Column::SegmentId",
+        to = "super::segments::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
     Segments,
-    #[sea_orm(has_many = "super::video_tags::Entity")]
-    VideoTags,
 }
 
 impl Related<super::segments::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Segments.def()
-    }
-}
-
-impl Related<super::video_tags::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::VideoTags.def()
     }
 }

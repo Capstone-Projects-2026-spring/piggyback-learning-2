@@ -3,9 +3,12 @@
 pub mod prelude;
 
 pub mod frames;
+pub mod generated_questions;
 pub mod kid_tags;
 pub mod kids;
 pub mod parents;
+pub mod questions;
+pub mod segments;
 pub mod tags;
 pub mod video_tags;
 pub mod videos;
