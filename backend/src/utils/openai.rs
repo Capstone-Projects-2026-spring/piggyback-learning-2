@@ -96,13 +96,13 @@ IMPORTANT:
 Return JSON:
 {{
 "questions": {{
-    "character": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
-    "setting": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
-    "feeling": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
-    "action": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
-    "causal": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
-    "outcome": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }},
-    "prediction": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ONE_DIGIT_NUMBER" }}
+    "character": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
+    "setting": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
+    "feeling": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
+    "action": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
+    "causal": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
+    "outcome": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
+    "prediction": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }}
 }},
 "best_question": "..."
 }}"#,
