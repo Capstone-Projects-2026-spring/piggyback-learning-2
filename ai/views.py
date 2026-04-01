@@ -402,9 +402,7 @@ class CheckAnswerAPIView(APIView):
             }
         )
 
-#note, time function import only exists for testing purposes, remove later
-#For some reason mood detection introduces bugs, only changes are to TranscribeAPIView, where mood detection is implemented.
-# and video_quiz.html, children.html and kids.html. 
+#note, time function import only exists for testing purposes, remove later if desired
 class TranscribeAPIView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -415,25 +413,26 @@ class TranscribeAPIView(APIView):
         multipart/form-data: file=<audio>
         Optional: analyze_distraction=true (form field) #(basically the on/off button for "mood detection")
         """
-        f = request.FILES.get('file')
-        if not f:
+        audio_file = request.FILES.get('file')
+        if not audio_file:
             return Response(
                 {'success': False, 'error': 'Missing file'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         #analyze_distraction = request.POST.get('analyze_distraction', '').lower() == 'true'
-        analyze_distraction = True #Force true or false for testing
+        analyze_distraction = True #Force true or false for testing, above is input if you want to turn it on and off from frontend
         try:
             client = get_openai_client()
-            audio_bytes = io.BytesIO(f.read())
+            audio_bytes = io.BytesIO(audio_file.read())
 
             transcribe_args = {
                 'model': 'whisper-1',
-                'file': (f.name or 'speech.webm', audio_bytes, f.content_type),
+                'file': (audio_file.name or 'speech.webm', audio_bytes, audio_file.content_type),
             }
             start_time = time.time()
-            
+
+            #these arguements allow getting the timestamps of words spoken
             if analyze_distraction:
                 transcribe_args['timestamp_granularities'] = ['word']
                 transcribe_args['response_format'] = 'verbose_json'
@@ -446,9 +445,11 @@ class TranscribeAPIView(APIView):
                 words = transcription.words
                 total_words = len(words)
 
+                #simple dictionary comparison for filler words
                 filler_count = sum(1 for w in words if w.word.lower() in SINGLE_FILLERS)
 
                 pauses = []
+                #pause detection
                 for i in range(1, len(words)):
                     gap = words[i].start - words[i-1].end
                     if gap > DISTRACTION_CONFIG['pause_threshold_seconds']:
@@ -476,11 +477,14 @@ class TranscribeAPIView(APIView):
                     'pauses': pauses,  
                     'distracted': distracted,
                 }
-                end_time = time.time()
-                total_time = end_time - start_time
-                print(f"Transcription time: {total_time:.3f} seconds. total_words: {total_words}. filler_words: {filler_count}. filler_ratio: {round(filler_count / total_words, 3) if total_words else 0}. pause_count: {pause_count}. distracted: {distracted}")
-            
-            
+
+                total_time = time.time() - start_time
+                print(f"TranscribeAPIView time of mood detection: {total_time:.3f} seconds. total_words: {total_words}. filler_words: {filler_count}. filler_ratio: {round(filler_count / total_words, 3) if total_words else 0}. pause_count: {pause_count}. distracted: {distracted}")
+
+            if not analyze_distraction:
+                total_time = time.time() - start_time
+                print(f"Transcription time no mood detection: {total_time:.3f} seconds")
+
             return Response(response_data)
 
         except Exception as e:
