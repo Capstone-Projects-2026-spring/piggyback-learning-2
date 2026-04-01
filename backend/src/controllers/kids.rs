@@ -1,8 +1,13 @@
 use loco_rs::prelude::*;
-use sea_orm::{sea_query::OnConflict, ColumnTrait, EntityTrait, QueryFilter, Set};
+use sea_orm::{
+    prelude::Expr,
+    sea_query::{self, OnConflict},
+    ColumnTrait, EntityTrait, FromQueryResult, JoinType, QueryFilter, QueryOrder, QuerySelect,
+    RelationTrait, Set,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::models::_entities::{kid_tags, tags, video_assignments, videos};
+use crate::models::_entities::{kid_tags, tags, video_assignments, video_tags, videos};
 
 #[derive(Serialize)]
 struct TagResponse {
@@ -135,6 +140,64 @@ async fn get_video_assignments(
     format::json(videos)
 }
 
+#[derive(Debug, Serialize, FromQueryResult)]
+pub struct RecommendedVideo {
+    pub id: String,
+    pub title: Option<String>,
+    pub thumbnail_url: Option<String>,
+    pub duration_seconds: Option<i32>,
+    pub score: i64,
+}
+
+async fn get_recommendations(
+    State(ctx): State<AppContext>,
+    Path(kid_id): Path<i32>,
+) -> Result<Response> {
+    let results = video_tags::Entity::find()
+        .select_only()
+        .column(videos::Column::Id)
+        .column(videos::Column::Title)
+        .column(videos::Column::ThumbnailUrl)
+        .column(videos::Column::DurationSeconds)
+        // score = COUNT(tag matches)
+        .column_as(Expr::col(video_tags::Column::TagId).count(), "score")
+        // join videos
+        .join(JoinType::InnerJoin, video_tags::Relation::Videos.def())
+        // filter using subquery
+        .filter(
+            video_tags::Column::TagId.in_subquery(
+                sea_query::Query::select()
+                    .column(kid_tags::Column::TagId)
+                    .from(kid_tags::Entity)
+                    .and_where(kid_tags::Column::KidId.eq(kid_id))
+                    .to_owned(),
+            ),
+        )
+        // exclude assigned
+        .filter(
+            videos::Column::Id.not_in_subquery(
+                sea_query::Query::select()
+                    .column(video_assignments::Column::VideoId)
+                    .from(video_assignments::Entity)
+                    .and_where(video_assignments::Column::KidId.eq(kid_id))
+                    .to_owned(),
+            ),
+        )
+        // group
+        .group_by(Expr::col((videos::Entity, videos::Column::Id)))
+        .group_by(Expr::col((videos::Entity, videos::Column::Title)))
+        .group_by(Expr::col((videos::Entity, videos::Column::ThumbnailUrl)))
+        .group_by(Expr::col((videos::Entity, videos::Column::DurationSeconds)))
+        // rank
+        .order_by_desc(Expr::cust("score"))
+        .limit(20)
+        .into_model::<RecommendedVideo>()
+        .all(&ctx.db)
+        .await?;
+
+    format::json(results)
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("kids")
@@ -142,4 +205,5 @@ pub fn routes() -> Routes {
         .add("/{kid_id}/tags", post(add_kid_tags))
         .add("/{kid_id}/videos_assigned", get(get_video_assignments))
         .add("/{kid_id}/videos_assigned", post(create_video_assignment))
+        .add("/{kid_id}/recommendations", get(get_recommendations))
 }
