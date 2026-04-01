@@ -18,3 +18,6 @@ target/
 
 *.sqlite
 *.sqlite-*
+
+*.wav
+vosk/
