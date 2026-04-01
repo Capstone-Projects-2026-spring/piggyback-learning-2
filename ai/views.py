@@ -476,11 +476,11 @@ class TranscribeAPIView(APIView):
                     'pauses': pauses,  
                     'distracted': distracted,
                 }
-
-            end_time = time.time()
-            total_time = end_time - start_time
-            print(f"Transcription time: {total_time:.3f} seconds. total_words: {total_words}. filler_words: {filler_count}. filler_ratio: {round(filler_count / total_words, 3) if total_words else 0}. pause_count: {pause_count}. distracted: {distracted}")
-
+                end_time = time.time()
+                total_time = end_time - start_time
+                print(f"Transcription time: {total_time:.3f} seconds. total_words: {total_words}. filler_words: {filler_count}. filler_ratio: {round(filler_count / total_words, 3) if total_words else 0}. pause_count: {pause_count}. distracted: {distracted}")
+            
+            
             return Response(response_data)
 
         except Exception as e:
