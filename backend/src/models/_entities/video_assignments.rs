@@ -12,6 +12,7 @@ pub struct Model {
     pub kid_id: i32,
     #[sea_orm(primary_key, auto_increment = false)]
     pub video_id: String,
+    pub answers: Option<Json>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
