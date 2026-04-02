@@ -10,16 +10,11 @@ use crate::{
     utils::download::download_video,
 };
 
-#[derive(Deserialize)]
-struct DownloadRequest {
-    url: String,
-}
-
 async fn download_and_store(
     State(ctx): State<AppContext>,
-    Json(data): Json<DownloadRequest>,
+    Path(video_id): Path<String>,
 ) -> Result<Response> {
-    match download_video(&data.url) {
+    match download_video(&video_id) {
         Ok(Some((video_id, title, thumbnail, duration, path))) => {
             let _ = videos::Entity::insert(videos::ActiveModel {
                 id: Set(video_id.clone()),
@@ -125,7 +120,7 @@ async fn add_video_tags(
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("videos")
-        .add("/download", post(download_and_store))
+        .add("/download/{video_id}", get(download_and_store))
         .add("/{video_id}/tags", get(get_video_tags))
         .add("/{video_id}/tags", post(add_video_tags))
 }

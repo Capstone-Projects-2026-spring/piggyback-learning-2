@@ -1,9 +1,12 @@
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 
-pub fn download_video(url: &str) -> Result<Option<(String, String, String, i32, String)>, String> {
-    // Get metadata as JSON
-    let output = Command::new("yt-dlp").arg("-j").arg(url).output();
+pub fn download_video(
+    video_id: &str,
+) -> Result<Option<(String, String, String, i32, String)>, String> {
+    let url = format!("https://www.youtube.com/watch?v={video_id}");
+
+    let output = Command::new("yt-dlp").arg("-j").arg(&url).output();
     if output.is_err() {
         return Err(output.err().unwrap().to_string());
     }
