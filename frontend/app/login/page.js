@@ -27,7 +27,7 @@ export default function LoginPage() {
     });
     if (res.ok) {
       const data = await res.json();
-      login(data.token, data.role);
+      login(data.token, data.role, data.account);
       router.push("/");
     } else {
       const data = await res.json();
