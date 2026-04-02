@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AuthContext } from "@/app/context/AuthContext";
 
 export default function Navbar() {
-  const { token, logout } = useContext(AuthContext);
+  const { account, token, logout } = useContext(AuthContext);
 
   return (
     <nav className="flex items-center justify-between px-6 py-4 bg-linear-to-r from-pink-200 via-yellow-200 to-blue-200 shadow-md">
@@ -21,7 +21,9 @@ export default function Navbar() {
       <div className="flex items-center gap-4">
         {token ? (
           <>
-            <span className="text-gray-700 font-medium">👋 Hi there!</span>
+            <span className="text-gray-700 font-medium">
+              👋 Hi {account?.name}!
+            </span>
 
             <button
               onClick={logout}
