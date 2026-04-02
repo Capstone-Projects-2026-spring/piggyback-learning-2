@@ -50,7 +50,7 @@ export default function HomePage() {
       setUsername("");
       setPassword("");
       setModalOpen(false);
-      fetchKids(); // refresh kids list
+      fetchKids();
     } catch (err) {
       console.error("Failed to create kid", err);
     } finally {
@@ -64,75 +64,101 @@ export default function HomePage() {
 
   if (role !== "parent") {
     return (
-      <p className="text-center mt-10">
+      <p className="text-center mt-10 text-gray-600">
         You must be a parent to view this page.
       </p>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Your Kids</h1>
+    <div className="min-h-screen bg-linear-to-br from-blue-100 via-pink-100 to-yellow-100 p-6">
+      {/* Header */}
+      <div className="max-w-4xl mx-auto mb-8">
+        <h1 className="text-3xl font-extrabold text-blue-600">
+          👨‍👩‍👧 Your Kids Dashboard
+        </h1>
+        <p className="text-gray-600 mt-1">
+          Manage your kids and track their learning 🎯
+        </p>
+      </div>
 
-      {kids.length === 0 ? (
-        <p>No kids yet. Add one below!</p>
-      ) : (
-        <ul className="mb-6 space-y-2">
-          {kids.map((kid) => (
-            <li key={kid.id} className="p-2 border rounded shadow-sm">
-              <p className="font-semibold">{kid.name}</p>
-              <p className="text-sm text-gray-600">{kid.username}</p>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Kids Grid */}
+      <div className="max-w-4xl mx-auto grid gap-4 sm:grid-cols-2">
+        {kids.length === 0 ? (
+          <div className="col-span-full text-center bg-white p-8 rounded-2xl shadow border border-blue-100">
+            <p className="text-lg text-gray-600">🧸 No kids yet!</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Click the + button to add your first kid 🎉
+            </p>
+          </div>
+        ) : (
+          kids.map((kid) => (
+            <div
+              key={kid.id}
+              className="p-5 bg-white rounded-2xl shadow-md border border-blue-100 hover:scale-105 transition transform"
+            >
+              <p className="text-lg font-bold text-blue-600">👦 {kid.name}</p>
+              <p className="text-sm text-gray-500">@{kid.username}</p>
+            </div>
+          ))
+        )}
+      </div>
 
+      {/* Floating Add Button */}
       <button
         onClick={() => setModalOpen(true)}
-        className="flex items-center justify-center w-16 h-16 text-3xl font-bold text-white bg-blue-600 rounded-full hover:bg-blue-700"
+        className="fixed bottom-8 right-8 w-16 h-16 text-3xl text-white rounded-full bg-linear-to-r from-green-400 to-blue-400 shadow-lg hover:scale-110 transition transform"
       >
         +
       </button>
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md relative">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50">
+          <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md relative border border-green-100">
+            {/* Close */}
             <button
               onClick={() => setModalOpen(false)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 font-bold text-xl"
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl font-bold"
             >
-              &times;
+              ×
             </button>
-            <h2 className="text-xl font-bold mb-4">Add a New Kid</h2>
-            <form onSubmit={handleCreateKid} className="space-y-2">
+
+            <h2 className="text-2xl font-bold text-green-500 mb-4">
+              🎉 Add a New Kid
+            </h2>
+
+            <form onSubmit={handleCreateKid} className="space-y-3">
               <input
                 type="text"
-                placeholder="Name"
+                placeholder="👤 Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full rounded-xl border border-green-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-green-400 outline-none"
               />
+
               <input
                 type="text"
-                placeholder="Username"
+                placeholder="✨ Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full rounded-xl border border-green-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-green-400 outline-none"
               />
+
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="🔒 Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 border rounded"
+                className="w-full rounded-xl border border-green-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-green-400 outline-none"
               />
+
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                className="w-full rounded-xl bg-linear-to-r from-green-400 to-blue-400 py-3 text-white font-bold hover:scale-105 transition transform disabled:opacity-50"
               >
-                {loading ? "Creating..." : "Create Kid"}
+                {loading ? "Creating..." : "🚀 Create Kid"}
               </button>
             </form>
           </div>
