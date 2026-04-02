@@ -2,55 +2,79 @@
 
 import { useState, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AuthContext } from "../context/AuthContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function LoginPage() {
   const router = useRouter();
-
   const { token, login } = useContext(AuthContext);
-  useEffect(() => {
-    if (token) router.replace("/");
-  }, [token, router]);
 
+  const [mounted, setMounted] = useState(false); // prevent hydration issues
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && token) {
+      router.replace("/");
+    }
+  }, [mounted, token, router]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
-    const res = await fetch(`${BASE_URL}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, role: "parent" }),
-    });
-    if (res.ok) {
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, role: "parent" }),
+      });
+
       const data = await res.json();
-      login(data.token, data.role, data.account);
-      router.push("/");
-    } else {
-      const data = await res.json();
-      setError(data.message || "Login failed.");
+
+      if (res.ok) {
+        login(data.token, data.role, data.account);
+        router.push("/");
+      } else {
+        setError(data.message || "Login failed 😢");
+      }
+    } catch (err) {
+      setError("Something went wrong. Try again!");
     }
+
+    setLoading(false);
   }
 
+  if (!mounted) return null;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-900 text-gray-100 p-4 sm:p-8">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-yellow-100 via-pink-100 to-blue-100 p-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-6 rounded-lg bg-gray-800 p-6 sm:p-8 shadow-lg border border-gray-700"
+        className="w-full max-w-md space-y-5 rounded-2xl bg-white p-8 shadow-xl border border-pink-200"
       >
-        <h1 className="text-center text-2xl sm:text-3xl font-bold text-indigo-400">
-          Login
+        <h1 className="text-center text-3xl font-extrabold text-pink-500">
+          🎉 Welcome Back!
         </h1>
 
-        {error && <p className="text-center text-sm text-red-500">{error}</p>}
+        {error && (
+          <p className="text-center text-sm text-red-500 font-medium">
+            {error}
+          </p>
+        )}
 
         <input
           type="text"
-          placeholder="Username"
-          className="w-full rounded bg-gray-700 border border-gray-600 p-3 focus:ring-indigo-500 focus:border-indigo-500 text-gray-100"
+          placeholder="👤 Username"
+          className="w-full rounded-xl border border-pink-200 p-3 focus:ring-2 focus:ring-pink-400 outline-none"
           value={form.username}
           onChange={(e) => setForm({ ...form, username: e.target.value })}
           required
@@ -58,8 +82,8 @@ export default function LoginPage() {
 
         <input
           type="password"
-          placeholder="Password"
-          className="w-full rounded bg-gray-700 border border-gray-600 p-3 focus:ring-indigo-500 focus:border-indigo-500 text-gray-100"
+          placeholder="🔒 Password"
+          className="w-full rounded-xl border border-pink-200 p-3 focus:ring-2 focus:ring-pink-400 outline-none"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           required
@@ -67,19 +91,20 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          className="w-full rounded bg-indigo-600 py-3 text-white hover:bg-indigo-700 transition"
+          disabled={loading}
+          className="w-full rounded-xl bg-gradient-to-r from-pink-400 to-purple-400 py-3 text-white font-bold hover:scale-105 transition transform disabled:opacity-50"
         >
-          Sign In
+          {loading ? "Signing in..." : "🚀 Sign In"}
         </button>
 
-        <p className="text-center text-sm text-gray-400">
+        <p className="text-center text-sm text-gray-600">
           Don’t have an account?{" "}
-          <a
+          <Link
             href="/signup"
-            className="font-semibold text-indigo-300 hover:underline"
+            className="font-semibold text-pink-500 hover:underline"
           >
             Sign Up
-          </a>
+          </Link>
         </p>
       </form>
     </div>
