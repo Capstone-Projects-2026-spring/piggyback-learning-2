@@ -1,21 +1,23 @@
 "use client";
 
-import { createContext, useState } from "react";
+import { createContext, useState, useEffect } from "react";
 
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(
-    typeof window !== "undefined" ? localStorage.getItem("token") : null,
-  );
-  const [role, setRole] = useState(
-    typeof window !== "undefined" ? localStorage.getItem("role") : null,
-  );
-  const [account, setAccount] = useState(
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("account"))
-      : null,
-  );
+  const [token, setToken] = useState(null);
+  const [role, setRole] = useState(null);
+  const [account, setAccount] = useState(null);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem("token");
+    const storedRole = localStorage.getItem("role");
+    const storedAccount = localStorage.getItem("account");
+
+    if (storedToken) setToken(storedToken);
+    if (storedRole) setRole(storedRole);
+    if (storedAccount) setAccount(JSON.parse(storedAccount));
+  }, []);
 
   const login = (newToken, role, account) => {
     localStorage.setItem("token", newToken);
