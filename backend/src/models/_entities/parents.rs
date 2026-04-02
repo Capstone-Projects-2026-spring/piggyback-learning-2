@@ -11,6 +11,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub username: String,
+    #[serde(skip_serializing)]
     pub password_hash: String,
     pub name: String,
 }

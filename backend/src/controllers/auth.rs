@@ -100,7 +100,8 @@ async fn login(State(ctx): State<AppContext>, Json(data): Json<LoginData>) -> Re
             format::json(serde_json::json!({
                 "success": true,
                 "token": token,
-                "role": "parent"
+                "role": "parent",
+                "account": parent
             }))
         }
 
@@ -120,7 +121,8 @@ async fn login(State(ctx): State<AppContext>, Json(data): Json<LoginData>) -> Re
             format::json(serde_json::json!({
                 "success": true,
                 "token": token,
-                "role": "kid"
+                "role": "kid",
+                "account": kid
             }))
         }
 
