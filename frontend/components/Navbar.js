@@ -2,7 +2,7 @@
 
 import { useContext } from "react";
 import Link from "next/link";
-import { AuthContext } from "@/app/context/AuthContxt";
+import { AuthContext } from "@/app/context/AuthContext";
 
 export default function Navbar() {
   const { token, logout } = useContext(AuthContext);

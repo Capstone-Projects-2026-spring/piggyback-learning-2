@@ -9,13 +9,15 @@ export function AuthProvider({ children }) {
     typeof window !== "undefined" ? localStorage.getItem("token") : null,
   );
 
-  const login = (newToken) => {
+  const login = (newToken, role) => {
     localStorage.setItem("token", newToken);
+    localStorage.setItem("role", role);
     setToken(newToken);
   };
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("role");
     setToken(null);
   };
 

@@ -2,7 +2,7 @@
 
 import { useState, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AuthContext } from "../context/AuthContxt";
+import { AuthContext } from "../context/AuthContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -27,8 +27,7 @@ export default function LoginPage() {
     });
     if (res.ok) {
       const data = await res.json();
-      console.log(data);
-      login(data.token);
+      login(data.token, data.role);
       router.push("/");
     } else {
       const data = await res.json();
