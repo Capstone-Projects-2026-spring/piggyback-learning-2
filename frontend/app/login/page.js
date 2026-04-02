@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { AuthContext } from "../context/AuthContxt";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function LoginPage() {
   const router = useRouter();
+
+  const { token, login } = useContext(AuthContext);
+  useEffect(() => {
+    if (token) router.replace("/");
+  }, [token, router]);
+
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
 
@@ -18,8 +25,12 @@ export default function LoginPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, role: "parent" }),
     });
-    if (res.ok) router.push("/dashboard");
-    else {
+    if (res.ok) {
+      const data = await res.json();
+      console.log(data);
+      login(data.token);
+      router.push("/");
+    } else {
       const data = await res.json();
       setError(data.message || "Login failed.");
     }

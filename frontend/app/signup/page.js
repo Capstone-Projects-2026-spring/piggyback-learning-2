@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { AuthContext } from "../context/AuthContxt";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function SignupPage() {
   const router = useRouter();
+  const { token } = useContext(AuthContext);
+  useEffect(() => {
+    if (token) router.replace("/");
+  }, [token, router]);
+
   const [form, setForm] = useState({
     name: "",
     username: "",

@@ -1,5 +1,8 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
+import { Geist, Geist_Mono } from "next/font/google";
+import { AuthProvider } from "./context/AuthContxt";
+import Navbar from "@/components/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,7 +26,10 @@ const RootLayout = ({ children }) => (
     suppressHydrationWarning
   >
     <body suppressHydrationWarning className="min-h-full flex flex-col">
-      {children}
+      <AuthProvider>
+        <Navbar />
+        {children}
+      </AuthProvider>
     </body>
   </html>
 );
