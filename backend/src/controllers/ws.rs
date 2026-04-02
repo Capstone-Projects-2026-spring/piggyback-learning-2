@@ -15,6 +15,7 @@ use tokio::sync::{mpsc, RwLock};
 pub struct WsMessage {
     pub sender: String,
     pub receiver: String,
+    pub action: String,
     pub msg: String,
 }
 
@@ -27,7 +28,7 @@ pub struct AppState {
 
 #[derive(Deserialize)]
 pub struct WsParams {
-    pub user_id: String,
+    pub username: String,
 }
 
 pub async fn ws_handler(
@@ -35,15 +36,15 @@ pub async fn ws_handler(
     Query(params): Query<WsParams>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, params.user_id, state))
+    ws.on_upgrade(move |socket| handle_socket(socket, params.username, state))
 }
-async fn handle_socket(stream: WebSocket, user_id: String, state: AppState) {
+async fn handle_socket(stream: WebSocket, username: String, state: AppState) {
     let (mut sender, mut receiver) = stream.split();
 
     let (tx, mut rx) = mpsc::unbounded_channel::<WsMessage>();
 
     // register user
-    state.users.write().await.insert(user_id.clone(), tx);
+    state.users.write().await.insert(username.clone(), tx);
 
     // task: send outgoing messages
     let mut send_task = tokio::spawn(async move {
@@ -57,7 +58,7 @@ async fn handle_socket(stream: WebSocket, user_id: String, state: AppState) {
 
     // task: receive incoming messages
     let state_clone = state.clone();
-    let uid = user_id.clone();
+    let uid = username.clone();
 
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = receiver.next().await {
