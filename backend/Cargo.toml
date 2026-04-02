@@ -20,7 +20,7 @@ tokio = { version = "1.45", default-features = false, features = [
   "rt-multi-thread",
 ] }
 async-trait = { version = "0.1" }
-axum = { version = "0.8" }
+axum = { version = "0.8", features = ["ws"] }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 regex = { version = "1.11" }
@@ -42,6 +42,7 @@ vosk = "0.3.1"
 hound = "3.5.1"
 strsim = "0.11.1"
 thesaurus = "0.5.2"
+futures = "0.3.32"
 
 [[bin]]
 name = "backend-cli"
