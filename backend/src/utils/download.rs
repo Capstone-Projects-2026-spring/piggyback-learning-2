@@ -1,19 +1,17 @@
 use serde_json::Value;
 use std::{fs, path::Path, process::Command};
 
-pub fn download_video(url: &str) -> Option<(String, String, String, i32, String)> {
+pub fn download_video(url: &str) -> Result<Option<(String, String, String, i32, String)>, String> {
     // Get metadata as JSON
     let output = Command::new("yt-dlp").arg("-j").arg(url).output();
     if output.is_err() {
-        println!("{:#?}", output);
-        return None;
+        return Err(output.err().unwrap().to_string());
     }
     let output = output.unwrap();
 
     let json = serde_json::from_slice(&output.stdout);
     if json.is_err() {
-        println!("{:#?}", json);
-        return None;
+        return Err(json.err().unwrap().to_string());
     }
     let json: Value = json.unwrap();
 
@@ -26,16 +24,13 @@ pub fn download_video(url: &str) -> Option<(String, String, String, i32, String)
     if !Path::new(&dir_path).exists() {
         let created = fs::create_dir_all(&dir_path);
         if created.is_err() {
-            println!("Error creating downloads directory");
-            return None;
+            return Err(created.err().unwrap().to_string());
         }
     }
 
     let video_path = format!("{}/{}.mp4", dir_path, video_id);
     if Path::new(&video_path).exists() {
-        println!("Video already downloaded, skipping...");
-
-        return None;
+        return Ok(None);
     }
 
     let res = Command::new("yt-dlp")
@@ -48,9 +43,8 @@ pub fn download_video(url: &str) -> Option<(String, String, String, i32, String)
         .arg(&video_path)
         .status();
     if res.is_err() {
-        println!("Error during download: {:#?}", res);
-        return None;
+        return Err(res.err().unwrap().to_string());
     }
 
-    Some((video_id, title, thumbnail, duration, video_path))
+    Ok(Some((video_id, title, thumbnail, duration, video_path)))
 }
