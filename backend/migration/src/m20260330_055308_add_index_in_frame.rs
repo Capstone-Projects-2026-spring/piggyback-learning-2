@@ -9,8 +9,10 @@ impl MigrationTrait for Migration {
         m.create_index(
             Index::create()
                 .if_not_exists()
-                .name("idx-timestamp")
+                .name("idx-unique-frames")
                 .table(Frames::Table)
+                .col(Frames::VideoId)
+                .col(Frames::FrameNumber)
                 .col(Frames::TimestampSeconds)
                 .unique()
                 .to_owned(),
@@ -21,7 +23,7 @@ impl MigrationTrait for Migration {
     async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
         m.drop_index(
             Index::drop()
-                .name("idx-timestamp")
+                .name("idx-unique-frames")
                 .table(Frames::Table)
                 .to_owned(),
         )
@@ -32,6 +34,7 @@ impl MigrationTrait for Migration {
 #[derive(Iden)]
 enum Frames {
     Table,
-    _Id,
+    VideoId,
+    FrameNumber,
     TimestampSeconds,
 }
