@@ -1,11 +1,15 @@
 "use client";
 
 import { useContext, useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { AuthContext } from "./context/AuthContext";
+import KidDashboard from "@/components/KidDashboard";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function HomePage() {
+  const router = useRouter();
+
   const [kids, setKids] = useState([]);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -62,11 +66,17 @@ export default function HomePage() {
     fetchKids();
   }, [fetchKids]);
 
-  if (role !== "parent") {
+  if (role === "kid") {
     return (
-      <p className="text-center mt-10 text-gray-600">
-        You must be a parent to view this page.
-      </p>
+      <div className="min-h-screen bg-linear-to-br from-blue-100 via-pink-100 to-yellow-100 p-6">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl font-extrabold text-purple-600 mb-6">
+            🎬 Your Learning Dashboard
+          </h1>
+
+          <KidDashboard kidId={account.id} />
+        </div>
+      </div>
     );
   }
 
@@ -95,7 +105,8 @@ export default function HomePage() {
           kids.map((kid) => (
             <div
               key={kid.id}
-              className="p-5 bg-white rounded-2xl shadow-md border border-blue-100 hover:scale-105 transition transform"
+              onClick={() => router.push(`/kids/${kid.id}`)}
+              className="cursor-pointer p-5 bg-white rounded-2xl shadow-md border border-blue-100 hover:scale-105 hover:shadow-lg transition transform"
             >
               <p className="text-lg font-bold text-blue-600">👦 {kid.name}</p>
               <p className="text-sm text-gray-500">@{kid.username}</p>
