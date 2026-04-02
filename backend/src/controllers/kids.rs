@@ -149,10 +149,25 @@ pub struct RecommendedVideo {
     pub score: i64,
 }
 
+#[derive(Serialize)]
+pub struct RecommendationsResponse {
+    pub tags: Vec<String>,
+    pub recommendations: Vec<RecommendedVideo>,
+}
+
 async fn get_recommendations(
     State(ctx): State<AppContext>,
     Path(kid_id): Path<i32>,
 ) -> Result<Response> {
+    let tags: Vec<String> = kid_tags::Entity::find()
+        .select_only()
+        .column(tags::Column::Name)
+        .join(JoinType::InnerJoin, kid_tags::Relation::Tags.def())
+        .filter(kid_tags::Column::KidId.eq(kid_id))
+        .into_tuple::<String>()
+        .all(&ctx.db)
+        .await?;
+
     let results = video_tags::Entity::find()
         .select_only()
         .column(videos::Column::Id)
@@ -195,7 +210,10 @@ async fn get_recommendations(
         .all(&ctx.db)
         .await?;
 
-    format::json(results)
+    format::json(RecommendationsResponse {
+        tags,
+        recommendations: results,
+    })
 }
 
 pub fn routes() -> Routes {
