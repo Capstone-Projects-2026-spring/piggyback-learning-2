@@ -11,6 +11,12 @@ async fn extract_frames(
     let input = format!("downloads/{}/{}.mp4", video_id, video_id);
     let output_dir = format!("downloads/{}/extracted_frames", video_id);
 
+    if std::path::Path::new(&output_dir).exists() {
+        return format::json(
+            serde_json::json!({"success": true, "msg": "Frames already extracted!"}),
+        );
+    }
+
     fs::create_dir_all(&output_dir)?;
 
     let status = Command::new("ffmpeg")
@@ -70,7 +76,7 @@ async fn extract_frames(
             .await?;
     }
 
-    format::empty()
+    format::json(serde_json::json!({"success": true, "msg": "Frames extracted!"}))
 }
 
 pub fn routes() -> Routes {
