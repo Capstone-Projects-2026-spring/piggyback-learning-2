@@ -203,7 +203,9 @@ export default function KidDashboard({ kidId }) {
 
               <p className="font-semibold text-gray-800">{video.title}</p>
 
-              <p className="text-sm text-gray-500">⏱ {video.duration}</p>
+              <p className="text-sm text-gray-500">
+                ⏱ {video.duration || video.seconds || video.duration_seconds}
+              </p>
             </div>
           ))}
         </div>
