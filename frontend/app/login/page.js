@@ -56,7 +56,7 @@ export default function LoginPage() {
   if (!mounted) return null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-yellow-100 via-pink-100 to-blue-100 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-yellow-100 via-pink-100 to-blue-100 p-4">
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md space-y-5 rounded-2xl bg-white p-8 shadow-xl border border-pink-200"
@@ -74,7 +74,7 @@ export default function LoginPage() {
         <input
           type="text"
           placeholder="👤 Username"
-          className="w-full rounded-xl border border-pink-200 p-3 focus:ring-2 focus:ring-pink-400 outline-none"
+          className="w-full rounded-xl border border-pink-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-pink-400 outline-none"
           value={form.username}
           onChange={(e) => setForm({ ...form, username: e.target.value })}
           required
@@ -83,7 +83,7 @@ export default function LoginPage() {
         <input
           type="password"
           placeholder="🔒 Password"
-          className="w-full rounded-xl border border-pink-200 p-3 focus:ring-2 focus:ring-pink-400 outline-none"
+          className="w-full rounded-xl border border-pink-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-pink-400 outline-none"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           required
@@ -92,7 +92,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-gradient-to-r from-pink-400 to-purple-400 py-3 text-white font-bold hover:scale-105 transition transform disabled:opacity-50"
+          className="w-full rounded-xl bg-linear-to-r from-pink-400 to-purple-400 py-3 text-white font-bold hover:scale-105 transition transform disabled:opacity-50"
         >
           {loading ? "Signing in..." : "🚀 Sign In"}
         </button>
