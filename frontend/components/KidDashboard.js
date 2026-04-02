@@ -5,6 +5,12 @@ import { useEffect, useState } from "react";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
+function formatDuration(sec) {
+  const minutes = Math.floor(sec / 60);
+  const seconds = sec % 60;
+  return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+}
+
 export default function KidDashboard({ kidId }) {
   const [assigned, setAssigned] = useState([]);
   const [recommended, setRecommended] = useState([]);
@@ -24,8 +30,32 @@ export default function KidDashboard({ kidId }) {
         const assignedData = await assignedRes.json();
         const recData = await recRes.json();
 
+        let videos = recData.recommendations || [];
+        const tags = recData.tags || [];
+
+        if (videos.length < 10 && tags.length > 0) {
+          for (const tag of tags) {
+            const searchRes = await fetch(
+              `/api/search?q=${encodeURIComponent(tag)}`,
+            );
+            const { videos: ytVideos } = await searchRes.json();
+
+            const formatted = ytVideos.slice(0, 3).map((v) => ({
+              id: v.id,
+              title: v.title,
+              thumbnail_url: v.thumbnail,
+              duration: formatDuration(v.seconds),
+              score: "N/A",
+            }));
+
+            videos = videos.concat(formatted);
+            if (videos.length >= 10) break;
+          }
+          videos = videos.slice(0, 10);
+        }
+
         setAssigned(assignedData);
-        setRecommended(recData);
+        setRecommended(videos);
       } catch (err) {
         console.error("Failed to load dashboard", err);
       } finally {
@@ -69,7 +99,6 @@ export default function KidDashboard({ kidId }) {
         </button>
       </div>
 
-      {/* Content */}
       {videos.length === 0 ? (
         <div className="text-center bg-white p-8 rounded-2xl shadow border">
           <p className="text-gray-600 text-lg">
@@ -87,22 +116,18 @@ export default function KidDashboard({ kidId }) {
             >
               <div className="relative w-full h-40">
                 <Image
-                  src={video.thumbnail_url}
+                  src={video.thumbnail_url || video.thumbnail}
                   alt={video.title}
                   fill
                   className="rounded-xl object-cover"
                 />
               </div>
-
+              {console.log(video)}
               <p className="font-semibold text-gray-800">{video.title}</p>
 
-              {activeTab === "assigned" ? (
-                <p className="text-sm text-gray-500">
-                  ⏱ {video.duration_seconds}s
-                </p>
-              ) : (
-                <p className="text-sm text-gray-500">⭐ Score: {video.score}</p>
-              )}
+              <p className="text-sm text-gray-500">
+                ⏱ {video.duration || video.seconds || video.duration_seconds}
+              </p>
             </div>
           ))}
         </div>
