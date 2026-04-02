@@ -8,33 +8,42 @@ export default function Navbar() {
   const { token, logout } = useContext(AuthContext);
 
   return (
-    <nav className="flex items-center justify-between bg-gray-800 px-6 py-4 shadow-md">
-      <Link href="/" className="text-xl font-bold text-indigo-300">
-        Piggyback Learning
+    <nav className="flex items-center justify-between px-6 py-4 bg-linear-to-r from-pink-200 via-yellow-200 to-blue-200 shadow-md">
+      {/* Logo */}
+      <Link
+        href="/"
+        className="text-2xl font-extrabold text-pink-600 hover:scale-105 transition-transform"
+      >
+        🎒 Piggyback
       </Link>
 
-      <div className="flex gap-4">
+      {/* Right Side */}
+      <div className="flex items-center gap-4">
         {token ? (
           <>
-            <span className="text-gray-200">👤 Account</span>
+            <span className="text-gray-700 font-medium">👋 Hi there!</span>
+
             <button
               onClick={logout}
-              className="bg-indigo-600 px-3 py-1 rounded hover:bg-indigo-700"
+              className="px-4 py-2 rounded-xl bg-linear-to-r from-red-400 to-pink-400 text-white font-semibold hover:scale-105 transition transform shadow"
             >
-              Logout
+              🚪 Logout
             </button>
           </>
         ) : (
           <>
-            <Link href="/login" className="text-gray-200 hover:text-indigo-300">
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-xl text-gray-700 font-semibold hover:bg-white/60 transition"
+            >
               Login
             </Link>
 
             <Link
               href="/signup"
-              className="bg-indigo-600 px-3 py-1 rounded text-white hover:bg-indigo-700"
+              className="px-4 py-2 rounded-xl bg-linear-to-r from-green-400 to-blue-400 text-white font-semibold hover:scale-105 transition transform shadow"
             >
-              Sign Up
+              🎉 Sign Up
             </Link>
           </>
         )}
