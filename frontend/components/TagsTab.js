@@ -54,6 +54,8 @@ export default function TagsTab({ kidId }) {
 
   // Handle assigning tags to kid
   async function handleAssignTags() {
+    if (assignedTags.length === 0) return;
+
     setSaving(true);
     try {
       await fetch(`${BASE_URL}/api/kids/${kidId}/tags`, {

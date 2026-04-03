@@ -39,15 +39,17 @@ export default function TagsStep({ videoId, setStep }) {
   async function handleSaveTags() {
     setLoading(true);
 
-    await fetch(`${BASE_URL}/api/videos/${videoId}/tags`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        tags: selectedTags,
-      }),
-    });
+    if (selectedTags.length !== 0) {
+      await fetch(`${BASE_URL}/api/videos/${videoId}/tags`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tags: selectedTags,
+        }),
+      });
+    }
 
     setLoading(false);
     setStep(4);
