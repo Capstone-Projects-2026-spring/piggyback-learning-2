@@ -3,6 +3,7 @@
 import { AuthContext } from "@/app/context/AuthContext";
 import Image from "next/image";
 import { useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -13,6 +14,8 @@ function formatDuration(sec) {
 }
 
 export default function KidDashboard({ kidId }) {
+  const router = useRouter();
+
   const { role } = useContext(AuthContext);
 
   const [assigned, setAssigned] = useState([]);
@@ -187,27 +190,51 @@ export default function KidDashboard({ kidId }) {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {videos.map((video) => (
-            <div
-              key={video.id}
-              className="bg-white rounded-2xl shadow border p-3 hover:scale-105 transition transform"
-            >
-              <div className="relative w-full h-40">
-                <Image
-                  src={video.thumbnail_url}
-                  alt={video.title}
-                  fill
-                  className="rounded-xl object-cover"
-                />
+          {videos.map((video) => {
+            const isAssigned = assigned.some((v) => v.id === video.id);
+
+            return (
+              <div
+                key={video.id}
+                className="bg-white rounded-2xl shadow border p-3 hover:scale-105 transition transform flex flex-col"
+              >
+                <div className="relative w-full h-40">
+                  <Image
+                    src={video.thumbnail_url}
+                    alt={video.title}
+                    fill
+                    className="rounded-xl object-cover"
+                  />
+                </div>
+
+                <p className="font-semibold text-gray-800 mt-2">
+                  {video.title}
+                </p>
+
+                <p className="text-sm text-gray-500 mb-3">
+                  ⏱ {video.duration || `${video.duration_seconds}s`}
+                </p>
+
+                {/* 🔥 Conditional Button */}
+                <button
+                  onClick={() =>
+                    router.push(
+                      isAssigned
+                        ? `/videos/watch/${video.id}`
+                        : `/videos/${video.id}/process/${kidId}`,
+                    )
+                  }
+                  className={`mt-auto py-2 rounded-xl font-semibold transition ${
+                    isAssigned
+                      ? "bg-green-500 text-white hover:scale-105"
+                      : "bg-linear-to-r from-purple-400 to-pink-400 text-white hover:scale-105"
+                  }`}
+                >
+                  {isAssigned ? "▶ Watch" : "➕ Assign"}
+                </button>
               </div>
-
-              <p className="font-semibold text-gray-800">{video.title}</p>
-
-              <p className="text-sm text-gray-500">
-                ⏱ {video.duration || video.seconds || video.duration_seconds}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
