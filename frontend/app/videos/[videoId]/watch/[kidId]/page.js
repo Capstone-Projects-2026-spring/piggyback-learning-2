@@ -25,7 +25,6 @@ export default function WatchVideoPage() {
   const playerRef = useRef(null);
   const segmentIndexRef = useRef(0);
   const currentQuestionRef = useRef(null);
-  const videoContainerRef = useRef(null); // ref for gaze hit-testing
 
   useEffect(() => {
     segmentIndexRef.current = segmentIndex;
@@ -98,10 +97,9 @@ export default function WatchVideoPage() {
       ),
   });
 
-  const gazeEnabled = !lookingAway;
-
   useGazeTracker({
-    enabled: gazeEnabled,
+    enabled: true,
+    paused: !!currentQuestion, // ONLY pause during question modal, not during lookingAway
     onLookAway: () => {
       playerRef.current?.pauseVideo();
       setLookingAway(true);
