@@ -8,9 +8,11 @@ export default function VideoProcess({ videoId, kidId }) {
   const [step, setStep] = useState(1);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 via-purple-50 to-pink-50 p-6">
+    <div className="min-h-screen bg-linear-to-r from-pink-200 via-yellow-200 to-blue-200 shadow-md">
       <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl p-6">
-        <h1 className="text-2xl font-bold mb-6">🎬 Process Video</h1>
+        <h1 className="text-2xl text-gray-800 font-bold mb-6">
+          🎬 Process Video
+        </h1>
 
         <div className="flex justify-between mb-6 text-sm font-semibold">
           {["Download", "Frames", "Tags", "Questions"].map((s, i) => (
