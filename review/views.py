@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from quizgen.models import Segment, SubmittedQuestionSet
+import json
 
 from videos.models import Video
 
@@ -350,6 +351,9 @@ class FinalQuestionsForKidsAPIView(APIView):
     permission_classes = []
 
     def get(self, request, video_id: str):
+        # ---------------------------------------------------------
+        # Path 1: Check for an explicitly saved FinalQuestionSet
+        # ---------------------------------------------------------
         final_set = (
             FinalQuestionSet.objects.filter(video_id=video_id)
             .order_by('-saved_at')
@@ -358,36 +362,34 @@ class FinalQuestionsForKidsAPIView(APIView):
 
         if final_set:
             selected_segments = []
-            segments = final_set.segments.all().order_by(
-                'start_seconds', 'end_seconds'
-            )
+            segments = final_set.segments.all().order_by('start_seconds', 'end_seconds')
 
             for seg in segments:
-                qs = seg.ai_questions.filter(trashed=False).order_by(
-                    'llm_ranking', 'id'
-                )
+                qs = seg.ai_questions.filter(trashed=False).order_by('llm_ranking', 'id')
                 best = qs.first()
                 if not best:
                     continue
 
-                selected_segments.append(
-                    {
-                        'segment_range_start': seg.start_seconds,
-                        'segment_range_end': seg.end_seconds,
-                        'question': best.question,
-                        'answer': best.answer,
-                        'llm_ranking': best.llm_ranking,
-                        'expert_ranking': best.expert_ranking,
-                        'followup_question': best.followup_question,
-                        'followup_answer': best.followup_answer,
-                    }
-                )
+                selected_segments.append({
+                    'segment_range_start': seg.start_seconds,
+                    'segment_range_end': seg.end_seconds,
+                    'question': best.question,
+                    'answer': best.answer,
+                    'llm_ranking': best.llm_ranking,
+                    'expert_ranking': best.expert_ranking,
+                    'followup_question': best.followup_question,
+                    'followup_answer': best.followup_answer,
+                })
 
-            if len(selected_segments) > 1:
-                selected_segments = selected_segments[:-1]
+            # THE FIX: Only return this data if we actually found valid questions!
+            # If selected_segments is empty, it will skip this return and fall back 
+            # to your SubmittedQuestionSet JSON data below.
+            if len(selected_segments) > 0:
+                return Response({'success': True, 'segments': selected_segments})
 
-            return Response({'success': True, 'segments': selected_segments})
-
+        # ---------------------------------------------------------
+        # Path 2: Fallback to SubmittedQuestionSet (Your JSON example)
+        # ---------------------------------------------------------
         submitted_set = (
             SubmittedQuestionSet.objects.filter(video_id=video_id)
             .order_by('-id')
@@ -395,11 +397,18 @@ class FinalQuestionsForKidsAPIView(APIView):
         )
 
         if submitted_set:
-            payload = (
-                submitted_set.payload
-                if isinstance(submitted_set.payload, dict)
-                else {}
-            )
+            # BUG FIX 1: Safely handle the payload whether it's a Dictionary OR a JSON String
+            raw_payload = submitted_set.payload
+            if isinstance(raw_payload, str):
+                try:
+                    payload = json.loads(raw_payload)
+                except json.JSONDecodeError:
+                    payload = {}
+            elif isinstance(raw_payload, dict):
+                payload = raw_payload
+            else:
+                payload = {}
+
             segments = payload.get('segments', [])
             selected_segments = []
 
@@ -412,37 +421,28 @@ class FinalQuestionsForKidsAPIView(APIView):
 
                 result = seg.get('result') or {}
                 questions = result.get('questions') or {}
-                best_question_text = (result.get('best_question') or '').strip()
 
                 if not isinstance(questions, dict) or not questions:
                     continue
 
-                best_q = None
-
-                if best_question_text:
-                    for _, qdata in questions.items():
-                        if not isinstance(qdata, dict):
-                            continue
-                        if (qdata.get('q') or '').strip() == best_question_text:
-                            best_q = qdata
-                            break
-
-                if best_q is None:
-                    ranked = []
-                    for _, qdata in questions.items():
-                        if not isinstance(qdata, dict):
-                            continue
-                        try:
-                            rank = int(qdata.get('rank', 999999))
-                        except Exception:
-                            rank = 999999
-                        ranked.append((rank, qdata))
-
-                    if not ranked:
+                # BUG FIX 2: Ignore the faulty "best_question" string entirely. 
+                # Instead, just sort all available questions by their LLM rank and grab the #1 question.
+                ranked_questions = []
+                for _, qdata in questions.items():
+                    if not isinstance(qdata, dict):
                         continue
+                    try:
+                        rank = int(qdata.get('rank', 999999))
+                    except Exception:
+                        rank = 999999
+                    ranked_questions.append((rank, qdata))
 
-                    ranked.sort(key=lambda x: x[0])
-                    best_q = ranked[0][1]
+                if not ranked_questions:
+                    continue
+
+                # Sort by rank and pick the best one
+                ranked_questions.sort(key=lambda x: x[0])
+                best_q = ranked_questions[0][1]
 
                 question = (best_q.get('q') or '').strip()
                 answer = (best_q.get('a') or '').strip()
@@ -450,34 +450,26 @@ class FinalQuestionsForKidsAPIView(APIView):
                 if not question or not answer:
                     continue
 
+                # Safely extract followups
                 followup = best_q.get('followup') or {}
+                followup_question = (followup.get('q') or '').strip()
+                followup_answer = (followup.get('a') or '').strip()
 
-                if (followup):
-                    followup_question = (followup.get('q') or '').strip()
-                    followup_answer = (followup.get('a') or '').strip()
-                else:
-                    followup_question = ''
-                    followup_answer = ''
+                selected_segments.append({
+                    'segment_range_start': start,
+                    'segment_range_end': end,
+                    'question': question,
+                    'answer': answer,
+                    'llm_ranking': best_q.get('rank'),
+                    'expert_ranking': None,
+                    'followup_question': followup_question,
+                    'followup_answer': followup_answer,
+                })
 
-
-                selected_segments.append(
-                    {
-                        'segment_range_start': start,
-                        'segment_range_end': end,
-                        'question': question,
-                        'answer': answer,
-                        'llm_ranking': best_q.get('rank'),
-                        'expert_ranking': None,
-                        'followup_question': followup_question,
-                        'followup_answer': followup_answer,
-                    }
-                )
-
-            if len(selected_segments) > 1:
-                selected_segments = selected_segments[:-1]
-
+            # BUG FIX 3: Removed the `selected_segments[:-1]` code here too!
             return Response({'success': True, 'segments': selected_segments})
 
+        # If neither exists
         return Response(
             {'success': False, 'error': 'final_questions not found'},
             status=404,
