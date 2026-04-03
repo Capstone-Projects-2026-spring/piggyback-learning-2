@@ -12,8 +12,11 @@ import { usePlaybackPoller } from "@/hooks/usePlaybackPoller";
 import QuestionModal from "@/components/QuestionModal";
 import LookAtScreenModal from "@/components/LookAtScreenModal";
 import RecordingStatusBadge from "@/components/RecordingStatusBadge";
+import { useSocket } from "@/context/SocketContext";
 
 export default function WatchVideoPage() {
+  const { username, send } = useSocket();
+
   const params = useParams();
   const video_id = params.videoId;
 
@@ -103,10 +106,23 @@ export default function WatchVideoPage() {
     enabled: true,
     paused: !!currentQuestion, // ONLY pause during question modal, not during lookingAway
     onLookAway: () => {
+      send({
+        sender: username,
+        receiver: "johnny",
+        action: "distracted",
+        msg: "Could you help them focus, please?",
+      });
+
       playerRef.current?.pauseVideo();
       setLookingAway(true);
     },
     onReturn: () => {
+      send({
+        sender: username,
+        receiver: "johnny",
+        action: "focused",
+        msg: "Hurray!",
+      });
       setLookingAway(false);
       playerRef.current?.playVideo();
     },
