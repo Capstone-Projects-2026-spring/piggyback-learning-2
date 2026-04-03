@@ -33,37 +33,43 @@ export default function KidDashboard({ kidId }) {
 
     async function fetchData() {
       try {
-        const [assignedRes, recRes] = await Promise.all([
-          fetch(`${BASE_URL}/api/kids/${kidId}/videos_assigned`),
-          fetch(`${BASE_URL}/api/kids/${kidId}/recommendations`),
-        ]);
-
+        const assignedRes = await fetch(
+          `${BASE_URL}/api/kids/${kidId}/videos_assigned`,
+        );
         const assignedData = await assignedRes.json();
-        const recData = await recRes.json();
-
-        let videos = recData.recommendations || [];
-        const tags = recData.tags || [];
-
-        if (videos.length < 10 && tags.length > 0) {
-          for (const tag of tags) {
-            const searchRes = await fetch(
-              `/api/search?q=${encodeURIComponent(tag)}`,
-            );
-            const { videos: ytVideos } = await searchRes.json();
-            const formatted = ytVideos.slice(0, 3).map((v) => ({
-              id: v.id,
-              title: v.title,
-              thumbnail_url: v.thumbnail,
-              duration: formatDuration(v.seconds),
-            }));
-            videos = videos.concat(formatted);
-            if (videos.length >= 10) break;
-          }
-          videos = videos.slice(0, 10);
-        }
 
         setAssigned(assignedData);
-        setRecommended(videos);
+
+        // Only fetch recommendations if parent
+        if (role !== "kid") {
+          const recRes = await fetch(
+            `${BASE_URL}/api/kids/${kidId}/recommendations`,
+          );
+          const recData = await recRes.json();
+
+          let videos = recData.recommendations || [];
+          const tags = recData.tags || [];
+
+          if (videos.length < 10 && tags.length > 0) {
+            for (const tag of tags) {
+              const searchRes = await fetch(
+                `/api/search?q=${encodeURIComponent(tag)}`,
+              );
+              const { videos: ytVideos } = await searchRes.json();
+              const formatted = ytVideos.slice(0, 3).map((v) => ({
+                id: v.id,
+                title: v.title,
+                thumbnail_url: v.thumbnail,
+                duration: formatDuration(v.seconds),
+              }));
+              videos = videos.concat(formatted);
+              if (videos.length >= 10) break;
+            }
+            videos = videos.slice(0, 10);
+          }
+
+          setRecommended(videos);
+        }
       } catch (err) {
         console.error("Failed to load dashboard", err);
       } finally {
@@ -72,7 +78,7 @@ export default function KidDashboard({ kidId }) {
     }
 
     fetchData();
-  }, [kidId]);
+  }, [kidId, role]);
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -100,10 +106,23 @@ export default function KidDashboard({ kidId }) {
     }
   }
 
-  if (loading)
+  if (loading) {
     return (
       <p className="text-center text-gray-800 mt-10">Loading videos... 🎬</p>
     );
+  }
+
+  if (role === "kid") {
+    return (
+      <div className="p-4">
+        {assigned.length === 0 ? (
+          <NoVideos activeTab="assigned" />
+        ) : (
+          <VideoGrid videos={assigned} assigned={assigned} kidId={kidId} />
+        )}
+      </div>
+    );
+  }
 
   const videos =
     activeTab === "assigned"
