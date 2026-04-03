@@ -11,9 +11,15 @@ export default function LoginPage() {
   const router = useRouter();
   const { token, login } = useContext(AuthContext);
 
-  const [mounted, setMounted] = useState(false); // prevent hydration issues
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ username: "", password: "" });
+
+  const [form, setForm] = useState({
+    username: "",
+    password: "",
+    role: "parent",
+  });
+
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -35,7 +41,7 @@ export default function LoginPage() {
       const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, role: "parent" }),
+        body: JSON.stringify(form),
       });
 
       const data = await res.json();
@@ -70,6 +76,15 @@ export default function LoginPage() {
             {error}
           </p>
         )}
+
+        <select
+          className="w-full rounded-xl border border-pink-200 p-3 text-gray-800 focus:ring-2 focus:ring-pink-400 outline-none"
+          value={form.role}
+          onChange={(e) => setForm({ ...form, role: e.target.value })}
+        >
+          <option value="parent">👨‍👩‍👧 Parent</option>
+          <option value="kid">🧒 Kid</option>
+        </select>
 
         <input
           type="text"
