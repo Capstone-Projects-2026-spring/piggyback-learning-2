@@ -6,8 +6,8 @@ import YouTube from "react-youtube";
 import QuestionModal from "@/components/QuestionModal";
 import { usePlaybackPoller } from "./_hooks/usePlaybackPoller";
 import { useAudioRecorder } from "./_hooks/useAudioRecorder";
-import RecordingStatusBadge from "@/components/RecordingStatusBadge";
 import { useSegments } from "./_hooks/useSegment";
+import RecordingStatusBadge from "@/components/RecordingStatusBadge";
 
 export default function WatchVideoPage() {
   const params = useParams();
@@ -84,7 +84,14 @@ export default function WatchVideoPage() {
     segmentsRef,
     segmentIndexRef,
     currentQuestionRef,
-    onSegmentEnd: (segment) => setCurrentQuestion(segment.best_question),
+    onSegmentEnd: (segment) =>
+      setCurrentQuestion(
+        segment.questions.filter(
+          (x) =>
+            x.question === segment.best_question ||
+            x.question.includes(segment.best_question),
+        )[0]?.question,
+      ),
   });
 
   // Kick off recording whenever a question appears
