@@ -3,6 +3,8 @@ import "./globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import { AuthProvider } from "@/context/AuthContext";
+import { SocketProvider } from "@/context/SocketContext";
+import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,8 +29,11 @@ const RootLayout = ({ children }) => (
   >
     <body suppressHydrationWarning className="min-h-full flex flex-col">
       <AuthProvider>
-        <Navbar />
-        {children}
+        <SocketProvider>
+          <Navbar />
+          {children}
+          <Toaster position="top-right" />
+        </SocketProvider>
       </AuthProvider>
     </body>
   </html>
