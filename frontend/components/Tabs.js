@@ -2,6 +2,7 @@
 
 export default function Tabs({ activeTab, setActiveTab }) {
   const tabs = [
+    { key: "tags", label: "🏷️ Tags" },
     { key: "assigned", label: "📚 Assigned" },
     { key: "recommended", label: "🤖 Recommended" },
     { key: "search", label: "🔍 Search" },

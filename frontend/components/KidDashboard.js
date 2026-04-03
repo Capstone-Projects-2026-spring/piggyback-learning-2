@@ -6,6 +6,7 @@ import SearchBar from "./SearchBar";
 import Tabs from "./Tabs";
 import VideoGrid from "./VideoGrid";
 import NoVideos from "./NoVideos";
+import TagsTab from "./TagsTab";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -99,7 +100,10 @@ export default function KidDashboard({ kidId }) {
     }
   }
 
-  if (loading) return <p className="text-center mt-10">Loading videos... 🎬</p>;
+  if (loading)
+    return (
+      <p className="text-center text-gray-800 mt-10">Loading videos... 🎬</p>
+    );
 
   const videos =
     activeTab === "assigned"
@@ -120,7 +124,9 @@ export default function KidDashboard({ kidId }) {
 
       <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {videos.length === 0 ? (
+      {activeTab === "tags" ? (
+        <TagsTab kidId={kidId} />
+      ) : videos.length === 0 ? (
         <NoVideos activeTab={activeTab} />
       ) : (
         <VideoGrid videos={videos} assigned={assigned} kidId={kidId} />
