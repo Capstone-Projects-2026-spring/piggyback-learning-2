@@ -1,6 +1,6 @@
 "use client";
 
-import { AuthContext } from "@/app/context/AuthContext";
+import { AuthContext } from "@/context/AuthContext";
 import { useContext, useEffect, useState } from "react";
 import SearchBar from "./SearchBar";
 import Tabs from "./Tabs";

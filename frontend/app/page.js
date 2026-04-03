@@ -2,7 +2,7 @@
 
 import { useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { AuthContext } from "./context/AuthContext";
+import { AuthContext } from "@/context/AuthContext";
 import KidDashboard from "@/components/KidDashboard";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
