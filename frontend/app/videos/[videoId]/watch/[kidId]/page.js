@@ -58,8 +58,9 @@ export default function WatchVideoPage() {
   const [segments, setSegments] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [segmentIndex, setSegmentIndex] = useState(0);
-  const [recordingState, setRecordingState] = useState("idle"); // idle | waiting | recording | analyzing
+  const [recordingState, setRecordingState] = useState("idle"); // idle | waiting | recording | analyzing | correct | wrong
   const [statusMessage, setStatusMessage] = useState("");
+  const [analysisResult, setAnalysisResult] = useState(null);
 
   const playerRef = useRef(null);
   const intervalRef = useRef(null);
@@ -119,6 +120,9 @@ export default function WatchVideoPage() {
 
   const advanceAndPlay = useCallback(() => {
     setCurrentQuestion(null);
+    setAnalysisResult(null);
+    setRecordingState("idle");
+    setStatusMessage("");
     setSegmentIndex((prev) => prev + 1);
     playerRef.current?.playVideo();
   }, []);
@@ -133,18 +137,20 @@ export default function WatchVideoPage() {
   }, []);
 
   const handleAnalysisResult = useCallback(
-    (correct) => {
-      if (correct) {
+    (result) => {
+      setAnalysisResult(result);
+      if (result.is_correct) {
         setRecordingState("correct");
         setStatusMessage("Correct! Well done 🎉");
-        setTimeout(() => advanceAndPlay(), 1500);
+        setTimeout(() => advanceAndPlay(), 2000);
       } else {
         setRecordingState("wrong");
         setStatusMessage("Not quite — let's rewatch!");
         setTimeout(() => {
           setCurrentQuestion(null);
+          setAnalysisResult(null);
           setTimeout(() => replaySegment(), 100);
-        }, 1500);
+        }, 2000);
       }
     },
     [advanceAndPlay, replaySegment],
@@ -155,7 +161,6 @@ export default function WatchVideoPage() {
     if (!currentQuestion) return;
     const segment = segmentsRef.current[segmentIndexRef.current];
     if (!segment) return;
-    console.log(segment);
 
     clearRecordingTimeouts();
 
@@ -229,7 +234,7 @@ export default function WatchVideoPage() {
           "expected_answer",
           segment.questions.filter(
             (x) =>
-              x.question == segment.best_question ||
+              x.question === segment.best_question ||
               x.question.includes(segment.best_question),
           )[0]?.answer,
         );
@@ -242,7 +247,7 @@ export default function WatchVideoPage() {
           { method: "POST", body: formData },
         );
         const result = await res.json();
-        handleAnalysisResult(result.correct);
+        handleAnalysisResult(result);
       } catch (err) {
         console.error("Analysis failed:", err);
         setStatusMessage("Analysis failed. Continuing…");
@@ -261,6 +266,7 @@ export default function WatchVideoPage() {
     clearRecordingTimeouts();
     setRecordingState("idle");
     setStatusMessage("");
+    setAnalysisResult(null);
     advanceAndPlay();
   }, [clearRecordingTimeouts, advanceAndPlay]);
 
@@ -303,6 +309,7 @@ export default function WatchVideoPage() {
         onClose={handleCloseQuestion}
         recordingState={recordingState}
         statusMessage={statusMessage}
+        analysisResult={analysisResult}
       />
     </div>
   );

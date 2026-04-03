@@ -7,17 +7,14 @@ export default function QuestionModal({
   onClose,
   recordingState,
   statusMessage,
+  analysisResult,
 }) {
   const canvasRef = useRef(null);
   const animFrameRef = useRef(null);
-  const analyserRef = useRef(null);
-  const streamRef = useRef(null);
 
-  // Visualizer: spin up when recording, tear down otherwise
   useEffect(() => {
     if (recordingState !== "recording") {
       cancelAnimationFrame(animFrameRef.current);
-      // Clear canvas
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext("2d");
@@ -27,18 +24,16 @@ export default function QuestionModal({
     }
 
     let audioCtx;
+    let streamRef;
+
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        streamRef.current = stream;
+        streamRef = await navigator.mediaDevices.getUserMedia({ audio: true });
         audioCtx = new AudioContext();
-        const source = audioCtx.createMediaStreamSource(stream);
+        const source = audioCtx.createMediaStreamSource(streamRef);
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 64;
         source.connect(analyser);
-        analyserRef.current = analyser;
 
         const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");
@@ -48,12 +43,11 @@ export default function QuestionModal({
           animFrameRef.current = requestAnimationFrame(draw);
           analyser.getByteFrequencyData(dataArray);
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-
           const barWidth = canvas.width / BAR_COUNT - 2;
           for (let i = 0; i < BAR_COUNT; i++) {
             const value = dataArray[i] / 255;
             const barHeight = value * canvas.height;
-            const hue = 260 + value * 60; // purple → pink
+            const hue = 260 + value * 60;
             ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
             ctx.beginPath();
             ctx.roundRect(
@@ -74,7 +68,7 @@ export default function QuestionModal({
 
     return () => {
       cancelAnimationFrame(animFrameRef.current);
-      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef?.getTracks().forEach((t) => t.stop());
       audioCtx?.close();
     };
   }, [recordingState]);
@@ -85,6 +79,11 @@ export default function QuestionModal({
   const isWrong = recordingState === "wrong";
   const isDone = isCorrect || isWrong;
 
+  const similarityPct =
+    analysisResult?.similarity_score != null
+      ? Math.round(analysisResult.similarity_score * 100)
+      : null;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-2xl shadow-lg max-w-md w-full text-center">
@@ -93,7 +92,7 @@ export default function QuestionModal({
         </h2>
         <p className="text-lg mb-6 text-gray-800">{question}</p>
 
-        {/* Phase: waiting */}
+        {/* Waiting */}
         {recordingState === "waiting" && (
           <div className="flex flex-col items-center gap-3 mb-4">
             <div className="text-5xl animate-bounce">🎙️</div>
@@ -101,7 +100,7 @@ export default function QuestionModal({
           </div>
         )}
 
-        {/* Phase: recording — live waveform */}
+        {/* Recording — live waveform */}
         {recordingState === "recording" && (
           <div className="flex flex-col items-center gap-3 mb-4">
             <canvas
@@ -116,7 +115,7 @@ export default function QuestionModal({
           </div>
         )}
 
-        {/* Phase: analyzing */}
+        {/* Analyzing */}
         {recordingState === "analyzing" && (
           <div className="flex flex-col items-center gap-3 mb-4">
             <div className="w-10 h-10 border-4 border-purple-400 border-t-transparent rounded-full animate-spin" />
@@ -124,12 +123,10 @@ export default function QuestionModal({
           </div>
         )}
 
-        {/* Phase: result */}
+        {/* Result */}
         {isDone && (
           <div
-            className={`flex flex-col items-center gap-2 mb-4 p-4 rounded-xl ${
-              isCorrect ? "bg-green-50" : "bg-red-50"
-            }`}
+            className={`flex flex-col items-center gap-3 mb-4 p-4 rounded-xl ${isCorrect ? "bg-green-50" : "bg-red-50"}`}
           >
             <span className="text-4xl">{isCorrect ? "✅" : "❌"}</span>
             <p
@@ -137,13 +134,43 @@ export default function QuestionModal({
             >
               {statusMessage}
             </p>
+
+            {/* Transcript */}
+            {analysisResult?.transcript && (
+              <div className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700">
+                <span className="font-semibold text-gray-400 uppercase text-xs tracking-wide">
+                  You said
+                </span>
+                <p className="mt-1 italic">
+                  &quot;{analysisResult.transcript}&quot;
+                </p>
+              </div>
+            )}
+
+            {/* Similarity bar */}
+            {similarityPct != null && (
+              <div className="w-full">
+                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                  <span>Match</span>
+                  <span>{similarityPct}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-700 ${isCorrect ? "bg-green-400" : "bg-red-400"}`}
+                    style={{ width: `${similarityPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {isWrong && (
-              <p className="text-sm text-gray-500">Replaying the segment…</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Replaying the segment…
+              </p>
             )}
           </div>
         )}
 
-        {/* Manual skip — always available */}
         <button
           onClick={() => onClose()}
           className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline transition"
