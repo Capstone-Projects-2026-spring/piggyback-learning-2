@@ -27,7 +27,7 @@ export default function VideoCard({ video, isAssigned, kidId }) {
         onClick={() =>
           router.push(
             isAssigned
-              ? `/videos/watch/${video.id}`
+              ? `/videos/${video.id}/watch/${kidId}`
               : `/videos/${video.id}/process/${kidId}`,
           )
         }
