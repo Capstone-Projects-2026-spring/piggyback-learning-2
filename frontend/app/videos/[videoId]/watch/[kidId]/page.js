@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useContext } from "react";
 import { useParams } from "next/navigation";
 import YouTube from "react-youtube";
 
@@ -13,9 +13,11 @@ import QuestionModal from "@/components/QuestionModal";
 import LookAtScreenModal from "@/components/LookAtScreenModal";
 import RecordingStatusBadge from "@/components/RecordingStatusBadge";
 import { useSocket } from "@/context/SocketContext";
+import { AuthContext } from "@/context/AuthContext";
 
 export default function WatchVideoPage() {
   const { username, send } = useSocket();
+  const { parentUsername } = useContext(AuthContext);
 
   const params = useParams();
   const video_id = params.videoId;
@@ -108,7 +110,7 @@ export default function WatchVideoPage() {
     onLookAway: () => {
       send({
         sender: username,
-        receiver: "johnny",
+        receiver: parentUsername,
         action: "distracted",
         msg: "Could you help them focus, please?",
       });
@@ -119,7 +121,7 @@ export default function WatchVideoPage() {
     onReturn: () => {
       send({
         sender: username,
-        receiver: "johnny",
+        receiver: parentUsername,
         action: "focused",
         msg: "Hurray!",
       });

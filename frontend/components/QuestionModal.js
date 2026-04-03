@@ -1,4 +1,6 @@
-import { useEffect, useRef } from "react";
+import { AuthContext } from "@/context/AuthContext";
+import { useSocket } from "@/context/SocketContext";
+import { useContext, useEffect, useRef } from "react";
 
 const BAR_COUNT = 20;
 
@@ -9,8 +11,12 @@ export default function QuestionModal({
   statusMessage,
   analysisResult,
 }) {
+  const { send, username } = useSocket();
+  const { parentUsername } = useContext(AuthContext);
+
   const canvasRef = useRef(null);
   const animFrameRef = useRef(null);
+  const boredSentRef = useRef(false);
 
   useEffect(() => {
     if (recordingState !== "recording") {
@@ -72,6 +78,25 @@ export default function QuestionModal({
       audioCtx?.close();
     };
   }, [recordingState]);
+
+  useEffect(() => {
+    if (!analysisResult?.mood) return;
+
+    if (analysisResult.mood === "bored" && !boredSentRef.current) {
+      boredSentRef.current = true;
+
+      send({
+        sender: username,
+        receiver: parentUsername,
+        action: "bored",
+        msg: "Maybe they would like to watch something else?",
+      });
+    }
+  }, [analysisResult, send, username, parentUsername]);
+
+  useEffect(() => {
+    boredSentRef.current = false;
+  }, [question]);
 
   if (!question) return null;
 
