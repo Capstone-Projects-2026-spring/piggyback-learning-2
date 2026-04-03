@@ -116,13 +116,19 @@ async fn login(State(ctx): State<AppContext>, Json(data): Json<LoginData>) -> Re
                 return Err(Error::BadRequest("Invalid password".to_string()));
             }
 
+            let parent = parents::Entity::find_by_id(kid.parent_id)
+                .one(&ctx.db)
+                .await?
+                .ok_or_else(|| Error::BadRequest("Parent not found".to_string()))?;
+
             let token = generate_jwt(kid.id)?;
 
             format::json(serde_json::json!({
                 "success": true,
                 "token": token,
                 "role": "kid",
-                "account": kid
+                "account": kid,
+                "parent_username": parent.username
             }))
         }
 
