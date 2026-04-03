@@ -79,7 +79,7 @@ export default function QuestionsStep({ videoId, kidId }) {
     });
 
     setAssigning(false);
-    router.push(`/videos/watch/${videoId}`);
+    router.push(`/videos/${videoId}/watch/${kidId}`);
   }
 
   return (

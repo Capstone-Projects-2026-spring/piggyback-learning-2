@@ -78,7 +78,7 @@ export default function TagsStep({ videoId, setStep }) {
           value={newTag}
           onChange={(e) => setNewTag(e.target.value)}
           placeholder="New tag..."
-          className="grow border border-gray-300 rounded-xl px-3 py-2"
+          className="grow border border-gray-300 rounded-xl px-3 py-2 text-gray-800"
         />
         <button
           onClick={handleCreateTag}

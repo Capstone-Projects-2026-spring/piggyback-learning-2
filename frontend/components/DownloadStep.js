@@ -14,8 +14,6 @@ export default function DownloadStep({ videoId, setStep }) {
     setLoading(false);
 
     if (data.success || data.msg?.includes("already")) {
-      setStep(3);
-    } else {
       setStep(2);
     }
   }
