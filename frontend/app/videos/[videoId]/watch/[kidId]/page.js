@@ -3,13 +3,15 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
 import YouTube from "react-youtube";
-import { useSegments } from "./_hooks/useSegments";
-import { usePlaybackPoller } from "./_hooks/usePlaybackPoller";
-import { useAudioRecorder } from "./_hooks/useAudioRecorder";
-import { useGazeTracker } from "./_hooks/useGazeTracker";
+
+import { useSegments } from "@/hooks/useSegments";
+import { useGazeTracker } from "@/hooks/useGazeTracker";
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
+import { usePlaybackPoller } from "@/hooks/usePlaybackPoller";
+
 import QuestionModal from "@/components/QuestionModal";
-import RecordingStatusBadge from "@/components/RecordingStatusBadge";
 import LookAtScreenModal from "@/components/LookAtScreenModal";
+import RecordingStatusBadge from "@/components/RecordingStatusBadge";
 
 export default function WatchVideoPage() {
   const params = useParams();
