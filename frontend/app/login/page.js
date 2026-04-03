@@ -47,7 +47,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
-        login(data.token, data.role, data.account);
+        login(data.token, data.role, data.account, data?.parent_username);
         router.push("/");
       } else {
         setError(data.message || "Login failed 😢");
