@@ -3,11 +3,13 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
 import YouTube from "react-youtube";
-import QuestionModal from "@/components/QuestionModal";
+import { useSegments } from "./_hooks/useSegments";
 import { usePlaybackPoller } from "./_hooks/usePlaybackPoller";
 import { useAudioRecorder } from "./_hooks/useAudioRecorder";
-import { useSegments } from "./_hooks/useSegment";
+import { useGazeTracker } from "./_hooks/useGazeTracker";
+import QuestionModal from "@/components/QuestionModal";
 import RecordingStatusBadge from "@/components/RecordingStatusBadge";
+import LookAtScreenModal from "@/components/LookAtScreenModal";
 
 export default function WatchVideoPage() {
   const params = useParams();
@@ -18,10 +20,12 @@ export default function WatchVideoPage() {
   const [recordingState, setRecordingState] = useState("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [lookingAway, setLookingAway] = useState(false);
 
   const playerRef = useRef(null);
   const segmentIndexRef = useRef(0);
   const currentQuestionRef = useRef(null);
+  const videoContainerRef = useRef(null); // ref for gaze hit-testing
 
   useEffect(() => {
     segmentIndexRef.current = segmentIndex;
@@ -94,6 +98,20 @@ export default function WatchVideoPage() {
       ),
   });
 
+  const gazeEnabled = !lookingAway;
+
+  useGazeTracker({
+    enabled: gazeEnabled,
+    onLookAway: () => {
+      playerRef.current?.pauseVideo();
+      setLookingAway(true);
+    },
+    onReturn: () => {
+      setLookingAway(false);
+      playerRef.current?.playVideo();
+    },
+  });
+
   // Kick off recording whenever a question appears
   useEffect(() => {
     if (!currentQuestion) return;
@@ -147,6 +165,8 @@ export default function WatchVideoPage() {
         statusMessage={statusMessage}
         analysisResult={analysisResult}
       />
+
+      <LookAtScreenModal visible={lookingAway} />
     </div>
   );
 }
