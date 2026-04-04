@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-export default function VideoCard({ video, isAssigned, kidId }) {
+export default function VideoCard({ video, role, isAssigned, kidId }) {
   const router = useRouter();
 
   return (
@@ -26,9 +26,11 @@ export default function VideoCard({ video, isAssigned, kidId }) {
       <button
         onClick={() =>
           router.push(
-            isAssigned
-              ? `/videos/${video.id}/watch/${kidId}`
-              : `/videos/${video.id}/process/${kidId}`,
+            role === "parent"
+              ? isAssigned
+                ? `/videos/${video.id}/answers/${kidId}`
+                : `/videos/${video.id}/process/${kidId}`
+              : `/videos/${video.id}/watch/${kidId}`,
           )
         }
         className={`mt-auto py-2 rounded-xl font-semibold transition ${
@@ -37,7 +39,11 @@ export default function VideoCard({ video, isAssigned, kidId }) {
             : "bg-linear-to-r from-purple-400 to-pink-400 text-white hover:scale-105"
         }`}
       >
-        {isAssigned ? "▶ Watch" : "➕ Assign"}
+        {role === "parent"
+          ? isAssigned
+            ? "View Results"
+            : "➕ Assign"
+          : "▶ Watch"}
       </button>
     </div>
   );

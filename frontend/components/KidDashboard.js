@@ -148,7 +148,12 @@ export default function KidDashboard({ kidId }) {
       ) : videos.length === 0 ? (
         <NoVideos activeTab={activeTab} />
       ) : (
-        <VideoGrid videos={videos} assigned={assigned} kidId={kidId} />
+        <VideoGrid
+          role={role}
+          videos={videos}
+          assigned={assigned}
+          kidId={kidId}
+        />
       )}
     </div>
   );
