@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useContext } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import YouTube from "react-youtube";
 
 import { useSegments } from "@/hooks/useSegments";
@@ -16,8 +16,10 @@ import { useSocket } from "@/context/SocketContext";
 import { AuthContext } from "@/context/AuthContext";
 
 export default function WatchVideoPage() {
+  const router = useRouter();
+
   const { username, send } = useSocket();
-  const { parentUsername } = useContext(AuthContext);
+  const { parentUsername, role } = useContext(AuthContext);
 
   const params = useParams();
   const video_id = params.videoId;
@@ -32,6 +34,10 @@ export default function WatchVideoPage() {
   const playerRef = useRef(null);
   const segmentIndexRef = useRef(0);
   const currentQuestionRef = useRef(null);
+
+  useEffect(() => {
+    if (role === "parent") router.push("/");
+  }, [role, router]);
 
   useEffect(() => {
     segmentIndexRef.current = segmentIndex;
