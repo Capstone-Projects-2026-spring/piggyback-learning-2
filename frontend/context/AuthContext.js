@@ -9,15 +9,25 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null);
   const [account, setAccount] = useState(null);
   const [parentUsername, setParentUsername] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
     const storedAccount = localStorage.getItem("account");
+    const parentUsername = localStorage.getItem("parentUsername");
 
     if (storedToken) setToken(storedToken);
     if (storedRole) setRole(storedRole);
+    if (parentUsername) setParentUsername(parentUsername);
     if (storedAccount) setAccount(JSON.parse(storedAccount));
+    if (
+      storedToken &&
+      storedRole &&
+      storedAccount &&
+      (storedRole === "kid" ? parentUsername : true)
+    )
+      setIsLoggedIn(true);
   }, []);
 
   const login = (newToken, role, account, parentUsername = null) => {
@@ -29,6 +39,7 @@ export function AuthProvider({ children }) {
     setRole(role);
     setAccount(account);
     setParentUsername(parentUsername);
+    setIsLoggedIn(true);
   };
 
   const logout = () => {
@@ -40,11 +51,20 @@ export function AuthProvider({ children }) {
     setRole(null);
     setAccount(null);
     setParentUsername(null);
+    setIsLoggedIn(false);
   };
 
   return (
     <AuthContext.Provider
-      value={{ token, role, account, parentUsername, login, logout }}
+      value={{
+        isLoggedIn,
+        token,
+        role,
+        account,
+        parentUsername,
+        login,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>
