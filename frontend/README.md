@@ -36,6 +36,16 @@ bun install
 
 ---
 
+## Environment Variables
+
+Create a `.env` file in the `frontend/` directory:
+
+```bash
+cp env.example .env
+```
+
+---
+
 ## Running in Development
 
 Start the development server with hot-reloading:
