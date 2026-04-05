@@ -9,9 +9,13 @@ RUN apt-get update && apt-get install -y \
 # 2. Setup the Vosk Library (Architecture Aware)
 ARG TARGETARCH
 RUN case "${TARGETARCH}" in \
-    "amd64")  VOSK_ARCH="x86_64" ;; \
-    "arm64")  VOSK_ARCH="aarch64" ;; \
-    *) VOSK_ARCH="aarch64" ;; esac && \
+    "amd64")   VOSK_ARCH="x86_64" ;; \
+    "arm64")   VOSK_ARCH="aarch64" ;; \
+    "arm")     VOSK_ARCH="armv7l" ;; \
+    "riscv64") VOSK_ARCH="riscv64" ;; \
+    "386")     VOSK_ARCH="x86" ;; \
+    *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
+    esac && \
     wget https://github.com/alphacep/vosk-api/releases/download/v0.3.45/vosk-linux-${VOSK_ARCH}-0.3.45.zip && \
     unzip vosk-linux-${VOSK_ARCH}-0.3.45.zip && \
     cp vosk-linux-${VOSK_ARCH}-0.3.45/libvosk.so /usr/local/lib/ && \
