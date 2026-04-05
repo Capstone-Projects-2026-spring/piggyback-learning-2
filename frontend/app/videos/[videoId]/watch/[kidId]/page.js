@@ -14,12 +14,22 @@ import LookAtScreenModal from "@/components/LookAtScreenModal";
 import RecordingStatusBadge from "@/components/RecordingStatusBadge";
 import { useSocket } from "@/context/SocketContext";
 import { AuthContext } from "@/context/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function WatchVideoPage() {
+  // To prevent the custom hooks from triggering
+  return (
+    <ProtectedRoute>
+      <WatchVideoPageInner />
+    </ProtectedRoute>
+  );
+}
+
+function WatchVideoPageInner() {
   const router = useRouter();
 
   const { username, send } = useSocket();
-  const { parentUsername, role, isLoggedIn } = useContext(AuthContext);
+  const { parentUsername, role } = useContext(AuthContext);
 
   const params = useParams();
   const video_id = params.videoId;
@@ -34,10 +44,6 @@ export default function WatchVideoPage() {
   const playerRef = useRef(null);
   const segmentIndexRef = useRef(0);
   const currentQuestionRef = useRef(null);
-
-  useEffect(() => {
-    if (!isLoggedIn) router.replace("/login");
-  }, [isLoggedIn, router]);
 
   useEffect(() => {
     if (role === "parent") router.push("/");
@@ -161,7 +167,9 @@ export default function WatchVideoPage() {
     advanceAndPlay();
   }, [recorder, advanceAndPlay]);
 
-  if (!video_id) return <p>Loading…</p>;
+  if (!video_id) {
+    return <p>Loading…</p>;
+  }
 
   return (
     <div className="min-h-screen bg-linear-to-br from-yellow-100 via-pink-100 to-purple-100 flex flex-col items-center p-4">

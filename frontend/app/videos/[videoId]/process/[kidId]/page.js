@@ -1,19 +1,15 @@
 "use client";
 
+import ProtectedRoute from "@/components/ProtectedRoute";
 import VideoProcess from "@/components/VideoProcess";
-import { AuthContext } from "@/context/AuthContext";
-import { useParams, useRouter } from "next/navigation";
-import { useContext, useEffect } from "react";
+import { useParams } from "next/navigation";
 
 export default function VideoPage() {
-  const router = useRouter();
   const params = useParams();
 
-  const { isLoggedIn } = useContext(AuthContext);
-
-  useEffect(() => {
-    if (!isLoggedIn) router.replace("/login");
-  }, [isLoggedIn, router]);
-
-  return <VideoProcess videoId={params.videoId} kidId={params.kidId} />;
+  return (
+    <ProtectedRoute>
+      <VideoProcess videoId={params.videoId} kidId={params.kidId} />
+    </ProtectedRoute>
+  );
 }
