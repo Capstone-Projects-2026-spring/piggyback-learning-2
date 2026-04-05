@@ -16,8 +16,8 @@ use crate::controllers::{answers, frames, kids, openai, parents, questions, tags
         openai::generate_questions,
         parents::get_kids,
         questions::get_questions_by_video,
-        // // tags
-        // tags::get_tags,
+        tags::get_tags,
+        tags::create_tag,
         // // videos
         // videos::download_video,
         // videos::get_video_tags,

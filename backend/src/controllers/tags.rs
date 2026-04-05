@@ -1,13 +1,23 @@
 use loco_rs::prelude::*;
 use serde::Deserialize;
+use utoipa::ToSchema;
 
 use crate::models::_entities::tags;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct CreateTagRequest {
     name: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/tags",
+    tag = "tags",
+    request_body = CreateTagRequest,
+    responses(
+        (status = 200, description = "Tag created or returned if already exists", body = tags::Model),
+    )
+)]
 async fn create_tag(
     State(ctx): State<AppContext>,
     Json(data): Json<CreateTagRequest>,
@@ -32,6 +42,14 @@ async fn create_tag(
     format::json(tag)
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/tags",
+    tag = "tags",
+    responses(
+        (status = 200, description = "All tags", body = Vec<tags::Model>),
+    )
+)]
 async fn get_tags(State(ctx): State<AppContext>) -> Result<Response> {
     format::json(tags::Entity::find().all(&ctx.db).await?)
 }

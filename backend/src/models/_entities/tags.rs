@@ -2,11 +2,14 @@
 
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, ToSchema)]
 #[sea_orm(table_name = "tags")]
 pub struct Model {
+    #[schema(value_type = String, format = "date-time", example = "2026-01-15T10:30:00Z")]
     pub created_at: DateTimeWithTimeZone,
+    #[schema(value_type = String, format = "date-time", example = "2026-01-15T10:30:00Z")]
     pub updated_at: DateTimeWithTimeZone,
     #[sea_orm(primary_key)]
     pub id: i32,
