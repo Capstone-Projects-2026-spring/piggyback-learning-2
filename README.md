@@ -15,8 +15,8 @@ The project is split into two main parts:
 
 ### Repositories
 
-- Frontend setup and development: ./frontend/README.md
-- Backend setup and development: ./backend/README.md
+- Frontend setup and development: [Frontend Setup](frontend/README.md)
+- Backend setup and development: [Backend Setup](backend/README.md)
 
 > Follow the instructions in each README to run the full application locally.
 
@@ -70,7 +70,7 @@ To run the full application locally:
 
 ### 1. Start the Backend
 
-Follow: backend/README.md
+Follow: [Backend Setup](backend/README.md)
 
 The backend runs at: http://localhost:5150
 
@@ -80,7 +80,7 @@ API docs: http://localhost:5150/docs
 
 ### 2. Start the Frontend
 
-Follow: frontend/README.md
+Follow: [Frontend Setup](frontend/README.md)
 
 The frontend runs at: http://localhost:3000
 
