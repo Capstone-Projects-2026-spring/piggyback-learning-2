@@ -1,7 +1,7 @@
 "use client";
 
 import { AuthContext } from "@/context/AuthContext";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import SearchBar from "./SearchBar";
 import Tabs from "./Tabs";
 import VideoGrid from "./VideoGrid";
@@ -28,6 +28,42 @@ export default function KidDashboard({ kidId }) {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
+  const fetchRecommendations = useCallback(async () => {
+    try {
+      const recRes = await fetch(
+        `${BASE_URL}/api/kids/${kidId}/recommendations`,
+      );
+      const recData = await recRes.json();
+
+      let videos = recData.recommendations || [];
+      const tags = recData.tags || [];
+
+      if (videos.length < 10 && tags.length > 0) {
+        for (const tag of tags) {
+          const searchRes = await fetch(
+            `/api/search?q=${encodeURIComponent(tag)}`,
+          );
+          const { videos: ytVideos } = await searchRes.json();
+
+          const formatted = ytVideos.slice(0, 3).map((v) => ({
+            id: v.id,
+            title: v.title,
+            thumbnail_url: v.thumbnail,
+            duration: formatDuration(v.seconds),
+          }));
+
+          videos = videos.concat(formatted);
+          if (videos.length >= 10) break;
+        }
+        videos = videos.slice(0, 10);
+      }
+
+      setRecommended(videos);
+    } catch (err) {
+      console.error("Failed to refresh recommendations", err);
+    }
+  }, [kidId]);
+
   useEffect(() => {
     if (!kidId) return;
 
@@ -37,38 +73,10 @@ export default function KidDashboard({ kidId }) {
           `${BASE_URL}/api/kids/${kidId}/videos_assigned`,
         );
         const assignedData = await assignedRes.json();
-
         setAssigned(assignedData);
 
-        // Only fetch recommendations if parent
         if (role !== "kid") {
-          const recRes = await fetch(
-            `${BASE_URL}/api/kids/${kidId}/recommendations`,
-          );
-          const recData = await recRes.json();
-
-          let videos = recData.recommendations || [];
-          const tags = recData.tags || [];
-
-          if (videos.length < 10 && tags.length > 0) {
-            for (const tag of tags) {
-              const searchRes = await fetch(
-                `/api/search?q=${encodeURIComponent(tag)}`,
-              );
-              const { videos: ytVideos } = await searchRes.json();
-              const formatted = ytVideos.slice(0, 3).map((v) => ({
-                id: v.id,
-                title: v.title,
-                thumbnail_url: v.thumbnail,
-                duration: formatDuration(v.seconds),
-              }));
-              videos = videos.concat(formatted);
-              if (videos.length >= 10) break;
-            }
-            videos = videos.slice(0, 10);
-          }
-
-          setRecommended(videos);
+          await fetchRecommendations();
         }
       } catch (err) {
         console.error("Failed to load dashboard", err);
@@ -78,7 +86,7 @@ export default function KidDashboard({ kidId }) {
     }
 
     fetchData();
-  }, [kidId, role]);
+  }, [fetchRecommendations, kidId, role]);
 
   async function handleSearch(e) {
     e.preventDefault();
@@ -107,9 +115,7 @@ export default function KidDashboard({ kidId }) {
   }
 
   if (loading) {
-    return (
-      <p className="text-center text-gray-800 mt-10">Loading videos... 🎬</p>
-    );
+    return <p className="text-center mt-10">Loading videos... 🎬</p>;
   }
 
   if (role === "kid") {
@@ -144,16 +150,17 @@ export default function KidDashboard({ kidId }) {
       <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {activeTab === "tags" ? (
-        <TagsTab kidId={kidId} />
+        <TagsTab
+          kidId={kidId}
+          onTagsUpdated={async () => {
+            await fetchRecommendations();
+            setActiveTab("recommended");
+          }}
+        />
       ) : videos.length === 0 ? (
         <NoVideos activeTab={activeTab} />
       ) : (
-        <VideoGrid
-          role={role}
-          videos={videos}
-          assigned={assigned}
-          kidId={kidId}
-        />
+        <VideoGrid videos={videos} assigned={assigned} kidId={kidId} />
       )}
     </div>
   );

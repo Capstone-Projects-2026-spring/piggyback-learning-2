@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-export default function TagsTab({ kidId }) {
+export default function TagsTab({ kidId, onTagsUpdated }) {
   const [allTags, setAllTags] = useState([]);
   const [assignedTags, setAssignedTags] = useState([]);
   const [newTag, setNewTag] = useState("");
@@ -33,7 +33,6 @@ export default function TagsTab({ kidId }) {
     fetchTags();
   }, [kidId]);
 
-  // Handle creating a new tag
   async function handleCreateTag(e) {
     e.preventDefault();
     if (!newTag.trim()) return;
@@ -52,7 +51,7 @@ export default function TagsTab({ kidId }) {
     }
   }
 
-  // Handle assigning tags to kid
+  // Assign tags + trigger refresh
   async function handleAssignTags() {
     if (assignedTags.length === 0) return;
 
@@ -63,6 +62,12 @@ export default function TagsTab({ kidId }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tags: assignedTags.map((t) => t.id) }),
       });
+
+      // Refresh recommendations in parent
+      if (onTagsUpdated) {
+        await onTagsUpdated();
+      }
+
       alert("Tags assigned successfully ✅");
     } catch (err) {
       console.error("Failed to assign tags", err);
@@ -76,7 +81,7 @@ export default function TagsTab({ kidId }) {
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow border">
-      {/* Create new tag */}
+      {/* Create tag */}
       <form onSubmit={handleCreateTag} className="flex mb-4">
         <input
           type="text"
@@ -85,15 +90,12 @@ export default function TagsTab({ kidId }) {
           placeholder="Create new tag..."
           className="grow border border-gray-300 px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
         />
-        <button
-          type="submit"
-          className="ml-3 bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600"
-        >
+        <button className="ml-3 bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600">
           Add
         </button>
       </form>
 
-      {/* Tags list */}
+      {/* Tag list */}
       <div className="flex flex-wrap gap-2 mb-4">
         {allTags.map((tag) => {
           const isSelected = assignedTags.some((t) => t.id === tag.id);
