@@ -17,7 +17,11 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const { role, account } = useContext(AuthContext);
+  const { isLoggedIn, role, account } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!isLoggedIn) router.push("/login");
+  }, [isLoggedIn, router]);
 
   const fetchKids = useCallback(async () => {
     if (role !== "parent") return;

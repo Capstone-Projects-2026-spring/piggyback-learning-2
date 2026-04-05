@@ -1,16 +1,25 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { AuthContext } from "@/context/AuthContext";
+import { useParams, useRouter } from "next/navigation";
+import { useContext, useEffect, useState } from "react";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function ResultsPage() {
+  const router = useRouter();
+
   const params = useParams();
   const { videoId, kidId } = params;
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const { isLoggedIn } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (!isLoggedIn) router.replace("/login");
+  }, [isLoggedIn, router]);
 
   useEffect(() => {
     async function fetchResults() {

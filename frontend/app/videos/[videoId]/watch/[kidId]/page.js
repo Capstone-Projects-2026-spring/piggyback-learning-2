@@ -19,7 +19,7 @@ export default function WatchVideoPage() {
   const router = useRouter();
 
   const { username, send } = useSocket();
-  const { parentUsername, role } = useContext(AuthContext);
+  const { parentUsername, role, isLoggedIn } = useContext(AuthContext);
 
   const params = useParams();
   const video_id = params.videoId;
@@ -34,6 +34,10 @@ export default function WatchVideoPage() {
   const playerRef = useRef(null);
   const segmentIndexRef = useRef(0);
   const currentQuestionRef = useRef(null);
+
+  useEffect(() => {
+    if (!isLoggedIn) router.replace("/login");
+  }, [isLoggedIn, router]);
 
   useEffect(() => {
     if (role === "parent") router.push("/");

@@ -9,9 +9,8 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { token, login } = useContext(AuthContext);
+  const { isLoggedIn, login } = useContext(AuthContext);
 
-  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -23,14 +22,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (mounted && token) {
-      router.replace("/");
-    }
-  }, [mounted, token, router]);
+    if (isLoggedIn) router.replace("/");
+  }, [isLoggedIn, router]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -48,7 +41,7 @@ export default function LoginPage() {
 
       if (res.ok) {
         login(data.token, data.role, data.account, data?.parent_username);
-        router.push("/");
+        router.replace("/");
       } else {
         setError(data.message || "Login failed 😢");
       }
@@ -58,8 +51,6 @@ export default function LoginPage() {
 
     setLoading(false);
   }
-
-  if (!mounted) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-yellow-100 via-pink-100 to-blue-100 p-4">
