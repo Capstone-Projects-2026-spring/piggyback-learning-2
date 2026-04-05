@@ -4,9 +4,8 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    controllers::kids::GenericSuccessResponse,
     models::_entities::{tags, video_tags, videos},
-    utils::download::download_video,
+    utils::{download::download_video, structs::GenericSuccessResponse},
 };
 
 #[utoipa::path(

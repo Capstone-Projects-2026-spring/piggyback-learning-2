@@ -8,7 +8,10 @@ use sea_orm::{
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::models::_entities::{kid_tags, tags, video_assignments, video_tags, videos};
+use crate::{
+    models::_entities::{kid_tags, tags, video_assignments, video_tags, videos},
+    utils::structs::GenericSuccessResponse,
+};
 
 #[derive(Serialize, ToSchema)]
 struct TagResponse {
@@ -103,11 +106,6 @@ async fn add_kid_tags(
 #[derive(Deserialize, ToSchema)]
 pub struct CreateVideoAssignmentRequest {
     pub video_id: String,
-}
-
-#[derive(Serialize, ToSchema)]
-pub struct GenericSuccessResponse {
-    pub success: bool,
 }
 
 #[utoipa::path(
