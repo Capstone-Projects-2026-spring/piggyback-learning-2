@@ -14,8 +14,10 @@ use loco_rs::{
 use migration::Migrator;
 use once_cell::sync::Lazy;
 use std::{path::Path, sync::Arc};
+use utoipa::OpenApi;
+use utoipa_rapidoc::RapiDoc;
 
-use crate::controllers;
+use crate::{controllers, openapi::ApiDoc};
 
 pub static OPENAI_CLIENT: Lazy<Arc<Client<OpenAIConfig>>> = Lazy::new(|| Arc::new(Client::new()));
 
@@ -60,7 +62,9 @@ impl Hooks for App {
     }
 
     async fn after_routes(router: axum::Router, _ctx: &AppContext) -> Result<axum::Router> {
-        Ok(router.layer(Extension(OPENAI_CLIENT.clone())))
+        Ok(router
+            .merge(RapiDoc::with_openapi("/api-docs/openapi.json", ApiDoc::openapi()).path("/docs"))
+            .layer(Extension(OPENAI_CLIENT.clone())))
     }
 
     async fn connect_workers(_ctx: &AppContext, _queue: &Queue) -> Result<()> {
