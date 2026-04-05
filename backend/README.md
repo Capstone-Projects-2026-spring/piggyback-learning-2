@@ -9,6 +9,7 @@ A backend web application built with [Loco.rs](https://loco.rs/) (Axum), [SeaORM
 - [Prerequisites](#prerequisites)
 - [Installing Rust](#installing-rust)
 - [Installing Loco CLI](#installing-loco-cli)
+- [Installing SeaORM CLI](#installing-seaorm-cli)
 - [Installing FFmpeg](#installing-ffmpeg)
 - [Installing yt-dlp](#installing-yt-dlp)
 - [Setting Up Vosk](#setting-up-vosk)
@@ -99,6 +100,24 @@ loco --version
 > Full Loco documentation: https://loco.rs/docs/
 
 ----------
+
+## Installing SeaORM CLI
+
+The `sea-orm-cli` is used to generate entities from your database schema and manage migrations.
+
+```bash
+cargo install sea-orm-cli
+```
+
+Verify the installation:
+
+```bash
+sea-orm-cli --version
+```
+
+> Full SeaORM CLI documentation: https://www.sea-ql.org/SeaORM/docs/generate-entity/sea-orm-cli/
+
+---
 
 ## Installing FFmpeg
 
