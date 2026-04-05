@@ -2,10 +2,11 @@ use loco_rs::prelude::*;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 use serde::Serialize;
 use std::collections::HashMap;
+use utoipa::ToSchema;
 
 use crate::models::_entities::{questions, segments};
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct QuestionItem {
     pub qtype: String,
     pub question: String,
@@ -13,7 +14,7 @@ pub struct QuestionItem {
     pub rank: Option<i32>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct SegmentWithQuestions {
     pub id: i32,
     pub start_seconds: i32,
@@ -22,12 +23,23 @@ pub struct SegmentWithQuestions {
     pub questions: Vec<QuestionItem>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct VideoQuestionsResponse {
     pub video_id: String,
     pub segments: Vec<SegmentWithQuestions>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/questions/{video_id}",
+    tag = "questions",
+    params(
+        ("video_id" = String, Path, description = "Video ID", example = "l2FQ8ni1MfM"),
+    ),
+    responses(
+        (status = 200, description = "Questions grouped by segment for the video", body = VideoQuestionsResponse),
+    )
+)]
 async fn get_questions_by_video(
     State(ctx): State<AppContext>,
     Path(video_id): Path<String>,
