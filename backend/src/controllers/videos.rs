@@ -1,15 +1,26 @@
 use loco_rs::prelude::*;
 use sea_orm::{sea_query::OnConflict, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::{
-    models::{
-        _entities::{tags, video_tags},
-        videos,
-    },
+    controllers::kids::GenericSuccessResponse,
+    models::_entities::{tags, video_tags, videos},
     utils::download::download_video,
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/videos/download/{video_id}",
+    tag = "videos",
+    params(
+        ("video_id" = String, Path, description = "Video ID", example = "l2FQ8ni1MfM"),
+    ),
+    responses(
+        (status = 200, description = "Video downloaded or already exists", body = GenericSuccessResponse),
+        (status = 500, description = "Download failed"),
+    )
+)]
 async fn download_and_store(
     State(ctx): State<AppContext>,
     Path(video_id): Path<String>,
@@ -48,12 +59,23 @@ async fn download_and_store(
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 struct TagResponse {
     id: i32,
     name: String,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/videos/{video_id}/tags",
+    tag = "videos",
+    params(
+        ("video_id" = String, Path, description = "Video ID", example = "l2FQ8ni1MfM"),
+    ),
+    responses(
+        (status = 200, description = "Tags for the video", body = Vec<TagResponse>),
+    )
+)]
 async fn get_video_tags(
     State(ctx): State<AppContext>,
     Path(video_id): Path<String>,
@@ -76,11 +98,24 @@ async fn get_video_tags(
     format::json(tags)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct AddTagsRequest {
     pub tags: Vec<i32>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/videos/{video_id}/tags",
+    tag = "videos",
+    params(
+        ("video_id" = String, Path, description = "Video ID", example = "l2FQ8ni1MfM"),
+    ),
+    request_body = AddTagsRequest,
+    responses(
+        (status = 200, description = "Tags added to video", body = GenericSuccessResponse),
+        (status = 500, description = "Unknown error occurred"),
+    )
+)]
 async fn add_video_tags(
     State(ctx): State<AppContext>,
     Path(video_id): Path<String>,

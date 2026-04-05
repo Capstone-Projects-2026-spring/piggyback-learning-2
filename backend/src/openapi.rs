@@ -18,9 +18,9 @@ use crate::controllers::{answers, frames, kids, openai, parents, questions, tags
         questions::get_questions_by_video,
         tags::get_tags,
         tags::create_tag,
-        // // videos
-        // videos::download_video,
-        // videos::get_video_tags,
+        videos::download_and_store,
+        videos::get_video_tags,
+        videos::add_video_tags,
     ),
     tags(
         (name = "answers", description = "Answer endpoints"),
