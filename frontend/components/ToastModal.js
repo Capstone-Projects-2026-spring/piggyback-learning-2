@@ -1,7 +1,25 @@
 "use client";
 
+import { useEffect } from "react";
+
 export default function ToastModal({ data, onClose, getStyle }) {
   const style = getStyle(data);
+
+  useEffect(() => {
+    if (!data) return;
+
+    const audio = new Audio("/alert.mp3");
+    audio.volume = 1.0;
+
+    audio.play().catch(() => {
+      // ignore autoplay block errors
+    });
+
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, [data]);
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
