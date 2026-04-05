@@ -19,5 +19,7 @@ target/
 *.sqlite
 *.sqlite-*
 
+.env
 *.wav
+downloads/
 vosk/
