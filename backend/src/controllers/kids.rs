@@ -6,20 +6,32 @@ use sea_orm::{
     RelationTrait, Set,
 };
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::models::_entities::{kid_tags, tags, video_assignments, video_tags, videos};
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 struct TagResponse {
     id: i32,
     name: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct AddTagsRequest {
     tags: Vec<i32>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/kids/{kid_id}/tags",
+    tag = "kids",
+    params(
+        ("kid_id" = i32, Path, description = "Kid ID", example = 1),
+    ),
+    responses(
+        (status = 200, description = "Tags for the kid", body = Vec<TagResponse>),
+    )
+)]
 async fn get_kid_tags(State(ctx): State<AppContext>, Path(kid_id): Path<i32>) -> Result<Response> {
     let results = kid_tags::Entity::find()
         .filter(kid_tags::Column::KidId.eq(kid_id))
@@ -39,6 +51,19 @@ async fn get_kid_tags(State(ctx): State<AppContext>, Path(kid_id): Path<i32>) ->
     format::json(tags)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/kids/{kid_id}/tags",
+    tag = "kids",
+    params(
+        ("kid_id" = i32, Path, description = "Kid ID", example = 1),
+    ),
+    request_body = AddTagsRequest,
+    responses(
+        (status = 200, description = "Tags added successfully", body = GenericSuccessResponse),
+        (status = 500, description = "Unknown error occurred"),
+    )
+)]
 async fn add_kid_tags(
     State(ctx): State<AppContext>,
     Path(kid_id): Path<i32>,
@@ -75,11 +100,29 @@ async fn add_kid_tags(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct CreateVideoAssignmentRequest {
     pub video_id: String,
 }
 
+#[derive(Serialize, ToSchema)]
+pub struct GenericSuccessResponse {
+    pub success: bool,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/kids/{kid_id}/videos_assigned",
+    tag = "kids",
+    params(
+        ("kid_id" = i32, Path, description = "Kid ID", example = 1),
+    ),
+    request_body = CreateVideoAssignmentRequest,
+    responses(
+        (status = 200, description = "Video assigned successfully", body = GenericSuccessResponse),
+        (status = 500, description = "Unknown error occurred"),
+    )
+)]
 async fn create_video_assignment(
     State(ctx): State<AppContext>,
     Path(kid_id): Path<i32>,
@@ -119,12 +162,23 @@ async fn create_video_assignment(
     }))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct GetVideosResponse {
     pub success: bool,
     pub data: Vec<videos::Model>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/kids/{kid_id}/videos_assigned",
+    tag = "kids",
+    params(
+        ("kid_id" = i32, Path, description = "Kid ID", example = 1),
+    ),
+    responses(
+        (status = 200, description = "Videos assigned to the kid", body = Vec<videos::Model>),
+    )
+)]
 async fn get_video_assignments(
     State(ctx): State<AppContext>,
     Path(kid_id): Path<i32>,
@@ -140,7 +194,7 @@ async fn get_video_assignments(
     format::json(videos)
 }
 
-#[derive(Debug, Serialize, FromQueryResult)]
+#[derive(Debug, Serialize, FromQueryResult, ToSchema)]
 pub struct RecommendedVideo {
     pub id: String,
     pub title: Option<String>,
@@ -149,12 +203,23 @@ pub struct RecommendedVideo {
     pub score: i64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct RecommendationsResponse {
     pub tags: Vec<String>,
     pub recommendations: Vec<RecommendedVideo>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/kids/{kid_id}/recommendations",
+    tag = "kids",
+    params(
+        ("kid_id" = i32, Path, description = "Kid ID", example = 1),
+    ),
+    responses(
+        (status = 200, description = "Recommended videos based on kid's tags", body = RecommendationsResponse),
+    )
+)]
 async fn get_recommendations(
     State(ctx): State<AppContext>,
     Path(kid_id): Path<i32>,

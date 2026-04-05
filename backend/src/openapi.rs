@@ -8,10 +8,11 @@ use crate::controllers::{answers, frames, kids, openai, parents, questions, tags
         answers::analyze_answer,
         answers::get_answers,
         frames::extract_frames,
-        // // kids
-        // kids::get_recommendations,
-        // kids::get_tags,
-        // kids::get_videos_assigned,
+        kids::get_recommendations,
+        kids::get_kid_tags,
+        kids::get_video_assignments,
+        kids::add_kid_tags,
+        kids::create_video_assignment,
         // // openai
         // openai::get_openai,
         // // parents
