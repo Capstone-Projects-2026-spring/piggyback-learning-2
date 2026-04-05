@@ -187,7 +187,6 @@ backend/
 │       ├── conf/
 │       └── ...
 └── ...
-
 ```
 
 The path `vosk/vosk-model-small-en-us-0.15` is what you'll set as `VOSK_DIR` in your `.env`.
@@ -224,7 +223,6 @@ config/
 ├── development.yaml   # Used when LOCO_ENV=development (default)
 ├── production.yaml    # Used when LOCO_ENV=production
 └── test.yaml          # Used when LOCO_ENV=test
-
 ```
 
 ### Database
@@ -377,22 +375,21 @@ backend/
 ├── vosk/                          	# Vosk language model (not committed to git)
 │   └── vosk-model-small-en-us-0.15/
 ├── src/
-│   ├── bin/               			    # Main
-│   ├── controllers/             	  # Axum route handlers
+│   ├── bin/               			# Main
+│   ├── controllers/             	# Axum route handlers
 │   ├── models/                   	# SeaORM models
 │   ├── utils/                    	# Utility functions
-│ 		├── voice/					          # Voice Utility functions
-│   	├── download.rs  			        # Download YouTube video
-│   	├── openai.rs  				        # Question generation through OpenAI
-│   	└── structs.rs  			        # Commonly used structs
+│ 		├── voice/					# Voice Utility functions
+│   	├── download.rs  			# Download YouTube video
+│   	├── openai.rs  				# Question generation through OpenAI
+│   	└── structs.rs  			# Commonly used structs
 │   ├── app.rs                     	# App bootstrap and router
 │   ├── lib.rs                     	# All imports and exports
-│   └── openapi.rs   				        # Docs provided through RapiDoc
+│   └── openapi.rs   				# Docs provided through RapiDoc
 ├── tests/                         	# Integration tests
 ├── .env                           	# Local environment variables (not committed)
 ├── Cargo.toml
 └── README.md
-
 ```
 
 ----------
