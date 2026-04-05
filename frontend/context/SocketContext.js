@@ -39,7 +39,7 @@ export const SocketProvider = ({ children }) => {
           border: "border-green-400",
           text: "text-green-700",
           emoji: "🎯",
-          title: `${data?.sender} is focued again!`,
+          title: `${data?.sender} is focused again!`,
         };
       default:
         return {
