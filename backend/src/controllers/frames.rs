@@ -1,9 +1,29 @@
 use loco_rs::prelude::*;
 use sea_orm::{EntityTrait, Set};
+use serde::Serialize;
 use std::{fs, process::Command};
+use utoipa::ToSchema;
 
 use crate::models::_entities::frames;
 
+#[derive(Serialize, ToSchema)]
+pub struct ExtractFramesResponse {
+    pub success: bool,
+    pub msg: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/frames/extract/{video_id}",
+    tag = "frames",
+    params(
+        ("video_id" = String, Path, description = "Video ID", example = "l2FQ8ni1MfM"),
+    ),
+    responses(
+        (status = 200, description = "Frames extracted or already exist", body = ExtractFramesResponse),
+        (status = 400, description = "FFMPEG failed"),
+    )
+)]
 async fn extract_frames(
     State(ctx): State<AppContext>,
     Path(video_id): Path<String>,

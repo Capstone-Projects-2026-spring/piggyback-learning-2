@@ -5,11 +5,9 @@ use crate::controllers::{answers, frames, kids, openai, parents, questions, tags
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        // answers
         answers::analyze_answer,
         answers::get_answers,
-        // frames
-        // frames::extract_frames,
+        frames::extract_frames,
         // // kids
         // kids::get_recommendations,
         // kids::get_tags,
