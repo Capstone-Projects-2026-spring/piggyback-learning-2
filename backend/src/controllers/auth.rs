@@ -2,12 +2,14 @@ use std::env;
 
 use loco_rs::prelude::*;
 use loco_rs::{auth::jwt, hash};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Map;
+use utoipa::ToSchema;
 
 use crate::models::_entities::{kids, parents};
+use crate::utils::structs::GenericSuccessResponse;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct SignupData {
     name: String,
     username: String,
@@ -16,11 +18,27 @@ struct SignupData {
     parent_id: Option<i32>, // required if role is "kid"
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct LoginData {
     username: String,
     password: String,
     role: String, // "parent" or "kid"
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(untagged)]
+pub enum AccountType {
+    Parent(parents::Model),
+    Kid(kids::Model),
+}
+
+#[derive(Serialize, ToSchema)]
+struct LoginResponse {
+    pub success: bool,
+    pub token: String,
+    pub role: String,
+    pub account: AccountType,
+    pub parent_username: Option<String>,
 }
 
 fn hash_password(password: &str) -> String {
@@ -43,6 +61,16 @@ pub fn generate_jwt(id: i32) -> ModelResult<String> {
         .map_err(ModelError::from)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/auth/signup",
+    tag = "auth",
+    request_body = SignupData,
+    responses(
+        (status = 200, description = "Signed up successfully", body = GenericSuccessResponse),
+        (status = 400, description = "Invalid role or missing parent_id for kid"),
+    )
+)]
 async fn signup(State(ctx): State<AppContext>, Json(data): Json<SignupData>) -> Result<Response> {
     let password_hash = hash_password(&data.password);
 
@@ -82,6 +110,16 @@ async fn signup(State(ctx): State<AppContext>, Json(data): Json<SignupData>) -> 
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/auth/login",
+    tag = "auth",
+    request_body = LoginData,
+    responses(
+        (status = 200, description = "Logged in successfully", body = LoginResponse),
+        (status = 400, description = "Invalid credentials or role"),
+    )
+)]
 async fn login(State(ctx): State<AppContext>, Json(data): Json<LoginData>) -> Result<Response> {
     match data.role.as_str() {
         "parent" => {

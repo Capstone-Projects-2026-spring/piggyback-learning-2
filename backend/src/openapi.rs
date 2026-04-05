@@ -1,10 +1,12 @@
 use utoipa::OpenApi;
 
-use crate::controllers::{answers, frames, kids, openai, parents, questions, tags, videos};
+use crate::controllers::{answers, auth, frames, kids, openai, parents, questions, tags, videos};
 
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        auth::signup,
+        auth::login,
         answers::analyze_answer,
         answers::get_answers,
         frames::extract_frames,
@@ -23,6 +25,7 @@ use crate::controllers::{answers, frames, kids, openai, parents, questions, tags
         videos::add_video_tags,
     ),
     tags(
+        (name = "auth", description = "Auth endpoints"),
         (name = "answers", description = "Answer endpoints"),
         (name = "frames", description = "Frame extraction endpoints"),
         (name = "kids", description = "Kid endpoints"),
