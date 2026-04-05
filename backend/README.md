@@ -395,6 +395,14 @@ cargo loco start
 
 The server starts at [http://localhost:5150](http://localhost:5150/) by default (configurable in `config/development.yaml`).
 
+### API Documentation
+
+Interactive API documentation is available via RapiDoc at:
+
+http://localhost:5150/docs
+
+This provides a full overview of all available endpoints, request/response schemas, and allows you to test endpoints directly from the browser.
+
 ### Production
 
 Build an optimized release binary:
