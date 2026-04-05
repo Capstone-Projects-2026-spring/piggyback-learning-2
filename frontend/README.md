@@ -19,7 +19,7 @@ Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/Capstone-Projects-2026-spring/piggyback-learning-2.git
-cd frontend
+cd piggyback-learning-2/frontend
 ```
 
 Then install dependencies with your preferred package manager:
