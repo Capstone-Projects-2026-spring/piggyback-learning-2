@@ -2,21 +2,24 @@ use loco_rs::prelude::*;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use utoipa::ToSchema;
 
 use crate::models::_entities::video_assignments;
 use crate::utils::voice::{
     audio_processor::parse_wav, matching::compute_similarity, mood::detect_mood, stt::transcribe,
 };
 
-#[derive(Deserialize)]
+#[derive(ToSchema)]
 pub struct AnswerAnalyzeRequest {
+    #[schema(format = Binary, content_media_type = "audio/wav")]
+    pub audio: Vec<u8>,
     pub expected_answer: String,
     pub kid_id: i32,
     pub video_id: String,
     pub segment_id: i32,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, ToSchema)]
 pub struct AnswerAnalyzeResponse {
     pub transcript: String,
     pub is_correct: bool,
@@ -25,7 +28,7 @@ pub struct AnswerAnalyzeResponse {
     pub energy: f32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct Answer {
     pub transcript: String,
     pub is_correct: bool,
@@ -35,6 +38,19 @@ pub struct Answer {
     pub segment_id: i32,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/answers/analyze",
+    tag = "answers",
+    request_body(
+        content = AnswerAnalyzeRequest,
+        content_type = "multipart/form-data"
+    ),
+    responses(
+        (status = 200, description = "Answer analyzed successfully", body = AnswerAnalyzeResponse),
+        (status = 400, description = "Missing or invalid fields"),
+    )
+)]
 pub async fn analyze_answer(
     State(ctx): State<AppContext>,
     mut multipart: Multipart,
@@ -158,21 +174,29 @@ pub async fn analyze_answer(
     })
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/answers/{kid_id}/{video_id}",
+    tag = "answers",
+    params(
+        ("kid_id" = i32, Path, description = "Kid ID", example = 1),
+        ("video_id" = String, Path, description = "Video ID", example = "l2FQ8ni1MfM"),
+    ),
+    responses(
+        (status = 200, description = "Answer found or null", body = Option<video_assignments::Model>),
+    )
+)]
 pub async fn get_answers(
     State(ctx): State<AppContext>,
     Path((kid_id, video_id)): Path<(i32, String)>,
 ) -> Result<Response> {
-    let record = video_assignments::Entity::find()
-        .filter(video_assignments::Column::KidId.eq(kid_id))
-        .filter(video_assignments::Column::VideoId.eq(video_id))
-        .one(&ctx.db)
-        .await?;
-
-    if let Some(record) = record {
-        format::json(record)
-    } else {
-        format::json(serde_json::json!({"success": false, "msg": "Unknown error occurred"}))
-    }
+    format::json(
+        video_assignments::Entity::find()
+            .filter(video_assignments::Column::KidId.eq(kid_id))
+            .filter(video_assignments::Column::VideoId.eq(video_id))
+            .one(&ctx.db)
+            .await?,
+    )
 }
 
 pub fn routes() -> Routes {
