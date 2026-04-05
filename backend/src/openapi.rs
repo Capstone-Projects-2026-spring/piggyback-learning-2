@@ -1,6 +1,8 @@
 use utoipa::OpenApi;
 
-use crate::controllers::{answers, auth, frames, kids, openai, parents, questions, tags, videos};
+use crate::controllers::{
+    answers, auth, frames, kids, openai, parents, questions, tags, videos, ws,
+};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -23,6 +25,7 @@ use crate::controllers::{answers, auth, frames, kids, openai, parents, questions
         videos::download_and_store,
         videos::get_video_tags,
         videos::add_video_tags,
+        ws::ws_handler
     ),
     tags(
         (name = "auth", description = "Auth endpoints"),
@@ -34,6 +37,7 @@ use crate::controllers::{answers, auth, frames, kids, openai, parents, questions
         (name = "questions", description = "Question endpoints"),
         (name = "tags", description = "Tag endpoints"),
         (name = "videos", description = "Video endpoints"),
+        (name = "websocket", description = "Real-time messaging via WebSocket"),
     )
 )]
 pub struct ApiDoc;

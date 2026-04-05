@@ -10,8 +10,9 @@ use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, RwLock};
+use utoipa::{IntoParams, ToSchema};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct WsMessage {
     pub sender: String,
     pub receiver: String,
@@ -26,11 +27,23 @@ pub struct AppState {
     pub users: Arc<RwLock<HashMap<String, Tx>>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct WsParams {
+    /// Username to identify the WebSocket connection
+    #[param(example = "john_doe")]
     pub username: String,
 }
 
+#[utoipa::path(
+    get,
+    path = "/ws",
+    tag = "websocket",
+    params(WsParams),
+    responses(
+        (status = 101, description = "WebSocket connection established", body = WsMessage),
+        (status = 400, description = "Bad request"),
+    )
+)]
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     Query(params): Query<WsParams>,
