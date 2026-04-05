@@ -1,5 +1,4 @@
-﻿
-# Piggyback Learning (backend)
+﻿# Piggyback Learning (backend)
 
 A backend web application built with [Loco.rs](https://loco.rs/) (Axum), [SeaORM](https://www.sea-ql.org/SeaORM/), and [Vosk](https://alphacephei.com/vosk/) for offline speech recognition.
 
@@ -7,16 +6,18 @@ A backend web application built with [Loco.rs](https://loco.rs/) (Axum), [SeaORM
 
 ## Table of Contents
 
--   [Prerequisites](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#prerequisites)
--   [Installing Rust](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#installing-rust)
--   [Installing Loco CLI](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#installing-loco-cli)
--   [Setting Up Vosk](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#setting-up-vosk)
--   [Project Setup](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#project-setup)
--   [Configuration](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#configuration)
--   [Database Migrations](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#database-migrations)
--   [Running the Project](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#running-the-project)
--   [Testing](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#testing)
--   [Useful Commands](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#useful-commands)
+- [Prerequisites](#prerequisites)
+- [Installing Rust](#installing-rust)
+- [Installing Loco CLI](#installing-loco-cli)
+- [Installing FFmpeg](#installing-ffmpeg)
+- [Installing yt-dlp](#installing-yt-dlp)
+- [Setting Up Vosk](#setting-up-vosk)
+- [Project Setup](#project-setup)
+- [Configuration](#configuration)
+- [Database Migrations](#database-migrations)
+- [Running the Project](#running-the-project)
+- [Testing](#testing)
+- [Useful Commands](#useful-commands)
 
 ----------
 
@@ -26,6 +27,8 @@ Before you begin, ensure you have the following:
 
 -   **Rust** (stable toolchain, 1.75+) — see [Installing Rust](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#installing-rust)
 -   **SQLite** — usually pre-installed on macOS and Linux; Windows users can download it from https://www.sqlite.org/download.html
+- **FFmpeg** — required for audio/video processing; see [Installing FFmpeg](#installing-ffmpeg)
+- **yt-dlp** — required for downloading YouTube videos; see [Installing yt-dlp](#installing-yt-dlp)
 -   **Vosk v0.3.45 native library** — see [Setting Up Vosk](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#setting-up-vosk)
 -   `pkg-config` and platform build tools (see platform notes below)
 
@@ -97,6 +100,95 @@ loco --version
 
 ----------
 
+## Installing FFmpeg
+
+FFmpeg is used to process and convert audio extracted from YouTube videos before passing it to Vosk for transcription.
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo apt update && sudo apt install -y ffmpeg
+```
+
+### Linux (Fedora/RHEL)
+
+```bash
+sudo dnf install ffmpeg
+```
+
+### macOS
+
+Using [Homebrew](https://brew.sh/):
+
+```bash
+brew install ffmpeg
+```
+
+### Windows
+
+1. Download the latest FFmpeg build from the official releases page: https://ffmpeg.org/download.html
+2. Under "Windows Builds", choose a provider (e.g. [gyan.dev](https://www.gyan.dev/ffmpeg/builds/)) and download the `ffmpeg-release-essentials.zip`.
+3. Extract the zip and move the folder to a permanent location (e.g. `C:\ffmpeg\`).
+4. Add `C:\ffmpeg\bin` to your system `PATH`:
+   - Open **System Properties** → **Advanced** → **Environment Variables**
+   - Under **System variables**, select `Path` and click **Edit**
+   - Add `C:\ffmpeg\bin` and click **OK**
+
+Verify the installation on all platforms:
+
+```bash
+ffmpeg -version
+```
+
+---
+
+## Installing yt-dlp
+
+yt-dlp is used to download YouTube videos for processing.
+
+### Linux (Debian/Ubuntu)
+
+```bash
+sudo apt install -y yt-dlp
+```
+
+Or install the latest version directly:
+
+```bash
+sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+```
+
+### macOS
+
+Using [Homebrew](https://brew.sh/):
+
+```bash
+brew install yt-dlp
+```
+
+### Windows
+
+Using [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/):
+
+```powershell
+winget install yt-dlp
+```
+
+Or download the binary directly from the releases page and add it to your `PATH`:
+
+1. Download `yt-dlp.exe` from: https://github.com/yt-dlp/yt-dlp/releases/latest
+2. Place it in a folder that is on your system `PATH` (e.g. `C:\ffmpeg\bin` if you already added that above).
+
+Verify the installation on all platforms:
+
+```bash
+yt-dlp --version
+```
+
+> yt-dlp requires FFmpeg to be installed and on your `PATH` to process downloaded videos. Make sure you complete the [FFmpeg installation](#installing-ffmpeg) first.
+
+---
 ## Setting Up Vosk
 
 Vosk is an offline speech recognition toolkit. The Rust bindings require the native Vosk shared library (v0.3.45) to be present on your system.
@@ -399,6 +491,8 @@ backend/
 -   [Loco.rs Documentation](https://loco.rs/docs/)
 -   [Loco.rs GitHub](https://github.com/loco-rs/loco)
 -   [SeaORM Documentation](https://www.sea-ql.org/SeaORM/docs/introduction/sea-orm/)
+- [FFmpeg Documentation](https://ffmpeg.org/documentation.html)
+- [yt-dlp Documentation](https://github.com/yt-dlp/yt-dlp#readme)
 -   [Vosk API](https://alphacephei.com/vosk/)
 -   [Vosk v0.3.45 Release](https://github.com/alphacep/vosk-api/releases/tag/v0.3.45)
 -   [Vosk Rust Bindings](https://crates.io/crates/vosk)
