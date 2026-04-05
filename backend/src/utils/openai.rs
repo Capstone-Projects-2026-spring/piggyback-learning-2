@@ -7,6 +7,7 @@ use sea_orm::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{fs, sync::Arc};
+use utoipa::ToSchema;
 
 use crate::models::_entities::{
     frames::{Column as FrameColumn, Entity as Frames, Model as Frame},
@@ -17,7 +18,7 @@ use crate::models::_entities::{
     },
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
 pub struct QuestionItem {
     pub qtype: String,
     pub question: String,
@@ -25,7 +26,7 @@ pub struct QuestionItem {
     pub rank: Option<i32>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
 pub struct SegmentResponse {
     pub id: i32,
     pub video_id: String,
@@ -34,13 +35,13 @@ pub struct SegmentResponse {
     pub best_question: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
 pub struct QuestionsResponse {
     pub segment: SegmentResponse,
     pub questions: Vec<QuestionItem>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 struct OpenAIQuestionItem {
     q: String,
     a: String,

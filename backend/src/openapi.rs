@@ -13,8 +13,7 @@ use crate::controllers::{answers, frames, kids, openai, parents, questions, tags
         kids::get_video_assignments,
         kids::add_kid_tags,
         kids::create_video_assignment,
-        // // openai
-        // openai::get_openai,
+        openai::generate_questions,
         // // parents
         // parents::get_kids,
         // // questions
