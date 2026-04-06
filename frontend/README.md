@@ -8,7 +8,7 @@ A [Next.js](https://nextjs.org) project.
 
 Before getting started, make sure you have the following installed:
 
-- [Node.js](https://nodejs.org) v18.18 or later
+- [Node.js](https://nodejs.org) v20.9.0 or later
 - A package manager: [npm](https://www.npmjs.com/), [yarn](https://yarnpkg.com/), [pnpm](https://pnpm.io/), or [bun](https://bun.sh/)
 
 ---
