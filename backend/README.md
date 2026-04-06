@@ -6,6 +6,7 @@ A backend web application built with [Loco.rs](https://loco.rs/) (Axum), [SeaORM
 
 ## Table of Contents
 
+- [Docker](#docker)
 - [Prerequisites](#prerequisites)
 - [Installing Rust](#installing-rust)
 - [Installing Loco CLI](#installing-loco-cli)
@@ -19,6 +20,36 @@ A backend web application built with [Loco.rs](https://loco.rs/) (Axum), [SeaORM
 - [Running the Project](#running-the-project)
 - [Testing](#testing)
 - [Useful Commands](#useful-commands)
+
+----------
+
+## Docker
+The fastest way to get the backend up and running is by using Docker. This environment handles all dependencies—including the Rust toolchain and Vosk speech-to-text libraries—automatically.
+
+* **Docker Desktop:** Ensure you have it installed. [Download here](https://docs.docker.com/desktop/setup/install/windows-install/).
+* **Running Status:** Open Docker Desktop and leave it opened on the Containers Screen.
+
+Open your terminal (PowerShell, CMD, or WSL) and follow these steps:
+
+**Navigate to the backend directory:**
+```bash
+cd piggyback-learning-2/backend
+```
+
+**Build the Docker image:**
+```bash
+docker build -t backend-app .
+```
+
+**Run the container:**
+```bash
+docker run -p 5150:5150 backend-app
+```
+
+Once the logs show the server is listening, open your browser and visit:
+> **[http://localhost:5150](http://localhost:5150)**
+
+You should see the **"Welcome to Loco!"** landing page.
 
 ----------
 
