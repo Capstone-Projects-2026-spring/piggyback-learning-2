@@ -21,5 +21,6 @@ target/
 
 .env
 *.wav
+cookies.txt
 downloads/
 vosk/
