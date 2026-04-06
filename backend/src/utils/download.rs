@@ -17,8 +17,8 @@ pub fn download_video(
     }
 
     let output = Command::new("yt-dlp")
-        .arg("--cookies")
-        .arg(std::env::var("YT_DLP_COOKIES").expect("YT_DLP_COOKIES must be set."))
+        // .arg("--cookies")
+        // .arg(std::env::var("YT_DLP_COOKIES").expect("YT_DLP_COOKIES must be set."))
         .arg("-f")
         .arg("mp4")
         .arg("--merge-output-format")
