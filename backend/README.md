@@ -47,9 +47,9 @@ docker run -p 5150:5150 backend-app
 ```
 
 Once the logs show the server is listening, open your browser and visit:
-> **[http://localhost:5150](http://localhost:5150)**
+> **[http://localhost:5150/docs](http://localhost:5150/docs)**
 
-You should see the **"Welcome to Loco!"** landing page.
+You should see the API docs. If this was successfull, you can skip all the installation below.
 
 ----------
 
@@ -57,11 +57,11 @@ You should see the **"Welcome to Loco!"** landing page.
 
 Before you begin, ensure you have the following:
 
--   **Rust** (stable toolchain, 1.75+) — see [Installing Rust](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#installing-rust)
+-   **Rust** (stable toolchain, 1.75+) — see [Installing Rust](#installing-rust)
 -   **SQLite** — usually pre-installed on macOS and Linux; Windows users can download it from https://www.sqlite.org/download.html
 - **FFmpeg** — required for audio/video processing; see [Installing FFmpeg](#installing-ffmpeg)
 - **yt-dlp** — required for downloading YouTube videos; see [Installing yt-dlp](#installing-yt-dlp)
--   **Vosk v0.3.45 native library** — see [Setting Up Vosk](https://claude.ai/chat/24c2c6ac-fd6f-46a3-9336-b8177a59fa18#setting-up-vosk)
+-   **Vosk v0.3.45 native library** — see [Setting Up Vosk](#setting-up-vosk)
 -   `pkg-config` and platform build tools (see platform notes below)
 
 ### Platform Build Tools
@@ -263,8 +263,9 @@ Download the pre-built library for your platform from the official v0.3.45 relea
 **Linux:**
 ```bash
 # Extract and move the shared library to a system path
-unzip vosk-linux-x86_64-*.zip
-sudo cp vosk-linux-x86_64-*/libvosk.so /usr/local/lib/
+unzip vosk-linux-x86_64-0.3.45.zip
+sudo cp vosk-linux-x86_64-0.3.45/libvosk.so /usr/lib/
+sudo cp vosk-linux-x86_64-0.3.45/libvosk.so /usr/local/lib/
 sudo ldconfig
 ```
 
@@ -284,6 +285,8 @@ If the linker cannot find the library at build time, set the path explicitly:
 
 ```bash
 # Linux / macOS
+export VOSK_LIB_PATH=/usr/lib
+or
 export VOSK_LIB_PATH=/usr/local/lib
 
 # Or point to the extracted directory directly
