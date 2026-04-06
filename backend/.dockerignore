@@ -1,0 +1,7 @@
+downloads/
+target/
+.git/
+.env
+*.zip
+*.tar.gz
+*.txt

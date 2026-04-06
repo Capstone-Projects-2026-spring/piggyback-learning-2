@@ -1,0 +1,46 @@
+#![allow(elided_lifetimes_in_paths)]
+#![allow(clippy::wildcard_imports)]
+pub use sea_orm_migration::prelude::*;
+
+mod m20260329_190420_parents;
+mod m20260329_201606_kids;
+mod m20260329_211415_tags;
+mod m20260329_212214_kid_tags;
+mod m20260329_220403_videos;
+mod m20260330_034450_video_tags;
+mod m20260330_053736_frames;
+mod m20260330_055308_add_index_in_frame;
+mod m20260330_164331_add_index_in_kid_tags;
+mod m20260330_165514_add_index_in_video_tags;
+mod m20260330_234807_segments;
+mod m20260331_001127_questions;
+mod m20260331_002454_add_index_in_segment;
+mod m20260331_144037_video_assignments;
+mod m20260331_145632_add_index_in_video_assignment;
+mod m20260401_200359_add_analysis_cols_in_video_assignments;
+pub struct Migrator;
+
+#[async_trait::async_trait]
+impl MigratorTrait for Migrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        vec![
+            Box::new(m20260329_190420_parents::Migration),
+            Box::new(m20260329_201606_kids::Migration),
+            Box::new(m20260329_211415_tags::Migration),
+            Box::new(m20260329_212214_kid_tags::Migration),
+            Box::new(m20260329_220403_videos::Migration),
+            Box::new(m20260330_034450_video_tags::Migration),
+            Box::new(m20260330_053736_frames::Migration),
+            Box::new(m20260330_055308_add_index_in_frame::Migration),
+            Box::new(m20260330_164331_add_index_in_kid_tags::Migration),
+            Box::new(m20260330_165514_add_index_in_video_tags::Migration),
+            Box::new(m20260330_234807_segments::Migration),
+            Box::new(m20260331_001127_questions::Migration),
+            Box::new(m20260331_002454_add_index_in_segment::Migration),
+            Box::new(m20260331_144037_video_assignments::Migration),
+            Box::new(m20260331_145632_add_index_in_video_assignment::Migration),
+            Box::new(m20260401_200359_add_analysis_cols_in_video_assignments::Migration),
+            // inject-above (do not remove this comment)
+        ]
+    }
+}
