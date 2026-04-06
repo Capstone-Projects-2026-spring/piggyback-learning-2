@@ -18,6 +18,7 @@ RUN case "${TARGETARCH}" in \
     esac && \
     wget https://github.com/alphacep/vosk-api/releases/download/v0.3.45/vosk-linux-${VOSK_ARCH}-0.3.45.zip && \
     unzip vosk-linux-${VOSK_ARCH}-0.3.45.zip && \
+    cp vosk-linux-${VOSK_ARCH}-0.3.45/libvosk.so /usr/lib/ && \
     cp vosk-linux-${VOSK_ARCH}-0.3.45/libvosk.so /usr/local/lib/ && \
     cp vosk-linux-${VOSK_ARCH}-0.3.45/vosk_api.h /usr/local/include/ && \
     ldconfig
@@ -40,6 +41,7 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
     ca-certificates libssl3 libatomic1 \
+    ffmpeg yt-dlp \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the .so library from the builder
