@@ -14,7 +14,7 @@ export default function Navbar() {
         href="/"
         className="text-2xl font-extrabold text-pink-600 hover:scale-105 transition-transform"
       >
-        🎒 Piggyback
+        🐷 Piggyback
       </Link>
 
       {/* Right Side */}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const CHARACTERS = ["🦁", "🐸", "🦊", "🐧", "🦄"];
+const CHARACTERS = ["🐷", "🐷", "🐷", "🐷", "🐷"];
 const MESSAGES = [
   "Hey! Come back, the fun part is right here! 👀",
   "Oops! Looks like you wandered off — the video misses you!",
