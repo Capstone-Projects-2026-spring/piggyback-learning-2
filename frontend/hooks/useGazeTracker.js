@@ -48,7 +48,7 @@ export function useGazeTracker({ onLookAway, onReturn, enabled, paused }) {
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;
+     if (!enabled) return;
 
     cancelledRef.current = false;
     isAwayRef.current = false;

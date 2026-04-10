@@ -2,6 +2,8 @@ import "./globals.css";
 
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
+import PiggyGuide from "@/components/PiggyGuide";
+import { PiggyProvider } from "@/context/PiggyContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { SocketProvider } from "@/context/SocketContext";
 import { Toaster } from "react-hot-toast";
@@ -28,13 +30,16 @@ const RootLayout = ({ children }) => (
     suppressHydrationWarning
   >
     <body suppressHydrationWarning className="min-h-full flex flex-col">
+      <PiggyProvider>
       <AuthProvider>
         <SocketProvider>
           <Navbar />
           {children}
+          <PiggyGuide />
           <Toaster position="top-right" />
         </SocketProvider>
       </AuthProvider>
+      </PiggyProvider>
     </body>
   </html>
 );

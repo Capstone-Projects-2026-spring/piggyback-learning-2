@@ -2,10 +2,18 @@ import DownloadStep from "./DownloadStep";
 import FramesStep from "./FramesStep";
 import TagsStep from "./TagsStep";
 import QuestionsStep from "./QuestionsStep";
-import { useState } from "react";
+import { usePiggy } from "@/context/PiggyContext";
+import { useState, useEffect } from "react";
 
 export default function VideoProcess({ videoId, kidId }) {
   const [step, setStep] = useState(1);
+  const { setPiggyText } = usePiggy();
+  useEffect(() => {
+  if (step === 1) setPiggyText("Downloading your video... ⬇️");
+  else if (step === 2) setPiggyText("Extracting frames... 📸");
+  else if (step === 3) setPiggyText("Generating tags... 🏷️");
+  else if (step === 4) setPiggyText("Creating questions... 🧠");
+}, [step]);
 
   return (
     <div className="min-h-screen bg-linear-to-r from-pink-200 via-yellow-200 to-blue-200 shadow-md">

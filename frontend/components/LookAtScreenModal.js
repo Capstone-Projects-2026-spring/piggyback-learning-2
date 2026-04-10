@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import Image from "next/image";
+import piggy from "../animations/piggy_sad.png";
 
-const CHARACTERS = ["🐷", "🐷", "🐷", "🐷", "🐷"];
+const CHARACTERS = [piggy, piggy, piggy, piggy, piggy];
 const MESSAGES = [
   "Hey! Come back, the fun part is right here! 👀",
   "Oops! Looks like you wandered off — the video misses you!",
@@ -37,17 +39,18 @@ export default function LookAtScreenModal({ visible }) {
       >
         {/* Animated character */}
         <div
-          className="text-8xl select-none"
-          style={{
-            transition: "transform 0.3s ease",
-            transform: bounce
-              ? "translateY(-14px) rotate(-8deg)"
-              : "translateY(0px) rotate(8deg)",
-            filter: "drop-shadow(0 8px 12px rgba(0,0,0,0.15))",
-          }}
-        >
-          {character}
-        </div>
+  className="select-none"
+  style={{
+    transition: "transform 0.3s ease",
+    transform: bounce
+      ? "translateY(-14px) rotate(-8deg)"
+      : "translateY(0px) rotate(8deg)",
+    filter: "drop-shadow(0 8px 12px rgba(0,0,0,0.15))",
+  }}
+>
+  <Image src={character} alt="piggy" width={110} height={110} />
+</div>
+          
 
         {/* Stars decoration */}
         <div

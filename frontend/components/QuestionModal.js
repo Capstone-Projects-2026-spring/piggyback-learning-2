@@ -1,6 +1,8 @@
 import { AuthContext } from "@/context/AuthContext";
 import { useSocket } from "@/context/SocketContext";
 import { useContext, useEffect, useRef } from "react";
+import Image from "next/image";
+import piggy from "@/animations/piggy_question.png";
 
 const BAR_COUNT = 20;
 
@@ -120,7 +122,9 @@ export default function QuestionModal({
         {/* Waiting */}
         {recordingState === "waiting" && (
           <div className="flex flex-col items-center gap-3 mb-4">
-            <div className="text-5xl animate-bounce">🎙️</div>
+            <div className="animate-bounce">
+              <Image src={piggy} alt="piggy" width={90} height={90} />
+            </div>
             <p className="text-gray-500 text-sm">{statusMessage}</p>
           </div>
         )}

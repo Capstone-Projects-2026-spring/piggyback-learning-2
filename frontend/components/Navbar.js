@@ -3,6 +3,8 @@
 import { useContext } from "react";
 import Link from "next/link";
 import { AuthContext } from "@/context/AuthContext";
+import Lottie from "lottie-react";
+import piggy from "../animations/piggy.json";
 
 export default function Navbar() {
   const { account, token, logout } = useContext(AuthContext);
@@ -11,12 +13,22 @@ export default function Navbar() {
     <nav className="flex items-center justify-between px-6 py-4 bg-linear-to-r from-pink-200 via-yellow-200 to-blue-200 shadow-md">
       {/* Logo */}
       <Link
-        href="/"
-        className="text-2xl font-extrabold text-pink-600 hover:scale-105 transition-transform"
-      >
-        🐷 Piggyback
-      </Link>
-
+  href="/"
+  className="flex items-center gap-2 text-2xl font-extrabold text-pink-600"
+>
+  <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
+    <Lottie
+      animationData={piggy}
+      loop
+      style={{
+        width: 70,
+        height: 70,
+        marginTop: -6,
+      }}
+    />
+  </div>
+  <span className="leading-none">Piggyback</span>
+</Link>
       {/* Right Side */}
       <div className="flex items-center gap-4">
         {token ? (

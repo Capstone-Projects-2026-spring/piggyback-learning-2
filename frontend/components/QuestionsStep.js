@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { usePiggy } from "@/context/PiggyContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -14,6 +15,7 @@ export default function QuestionsStep({ videoId, kidId }) {
   const [interval, setInterval] = useState(10);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const { setPiggyText } = usePiggy();
 
   const iconForType = {
     action: "🚀",
@@ -26,6 +28,7 @@ export default function QuestionsStep({ videoId, kidId }) {
   };
 
   async function handleGenerate() {
+    setPiggyText("Creating questions... 🧠");
     setLoading(true);
 
     const startPoints = [];

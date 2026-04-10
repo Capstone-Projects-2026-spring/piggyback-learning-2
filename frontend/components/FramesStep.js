@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { usePiggy } from "@/context/PiggyContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function FramesStep({ videoId, setStep }) {
   const [loading, setLoading] = useState(false);
+    const { setPiggyText } = usePiggy();
 
   async function handleExtract() {
+    setPiggyText("Extracting frames... 📸");
     setLoading(true);
 
     const res = await fetch(`${BASE_URL}/api/frames/extract/${videoId}`);

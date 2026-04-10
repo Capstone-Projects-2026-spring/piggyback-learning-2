@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePiggy } from "@/context/PiggyContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -7,6 +8,7 @@ export default function TagsStep({ videoId, setStep }) {
   const [selectedTags, setSelectedTags] = useState([]);
   const [newTag, setNewTag] = useState("");
   const [loading, setLoading] = useState(false);
+    const { setPiggyText } = usePiggy();
 
   useEffect(() => {
     fetch(`${BASE_URL}/api/tags`)
@@ -37,6 +39,7 @@ export default function TagsStep({ videoId, setStep }) {
   }
 
   async function handleSaveTags() {
+    setPiggyText("Generating tags... 🏷️");
     setLoading(true);
 
     if (selectedTags.length !== 0) {
