@@ -8,6 +8,7 @@ import { useSegments } from "@/hooks/useSegments";
 import { useGazeTracker } from "@/hooks/useGazeTracker";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { usePlaybackPoller } from "@/hooks/usePlaybackPoller";
+import PiggyCompanion from "@/components/PiggyCompanion";
 
 import QuestionModal from "@/components/QuestionModal";
 import LookAtScreenModal from "@/components/LookAtScreenModal";
@@ -40,18 +41,32 @@ function WatchVideoPageInner() {
   const [statusMessage, setStatusMessage] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [lookingAway, setLookingAway] = useState(false);
+  const [piggyMode, setPiggyMode] = useState("watch");
+const [piggyText, setPiggyText] = useState("Let’s watch carefully 👀");
+const pauseMessages = [
+  "Let’s go — what happened? ▶️",
+  "Why did we stop? Let’s keep watching 👀",
+  "Come on, we were doing so good 😄",
+];
 
   const playerRef = useRef(null);
   const segmentIndexRef = useRef(0);
   const currentQuestionRef = useRef(null);
+  const sixSecondShownRef = useRef(false);
+const threeSecondShownRef = useRef(false);
 
   useEffect(() => {
     if (role === "parent") router.push("/");
   }, [role, router]);
 
   useEffect(() => {
-    segmentIndexRef.current = segmentIndex;
-  }, [segmentIndex]);
+  segmentIndexRef.current = segmentIndex;
+  sixSecondShownRef.current = false;
+  threeSecondShownRef.current = false;
+  setPiggyMode("watch");
+  setPiggyText("Let’s watch carefully 👀");
+}, [segmentIndex]);
+
   useEffect(() => {
     currentQuestionRef.current = currentQuestion;
   }, [currentQuestion]);
@@ -64,6 +79,13 @@ function WatchVideoPageInner() {
     setRecordingState("idle");
     setStatusMessage("");
     setSegmentIndex((prev) => prev + 1);
+    setPiggyMode("talk");
+  setPiggyText("Nice! Let’s keep watching 🎬");
+
+  setTimeout(() => {
+    setPiggyMode("watch");
+    setPiggyText("Let’s watch carefully 👀");
+  }, 2000);
     playerRef.current?.playVideo();
   }, []);
 
@@ -71,6 +93,17 @@ function WatchVideoPageInner() {
     const segs = segmentsRef.current;
     const idx = segmentIndexRef.current;
     if (!playerRef.current || idx >= segs.length) return;
+    sixSecondShownRef.current = false;
+  threeSecondShownRef.current = false;
+
+  setPiggyMode("talk");
+  setPiggyText("Let’s try that part again 👀");
+
+  setTimeout(() => {
+    setPiggyMode("watch");
+    setPiggyText("Let’s watch carefully 👀");
+  }, 2000);
+
     playerRef.current.seekTo(segs[idx].start_seconds ?? 0, true);
     playerRef.current.playVideo();
   }, [segmentsRef]);
@@ -110,6 +143,24 @@ function WatchVideoPageInner() {
     segmentsRef,
     segmentIndexRef,
     currentQuestionRef,
+    onTick: (currentTime, segment) => {
+    if (!segment || currentQuestionRef.current) return;
+
+    const end = segment.end_seconds ?? 0;
+    const timeLeft = end - currentTime;
+
+    if (timeLeft <= 6 && timeLeft > 3 && !sixSecondShownRef.current) {
+      sixSecondShownRef.current = true;
+      setPiggyMode("talk");
+      setPiggyText("Pay attention — a question is coming 👀");
+    }
+
+    if (timeLeft <= 3 && timeLeft > 0 && !threeSecondShownRef.current) {
+      threeSecondShownRef.current = true;
+      setPiggyMode("talk");
+      setPiggyText("Get ready to answer! 🎤");
+    }
+  },
     onSegmentEnd: (segment) =>
       setCurrentQuestion(
         segment.questions.filter(
@@ -151,6 +202,7 @@ function WatchVideoPageInner() {
     if (!currentQuestion) return;
     const segment = segmentsRef.current[segmentIndexRef.current];
     if (!segment) return;
+    setPiggyMode("hidden");
     recorder.start(segment, {
       kid_id: params.kidId,
       video_id,
@@ -182,16 +234,37 @@ function WatchVideoPageInner() {
         statusMessage={statusMessage}
       />
 
-      <div className="w-full max-w-7xl shadow-2xl rounded-xl overflow-hidden">
+      <div className="relative w-full max-w-7xl shadow-2xl rounded-xl overflow-hidden">
         <YouTube
           videoId={video_id}
           onReady={(event) => (playerRef.current = event.target)}
+          onStateChange={(event) => {
+    if (currentQuestion) return;
+
+    if (event.data === 2) {
+      const msg =
+        pauseMessages[Math.floor(Math.random() * pauseMessages.length)];
+      setPiggyMode("talk");
+      setPiggyText(msg);
+    }
+
+    if (event.data === 1) {
+      setPiggyMode("watch");
+      setPiggyText("Let’s watch carefully 👀");
+    }
+  }}
           opts={{
             width: "100%",
             height: "700px",
             playerVars: { autoplay: 1, controls: 1 },
           }}
         />
+        <div className="absolute inset-0 flex items-end justify-end pr-24 pb-20 pointer-events-none">
+    <PiggyCompanion
+      mode={currentQuestion ? "hidden" : piggyMode}
+      text={currentQuestion ? "" : piggyText}
+    />
+  </div>
       </div>
 
       <QuestionModal

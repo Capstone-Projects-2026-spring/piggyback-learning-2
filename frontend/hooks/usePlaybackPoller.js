@@ -6,6 +6,7 @@ export function usePlaybackPoller({
   segmentIndexRef,
   currentQuestionRef,
   onSegmentEnd,
+  onTick,
 }) {
   useEffect(() => {
     const interval = setInterval(() => {
@@ -21,6 +22,7 @@ export function usePlaybackPoller({
 
       const segment = segs[idx];
       const currentTime = player.getCurrentTime();
+      if (onTick) onTick(currentTime, segment);
 
       if (currentTime >= segment.end_seconds && !currentQuestionRef.current) {
         player.pauseVideo();

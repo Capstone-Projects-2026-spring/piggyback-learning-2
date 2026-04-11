@@ -2,6 +2,7 @@
 
 import { useState, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { usePiggy } from "@/context/PiggyContext";
 import Link from "next/link";
 import { AuthContext } from "@/context/AuthContext";
 
@@ -10,6 +11,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 export default function SignupPage() {
   const router = useRouter();
   const { token } = useContext(AuthContext);
+    const { setPiggyMode, setPiggyText } = usePiggy();
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,6 +33,12 @@ export default function SignupPage() {
       router.replace("/");
     }
   }, [mounted, token, router]);
+  useEffect(() => {
+    if (mounted) {
+      setPiggyMode("talk");
+      setPiggyText("Let’s create your account! 🎉");
+    }
+  }, [mounted, setPiggyMode, setPiggyText]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -86,6 +94,10 @@ export default function SignupPage() {
           className="w-full rounded-xl border border-green-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-green-400 outline-none"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
+          onFocus={() => {
+            setPiggyMode("talk");
+            setPiggyText("Tell me your name 😊");
+          }}
           required
         />
 
@@ -95,6 +107,10 @@ export default function SignupPage() {
           className="w-full rounded-xl border border-green-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-green-400 outline-none"
           value={form.username}
           onChange={(e) => setForm({ ...form, username: e.target.value })}
+           onFocus={() => {
+            setPiggyMode("talk");
+            setPiggyText("Pick a fun username ✨");
+          }}
           required
         />
 
@@ -104,7 +120,14 @@ export default function SignupPage() {
           className="w-full rounded-xl border border-green-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-green-400 outline-none"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
-          required
+          onFocus={() => {
+            setPiggyMode("watch");
+            setPiggyText("Choose a strong password 👀");
+          }}
+          onBlur={() => {
+            setPiggyMode("talk");
+            setPiggyText("Nice! You’re almost done 🚀");
+          }}
         />
 
         <button

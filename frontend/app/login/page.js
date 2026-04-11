@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useContext, useEffect } from "react";
+import { usePiggy } from "@/context/PiggyContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthContext } from "@/context/AuthContext";
@@ -10,6 +11,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 export default function LoginPage() {
   const router = useRouter();
   const { isLoggedIn, login } = useContext(AuthContext);
+  const { setPiggyMode, setPiggyText } = usePiggy();
 
   const [loading, setLoading] = useState(false);
 
@@ -24,6 +26,10 @@ export default function LoginPage() {
   useEffect(() => {
     if (isLoggedIn) router.replace("/");
   }, [isLoggedIn, router]);
+useEffect(() => {
+  setPiggyMode("talk");
+  setPiggyText("Welcome back! Sign in 😊");
+}, [setPiggyMode, setPiggyText]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -78,21 +84,34 @@ export default function LoginPage() {
         </select>
 
         <input
-          type="text"
-          placeholder="👤 Username"
-          className="w-full rounded-xl border border-pink-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-pink-400 outline-none"
-          value={form.username}
-          onChange={(e) => setForm({ ...form, username: e.target.value })}
-          required
-        />
+  type="text"
+  placeholder="👤 Username"
+  className="w-full rounded-xl border border-pink-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-pink-400 outline-none"
+  value={form.username}
+  onChange={(e) => setForm({ ...form, username: e.target.value })}
+  onFocus={() => {
+    setPiggyMode("talk");
+    setPiggyText("Type your username 😊");
+  }}
+  required
+/>
+        
 
         <input
-          type="password"
-          placeholder="🔒 Password"
-          className="w-full rounded-xl border border-pink-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-pink-400 outline-none"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          required
+       type="password"
+  placeholder="🔒 Password"
+  className="w-full rounded-xl border border-pink-200 p-3 text-gray-800 placeholder-gray-500 focus:ring-2 focus:ring-pink-400 outline-none"
+  value={form.password}
+  onChange={(e) => setForm({ ...form, password: e.target.value })}
+  onFocus={() => {
+    setPiggyMode("watch");
+    setPiggyText("I’m keeping your password safe 👀");
+  }}
+  onBlur={() => {
+    setPiggyMode("talk");
+    setPiggyText("You’re almost in! 🚀");
+  }}
+  required
         />
 
         <button

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AuthContext } from "@/context/AuthContext";
 import KidDashboard from "@/components/KidDashboard";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { usePiggy } from "@/context/PiggyContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -19,6 +20,7 @@ export default function HomePage() {
   const [modalOpen, setModalOpen] = useState(false);
 
   const { role, account } = useContext(AuthContext);
+  const { setPiggyMode, setPiggyText } = usePiggy();
 
   const fetchKids = useCallback(async () => {
     if (role !== "parent") return;
@@ -37,6 +39,8 @@ export default function HomePage() {
     if (!name || !username || !password) return;
 
     setLoading(true);
+    setPiggyMode("talk");
+setPiggyText("Creating the new kid account... ⏳");
 
     try {
       await fetch(`${BASE_URL}/api/auth/signup`, {
@@ -55,6 +59,7 @@ export default function HomePage() {
       setUsername("");
       setPassword("");
       setModalOpen(false);
+      setPiggyText("Yay! New kid added 🎉");
       fetchKids();
     } catch (err) {
       console.error("Failed to create kid", err);
@@ -66,6 +71,16 @@ export default function HomePage() {
   useEffect(() => {
     fetchKids();
   }, [fetchKids]);
+
+  useEffect(() => {
+  if (modalOpen) {
+    setPiggyMode("talk");
+    setPiggyText("Let’s create a new kid account! 🎉");
+  } else {
+    setPiggyMode("default");
+    setPiggyText("Hi! Let’s get started 🚀");
+  }
+}, [modalOpen]);
 
   if (role === "kid") {
     return (

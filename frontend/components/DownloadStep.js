@@ -1,11 +1,14 @@
 import { useState } from "react";
+import { usePiggy } from "@/context/PiggyContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export default function DownloadStep({ videoId, setStep }) {
   const [loading, setLoading] = useState(false);
+   const { setPiggyText } = usePiggy();
 
   async function handleDownload() {
+     setPiggyText("Downloading your video... ⬇️"); 
     setLoading(true);
 
     const res = await fetch(`${BASE_URL}/api/videos/download/${videoId}`);
