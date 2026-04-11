@@ -47,12 +47,12 @@ export default function ResultsPage() {
     );
   }
 
-  const total = data.answers.length;
-  const correct = data.answers.filter((a) => a.is_correct).length;
+  const total = data.answers?.length || 0;
+  const correct = data.answers?.filter((a) => a.is_correct).length || 0;
   const accuracy = total ? Math.round((correct / total) * 100) : 0;
 
   const grouped = {};
-  data.answers.forEach((ans) => {
+  data.answers?.forEach((ans) => {
     if (!grouped[ans.segment_id]) {
       grouped[ans.segment_id] = [];
     }
