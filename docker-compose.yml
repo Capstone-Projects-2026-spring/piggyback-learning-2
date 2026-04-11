@@ -4,6 +4,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile # This uses your shared Dockerfile
+    env_file:        # <--- ADD THIS SECTION
+      - ./backend/.env         # This pushes your .env variables into the container
     ports:
       - "5150:5150"
     environment:
