@@ -1,0 +1,33 @@
+services:
+  # --- RUST BACKEND ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile # This uses your shared Dockerfile
+    env_file:        # <--- ADD THIS SECTION
+      - ./backend/.env         # This pushes your .env variables into the container
+    ports:
+      - "5150:5150"
+    environment:
+      - RUST_LOG=info
+    # If your Rust code needs to save files locally:
+    # volumes:
+    #   - ./backend/downloads:/app/downloads
+
+  # --- NEXT.JS FRONTEND ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app           # Maps your code so saves refresh the browser
+      - /app/node_modules        # Protects the container's node_modules from your local ones
+      - /app/.next               # Protects the build cache
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:5150
+      - WATCHPACK_POLLING=true   # Fixes hot-reload issues on Windows/WSL
+      - NEXT_TELEMETRY_DISABLED=1
+    depends_on:
+      - backend

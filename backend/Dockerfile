@@ -24,7 +24,6 @@ RUN case "${TARGETARCH}" in \
     ldconfig
 
 # 3. NEW: Download and Setup the Vosk Model
-# We do this in a separate folder to keep things organized
 WORKDIR /app
 RUN mkdir -p vosk && \
     wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip && \
@@ -33,15 +32,17 @@ RUN mkdir -p vosk && \
 
 # 4. Build the Rust Application
 COPY . .
-# We use the name 'backend-cli' as identified in your Cargo.toml
 RUN cargo build --release
 
 # --- STAGE 2: The Runtime ---
 FROM debian:bookworm-slim
 
+# 1. Install dependencies and overwrite the old yt-dlp with the latest binary
 RUN apt-get update && apt-get install -y \
     ca-certificates libssl3 libatomic1 \
-    ffmpeg yt-dlp \
+    ffmpeg yt-dlp curl \
+    && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/bin/yt-dlp \
+    && chmod a+rx /usr/bin/yt-dlp \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the .so library from the builder
@@ -50,16 +51,16 @@ RUN ldconfig
 
 WORKDIR /app
 
-# 1. Copy the compiled binary (renaming it to 'backend' for simplicity)
+# 1. Copy the compiled binary
 COPY --from=builder /app/target/release/backend-cli ./backend
 
 # 2. Copy the configuration files
 COPY --from=builder /app/config ./config
 
-# 3. Copy the model folder we downloaded in Stage 1
+# 3. Copy the model folder
 COPY --from=builder /app/vosk ./vosk
 
-# 4. Set the Environment Variable so the code knows where the model is
+# 4. Set the Environment Variable
 ENV VOSK_DIR=/app/vosk/vosk-model-small-en-us-0.15
 
 EXPOSE 5150
