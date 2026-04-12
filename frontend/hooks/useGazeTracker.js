@@ -30,12 +30,18 @@ export function useGazeTracker({ onLookAway, onReturn, enabled, paused }) {
   }, [onReturn]);
 
   useEffect(() => {
-    if (!paused) {
+    if (paused) {
+      // 1. Cancel any pending "look away" timer immediately
       if (awayTimerRef.current) {
         clearTimeout(awayTimerRef.current);
         awayTimerRef.current = null;
       }
-      isAwayRef.current = false;
+      // 2. If the user was already "away", force a return so the parent app doesn't get stuck
+      if (isAwayRef.current) {
+        isAwayRef.current = false;
+        onReturnRef.current?.();
+      }
+      // 3. Reset consecutive frame counters
       consecutiveFaceFramesRef.current = 0;
     }
   }, [paused]);

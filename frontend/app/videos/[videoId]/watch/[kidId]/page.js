@@ -71,6 +71,13 @@ const threeSecondShownRef = useRef(false);
     currentQuestionRef.current = currentQuestion;
   }, [currentQuestion]);
 
+  // Forcefully dismiss the look away modal if a question pops up
+  useEffect(() => {
+    if (currentQuestion) {
+      setLookingAway(false);
+    }
+  }, [currentQuestion]);
+
   const { segmentsRef } = useSegments(video_id);
 
   const advanceAndPlay = useCallback(() => {
@@ -144,31 +151,37 @@ const threeSecondShownRef = useRef(false);
     segmentIndexRef,
     currentQuestionRef,
     onTick: (currentTime, segment) => {
-    if (!segment || currentQuestionRef.current) return;
+      if (!segment || currentQuestionRef.current) return;
 
-    const end = segment.end_seconds ?? 0;
-    const timeLeft = end - currentTime;
+      const end = segment.end_seconds ?? 0;
+      const timeLeft = end - currentTime;
 
-    if (timeLeft <= 6 && timeLeft > 3 && !sixSecondShownRef.current) {
-      sixSecondShownRef.current = true;
-      setPiggyMode("talk");
-      setPiggyText("Pay attention — a question is coming 👀");
-    }
+      if (timeLeft <= 6 && timeLeft > 3 && !sixSecondShownRef.current) {
+        sixSecondShownRef.current = true;
+        setPiggyMode("talk");
+        setPiggyText("Pay attention — a question is coming 👀");
+      }
 
-    if (timeLeft <= 3 && timeLeft > 0 && !threeSecondShownRef.current) {
-      threeSecondShownRef.current = true;
-      setPiggyMode("talk");
-      setPiggyText("Get ready to answer! 🎤");
-    }
-  },
-    onSegmentEnd: (segment) =>
+      if (timeLeft <= 3 && timeLeft > 0 && !threeSecondShownRef.current) {
+        threeSecondShownRef.current = true;
+        setPiggyMode("talk");
+        setPiggyText("Get ready to answer! 🎤");
+      }
+    },
+    onSegmentEnd: (segment) => {
+      // 1. Try to find a fuzzy match just like before
+      const match = segment.questions?.find(
+        (x) =>
+          x.question === segment.best_question ||
+          x.question.includes(segment.best_question) ||
+          (segment.best_question && segment.best_question.includes(x.question))
+      );
+
+      // 2. Fallback safely to best_question (or a default string) so the app NEVER hangs
       setCurrentQuestion(
-        segment.questions.filter(
-          (x) =>
-            x.question === segment.best_question ||
-            x.question.includes(segment.best_question),
-        )[0]?.question,
-      ),
+        match?.question || segment.best_question || "What did you just see?"
+      );
+    },
   });
 
   useGazeTracker({
