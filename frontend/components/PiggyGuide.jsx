@@ -11,6 +11,10 @@ import piggykids from "../animations/piggy_kids.png";
 import piggydownload from "../animations/piggy_download.png";
 import piggycreate from "../animations/piggy_newkid.png";
 import piggylock from "../animations/piggy_lock.png";
+import piggytag from "../animations/piggy_tag.png";
+import piggyrecommend from "../animations/piggy_recommend.png";
+import piggyassign from "../animations/piggy_assign.png";
+
 export default function PiggyGuide() {
   const pathname = usePathname();
   const { piggyMode, piggyText } = usePiggy();
@@ -33,9 +37,17 @@ export default function PiggyGuide() {
     pig = piggyWatch;
     text = "Focus! Let’s learn 📚";
   }
-  if (pathname.startsWith("/kids/")) {
-  pig = piggykids;
-  text = "Pick a video for your kid to learn!";
+  
+  const pigMap = {
+  tags: piggytag,
+  recommended: piggyrecommend,
+  search: piggykids,
+  assigned: piggyassign,
+};
+
+if (pathname.startsWith("/kids/")) {
+  pig = pigMap[piggyMode] || piggytag;
+  text = piggyText || "Pick a video for your kid to learn!";
 }
 const stepMap = {
   "download": "Downloading your video... ⬇️",

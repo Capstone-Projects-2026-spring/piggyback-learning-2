@@ -1,6 +1,6 @@
 "use client";
 
-export default function Tabs({ activeTab, setActiveTab }) {
+export default function Tabs({ activeTab, setActiveTab, onTabChange }) {
   const tabs = [
     { key: "tags", label: "🏷️ Tags" },
     { key: "assigned", label: "📚 Assigned" },
@@ -13,7 +13,10 @@ export default function Tabs({ activeTab, setActiveTab }) {
       {tabs.map((tab) => (
         <button
           key={tab.key}
-          onClick={() => setActiveTab(tab.key)}
+          onClick={() => {
+            setActiveTab(tab.key);
+            if (onTabChange) onTabChange(tab.key);
+          }}
           className={`px-5 py-2 rounded-xl font-semibold ${
             activeTab === tab.key
               ? "bg-linear-to-r from-blue-400 to-purple-400 text-white shadow"

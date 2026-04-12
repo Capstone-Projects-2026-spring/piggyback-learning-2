@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthContext } from "@/context/AuthContext";
+import { usePiggy } from "@/context/PiggyContext";
 import { useCallback, useContext, useEffect, useState } from "react";
 import SearchBar from "./SearchBar";
 import Tabs from "./Tabs";
@@ -18,6 +19,7 @@ function formatDuration(sec) {
 
 export default function KidDashboard({ kidId }) {
   const { role } = useContext(AuthContext);
+   const { setPiggyText, setPiggyMode } = usePiggy();
 
   const [assigned, setAssigned] = useState([]);
   const [recommended, setRecommended] = useState([]);
@@ -88,6 +90,31 @@ export default function KidDashboard({ kidId }) {
     fetchData();
   }, [fetchRecommendations, kidId, role]);
 
+  useEffect(() => {
+    if (role !== "kid") {
+      setPiggyMode("tags");
+      setPiggyText(
+        "Add a tag for better recommendations, or search for a video directly!",
+      );
+    }
+  }, [role, setPiggyMode, setPiggyText]);
+
+  function handleTabChange(tab) {
+  setPiggyMode(tab); 
+
+  if (tab === "tags") {
+    setPiggyText(
+      "Add a tag for better recommendations, or search for a video directly!",
+    );
+  } else if (tab === "recommended") {
+    setPiggyText("I found videos that match your tag!");
+  } else if (tab === "search") {
+    setPiggyText("Search directly if you already know what video you want!");
+  } else if (tab === "assigned") {
+    setPiggyText("Here are the videos already assigned.");
+  }
+}
+
   async function handleSearch(e) {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -107,6 +134,8 @@ export default function KidDashboard({ kidId }) {
         })),
       );
       setActiveTab("search");
+      setPiggyMode("talk");
+      setPiggyText("Here are the search results for your query!");
     } catch (err) {
       console.error("Search failed", err);
     } finally {
@@ -152,7 +181,10 @@ export default function KidDashboard({ kidId }) {
         loading={searchLoading}
       />
 
-      <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Tabs 
+      activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onTabChange={handleTabChange} />
 
       {activeTab === "tags" ? (
         <TagsTab
@@ -160,6 +192,8 @@ export default function KidDashboard({ kidId }) {
           onTagsUpdated={async () => {
             await fetchRecommendations();
             setActiveTab("recommended");
+            setPiggyMode("talk");
+            setPiggyText("I found videos that match your tag!");
           }}
         />
       ) : videos.length === 0 ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePiggy } from "@/context/PiggyContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -10,6 +11,7 @@ export default function TagsTab({ kidId, onTagsUpdated }) {
   const [newTag, setNewTag] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { setPiggyText, setPiggyMode } = usePiggy();
 
   // Fetch all tags and kid's assigned tags
   useEffect(() => {
@@ -46,6 +48,8 @@ export default function TagsTab({ kidId, onTagsUpdated }) {
       const created = await res.json();
       setAllTags((prev) => [...prev, created]);
       setNewTag("");
+      setPiggyMode("tags");
+      setPiggyText("Nice! Now select the tag and assign it.");
     } catch (err) {
       console.error("Failed to create tag", err);
     }
@@ -67,8 +71,11 @@ export default function TagsTab({ kidId, onTagsUpdated }) {
       if (onTagsUpdated) {
         await onTagsUpdated();
       }
+      setPiggyMode("recommended");
+      setPiggyText("Nice! Your tags are ready. Check Recommended.");
 
-      alert("Tags assigned successfully ✅");
+
+      //alert("Tags assigned successfully ✅");
     } catch (err) {
       console.error("Failed to assign tags", err);
       alert("Failed to assign tags ❌");
@@ -87,6 +94,10 @@ export default function TagsTab({ kidId, onTagsUpdated }) {
           type="text"
           value={newTag}
           onChange={(e) => setNewTag(e.target.value)}
+          onFocus={() => {
+            setPiggyMode("tags");
+            setPiggyText("Add a tag to get better video recommendations!");
+          }}
           placeholder="Create new tag..."
           className="grow border border-gray-300 px-4 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-800"
         />
