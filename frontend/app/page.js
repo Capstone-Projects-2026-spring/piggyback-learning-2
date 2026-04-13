@@ -78,7 +78,7 @@ setPiggyText("Creating the new kid account... ⏳");
     setPiggyText("Let’s create a new kid account! 🎉");
   } else {
     setPiggyMode("default");
-    setPiggyText("Hi! Let’s get started 🚀");
+    setPiggyText("Hi! Let’s get started 🐷");
   }
 }, [modalOpen]);
 
