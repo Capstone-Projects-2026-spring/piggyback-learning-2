@@ -13,23 +13,25 @@ Purpose: to get all the questions associated with a video, that are generated an
 | video_id | int32 |
 
 ### Response 200 OK Schema
+```
 {
-    segments*: [{
+    segments: [{
         best_question: string or null
-        end_seconds*: integer
-        id*: integer
-        questions*: [{
-            answer*: string
-            qtype*: string
-            question*: string
+        end_seconds: integer
+        id: integer
+        questions: [{
+            answer: string
+            qtype: string
+            question: string
             rank: integer or null
         }]
-        start_seconds*: integer
+        start_seconds: integer
     }]
-    video_id*: string
+    video_id: string
 }
-
+```
 ### Response 200 OK example, Questions grouped by segment for the video
+```
 {
     "segments": [
         {
@@ -49,3 +51,4 @@ Purpose: to get all the questions associated with a video, that are generated an
     ],
     "video_id": "string"
 }
+```

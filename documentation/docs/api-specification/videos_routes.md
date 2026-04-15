@@ -13,15 +13,17 @@ Purpose: To download videos, get tags for a video, and to attach tags to a video
 | video_id | string |
 
 ### Response 200 OK Schema
+```
 {
-    success*: boolean
+    success: boolean
 }
-
+```
 ### Response 200 OK example, Video downloaded or already exists
+```
 {
     "success": false
 }
-
+```
 ### Response 500 error message
 Download failed
 
@@ -34,36 +36,41 @@ Download failed
 | video_id | string |
 
 ### Response 200 OK Schema
+```
 [{
-    id*: integer
-    name*: string
+    id: integer
+    name: string
 }]
-
+```
 ### Response 200 OK example, Tags for the video
+```
 [
     {
         "id": 0,
         "name": "string"
     }
 ]
-
+```
 ## POST /api/videos/{video_id}/tags
 
 ### Parameters
 #### Request Body Schema
+```
 {
-    tags*: [integer]
+    tags: [integer]
 }
-
+```
 ### Response 200 OK Schema
+```
 {
-    success*: boolean
+    success: boolean
 }
-
+```
 ### Response 200 OK example, Tags added to video
+```
 {
     "success": false
 }
-
+```
 ### Response 500 error message
 Unknown error occurred

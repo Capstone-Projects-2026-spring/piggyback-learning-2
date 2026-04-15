@@ -13,16 +13,18 @@ Purpose: used for extracting frames for the video, which will be analyzed by the
 | video_id | String |
 
 ### Response 200 OK Schema
+```
 {
-    msg*: string
-    success*: boolean
+    msg: string
+    success: boolean
 }
-
+```
 ### Response 200 OK example, Frames extracted or already exist
+```
 {
     "msg": "string",
     "success": false
 }
-
+```
 ### Response 400 Error message example
 FFMPEG failed
