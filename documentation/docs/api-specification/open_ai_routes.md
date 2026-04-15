@@ -21,23 +21,25 @@ Purpose: to establish communication with AI to generate specific question types 
 | end | int32 | End of the segment in seconds |
 
 ### Response 200 OK Schema
+```
 {
-    questions*: [{
-        answer*: string
-        qtype*: string
-        question*: string
+    questions: [{
+        answer: string
+        qtype: string
+        question: string
         rank: integer or null
     }]
-    segment*: {
+    segment: {
         best_question: string or null
-        end_seconds*: integer
-        id*: integer
-        start_seconds*: integer
-        video_id*: string
+        end_seconds: integer
+        id: integer
+        start_seconds: integer
+        video_id: string
     }
 }
-
+```
 ### Response 200 OK example, Questions generated successfully
+```
 {
     "questions": [
         {
@@ -55,6 +57,6 @@ Purpose: to establish communication with AI to generate specific question types 
         "video_id": "string"
     }
 }
-
+```
 ## Response 500 errror message
 Unknown error occurred

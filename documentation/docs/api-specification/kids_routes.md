@@ -134,19 +134,22 @@ Unknown error occurred
 | kid_id | int32 |
 
 ## Request Body
+```
 {
   "video_id": "string"
 }
-
+```
 ### Response 200 OK Schema
+```
 {
 success*: boolean
 }
-
+```
 ### Response 200 OK example, Video assigned successfully
+```
 {
     "success": false
 }
-
+```
 ### Response 500 error message
 Unknown error occurred

@@ -12,20 +12,24 @@ sidebar_position: 12
 |  username | string |
 
 ### Response 101 Schema
+```
 {
-    action*: string
-    msg*: string
-    receiver*: string
-    sender*: string
+    action: string
+    msg: string
+    receiver: string
+    sender: string
 }
+```
 
 ### Response 101 example, WebSocket connection established
+```
 {
     "action": "string",
     "msg": "string",
     "receiver": "string",
     "sender": "string"
 }
+```
 
 ### Response 500 error message
 Bad request
