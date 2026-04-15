@@ -5,7 +5,9 @@ sidebar_position: 5
 # Frame routes
 Purpose: used for extracting frames for the video, which will be analyzed by the AI later to generate questions.
 
-## GET /api/frames/extract/{video_id}
+
+## ``` GET /api/frames/extract/{video_id} ```
+
 
 ### Request Path Parameters
 | Name | Type |

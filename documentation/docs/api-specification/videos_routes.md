@@ -5,7 +5,7 @@ sidebar_position: 11
 # Video Routes
 Purpose: To download videos, get tags for a video, and to attach tags to a video
 
-## GET /api/videos/download/{video_id}
+## ``` GET /api/videos/download/{video_id} ```
 
 ### Path Parameters
 | Name | Type |
@@ -28,7 +28,7 @@ Purpose: To download videos, get tags for a video, and to attach tags to a video
 Download failed
 
 
-## GET /api/videos/{video_id}/tags
+## ``` GET /api/videos/{video_id}/tags ```
 
 ### Path Parameters
 | Name | Type |
@@ -51,7 +51,7 @@ Download failed
     }
 ]
 ```
-## POST /api/videos/{video_id}/tags
+## ``` POST /api/videos/{video_id}/tags ```
 
 ### Parameters
 #### Request Body Schema

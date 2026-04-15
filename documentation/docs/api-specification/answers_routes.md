@@ -15,7 +15,7 @@ Purpose: used for getting the answers to the quiz and checking the user's answer
 | audio | Array (array of audio files) |
 | expected_answer | String |
 | kid_id | Integer |
- segment_id | Integer |
+| segment_id | Integer |
 | video_id | String |
 
 ### Response 200 OK Schema
@@ -41,7 +41,9 @@ Purpose: used for getting the answers to the quiz and checking the user's answer
 ### Response 400 Error message example
 Missing or invalid fields
 
-## GET /api/answers/{kid_id}/{video_id}
+
+
+### ``` GET /api/answers/{kid_id}/{video_id} ```
 
 
 ### Parameters

@@ -5,7 +5,7 @@ sidebar_position: 6
 # Frame routes
 Purpose: Used for getting and adding tags for the kids, assigning videos to kids, and for getting videos that were reccomended.
 
-## GET /api/kids/{kid_id}/recommendations
+## ``` GET /api/kids/{kid_id}/recommendations ```
 
 ### Request Path Parameters
 | Name | Type |
@@ -45,7 +45,7 @@ Purpose: Used for getting and adding tags for the kids, assigning videos to kids
 ```
 
 
-## GET /api/kids/{kid_id}/tags
+## ``` GET /api/kids/{kid_id}/tags ```
 
 ### Request Path Parameters
 | Name | Type |
@@ -69,7 +69,7 @@ Purpose: Used for getting and adding tags for the kids, assigning videos to kids
 ]
 ```
 
-## POST /api/kids/{kid_id}/tags
+## ``` POST /api/kids/{kid_id}/tags ```
 
 ### Request Path Parameters
 | Name | Type |
@@ -102,7 +102,7 @@ Unknown error occurred
 
 
 
-## GET /api/kids/{kid_id}/videos_assigned
+## ``` GET /api/kids/{kid_id}/videos_assigned ```
 
 ### Request Path Parameters
 | Name | Type |
@@ -138,7 +138,7 @@ Unknown error occurred
     }
 ]
 ```
-## POST /api/kids/{kid_id}/videos_assigned
+## ``` POST /api/kids/{kid_id}/videos_assigned ```
 
 ### Request Path Parameters
 | Name | Type |

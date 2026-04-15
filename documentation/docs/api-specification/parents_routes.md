@@ -4,7 +4,7 @@ sidebar_position: 8
 # Parent Routes
 Purpose: to get kids that belong to the parent so that parents can perform operations on the kids account such as assigning videos.
 
-## GET /api/parents/{parent_id}/kids
+## ``` GET /api/parents/{parent_id}/kids ```
 
 ### Path Parameters
 | Name | Type |
