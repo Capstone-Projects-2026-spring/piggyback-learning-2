@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Design | Piggyback Learning 2</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Design | Piggyback Learning 2"><meta data-rh="true" name="description" content="Components"><meta data-rh="true" property="og:description" content="Components"><link data-rh="true" rel="icon" href="/piggyback-learning-2/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design"><link data-rh="true" rel="alternate" href="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design" hreflang="en"><link data-rh="true" rel="alternate" href="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"System Architecture","item":"https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/category/system-architecture"},{"@type":"ListItem","position":2,"name":"Design","item":"https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design"}]}</script><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script><link rel="stylesheet" href="/piggyback-learning-2/assets/css/styles.7aa687c6.css">
-<script src="/piggyback-learning-2/assets/js/runtime~main.a83e9d74.js" defer="defer"></script>
-<script src="/piggyback-learning-2/assets/js/main.7c639526.js" defer="defer"></script>
+<script src="/piggyback-learning-2/assets/js/runtime~main.7ca7f3b6.js" defer="defer"></script>
+<script src="/piggyback-learning-2/assets/js/main.1bf2a098.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -20,7 +20,7 @@
 <div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#bfc7d5;--prism-background-color:#292d3e"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#bfc7d5;background-color:#292d3e"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#bfc7d5"><span class="token plain">CREATE TABLE roles (</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    id INTEGER PRIMARY KEY,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    role_type VARCHAR(30) NOT NULL UNIQUE</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">);</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">CREATE TABLE users (</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    id INTEGER PRIMARY KEY,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    email VARCHAR(255) NOT NULL UNIQUE,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    username VARCHAR(60) NOT NULL UNIQUE,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    password_hash VARCHAR(255) NOT NULL,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    role_id INTEGER NOT NULL,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    last_login TIMESTAMP,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    FOREIGN KEY (role_id) REFERENCES roles(id)</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">);</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">CREATE TABLE user_profiles (</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    id INTEGER PRIMARY KEY,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    user_id INTEGER NOT NULL UNIQUE,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    first_name VARCHAR(60),</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    last_name VARCHAR(100),</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    date_of_birth TIMESTAMP,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">);</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">CREATE TABLE videos (</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    id INTEGER PRIMARY KEY,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    url VARCHAR(2048) NOT NULL,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    title VARCHAR(300) NOT NULL,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    duration_in_seconds INTEGER NOT NULL</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">);</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">CREATE TABLE watch_histories (</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    id INTEGER PRIMARY KEY,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    user_id INTEGER NOT NULL,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    video_id INTEGER NOT NULL,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    watched_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">);</span><br></span></code></pre></div></div>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="piggyback-learning-api">Piggyback Learning API<a href="#piggyback-learning-api" class="hash-link" aria-label="Direct link to Piggyback Learning API" title="Direct link to Piggyback Learning API" translate="no">​</a></h2>
 <p><strong>Endpoints</strong></p>
-<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#bfc7d5;--prism-background-color:#292d3e"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#bfc7d5;background-color:#292d3e"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/verify-password</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/download</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/frames/{video_id}</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/admin/videos</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/submit-questions</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- WS /ws/questions/{video_id}</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/kids_videos</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/final-questions/{video_id}</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/videos-list</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/expert-questions/{video_id}</span><br></span></code></pre></div></div>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#bfc7d5;--prism-background-color:#292d3e"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#bfc7d5;background-color:#292d3e"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#bfc7d5"><span class="token plain">Auth</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/auth/signup</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/auth/login</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">Answers </span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/answers/analyze</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/answers/{kid_id}/{video_id}</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">Frames</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/frames/extract{video_id}</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">Websocket</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/ws</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">Kids</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/kids/{kid_id}/tags</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/kids/{kid_id}/tags</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/kids/{kid_id}/videos_assigned</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/kids/{kid_id}/videos_assigned</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/kids/{kid_id}/recommendations</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">Open AI</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/openai/{video_id}</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">Parents</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/parents/{parent_id}/kids</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">Questions</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/questions/{video_id}</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">Tags</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/tags</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- POST /api/tags</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">Videos</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/videos/download/{video_id}</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">- GET /api/videos/{video_id}/tags</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain"> POST /api/videos/{video_id}/tags</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain"> See API specification for more details</span><br></span></code></pre></div></div>
 <p><strong>Class Diagram</strong>
 I think we should forgo a class diagram for the api for now:</p>
 <ul>
@@ -28,20 +28,47 @@ I think we should forgo a class diagram for the api for now:</p>
 <li class="">It’s already developed / difficult to decipher</li>
 </ul>
 <hr>
-<p><strong>Backend</strong>
-Youtube Downloading: Uses yt_dlp to download video, metadata, and subtitles.</p>
-<hr>
+<p><strong>Backend</strong></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="framework--stack">Framework &amp; Stack<a href="#framework--stack" class="hash-link" aria-label="Direct link to Framework &amp; Stack" title="Direct link to Framework &amp; Stack" translate="no">​</a></h3>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="built-with-locors-which-integrates">Built with Loco.rs, which integrates:<a href="#built-with-locors-which-integrates" class="hash-link" aria-label="Direct link to Built with Loco.rs, which integrates:" title="Direct link to Built with Loco.rs, which integrates:" translate="no">​</a></h4>
+<ul>
+<li class="">Axum – Used for Web server and routing</li>
+<li class="">SeaORM – Uses Database ORM for type-safe SQL queries</li>
+<li class="">Database: Uses SQLite for lightweight, storage.</li>
+<li class="">WebSocket support is provided by Axum for real-time communication.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="core-functionality">Core Functionality<a href="#core-functionality" class="hash-link" aria-label="Direct link to Core Functionality" title="Direct link to Core Functionality" translate="no">​</a></h3>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="video-processing">Video Processing<a href="#video-processing" class="hash-link" aria-label="Direct link to Video Processing" title="Direct link to Video Processing" translate="no">​</a></h4>
+<ul>
+<li class="">YouTube Downloading: Uses yt-dlp to fetch videos, metadata, and subtitles from a YouTube URL.</li>
+<li class="">Frame Extraction: Uses FFmpeg to extract key frames from downloaded videos for AI to used during question generation.</li>
+<li class="">Processing is triggered with API endpoints and progress of processing is streamed to the frontend over WebSockets.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="ai-integration">AI Integration<a href="#ai-integration" class="hash-link" aria-label="Direct link to AI Integration" title="Direct link to AI Integration" translate="no">​</a></h3>
+<ul>
+<li class="">Question Generation: Processes video metadata, transcripts/subtitles, and extracted frames to generate questions using AI.</li>
+<li class="">Answer Validation: Grades user responses (both text and transcribed audio) against expected answers.</li>
+<li class="">Gemini 2.5 Flash is integrated for question generation</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="speech-processing">Speech Processing<a href="#speech-processing" class="hash-link" aria-label="Direct link to Speech Processing" title="Direct link to Speech Processing" translate="no">​</a></h3>
+<ul>
+<li class="">Speech Recognition: Uses Vosk for transcribing children&#x27;s audio responses without an internet connection, and to comply with COPPA and other similar laws.</li>
+<li class="">Model files are stored locally.</li>
+<li class="">Text-to-Speech (TTS): Has endpoints for generating spoken prompts and feedback for the mascot to handle the quiz.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="static--media-serving">Static / Media Serving<a href="#static--media-serving" class="hash-link" aria-label="Direct link to Static / Media Serving" title="Direct link to Static / Media Serving" translate="no">​</a></h3>
+<p>Generated assets (the videos, extracted frames, question JSON files) are served statically, and can be access by URL for the frontend to use.</p>
 <p><strong>Frontend</strong></p>
 <ol>
 <li class="">
 <p>Page rendering :
-FastAPI serves Jinja template from templates/ via JinjaTemplates (somewhere in main)
-Main entry pages (search for them in main.py) :</p>
+This Next.js application uses the App Router. Pages are React components inside app/, and the routing follows Next.js file-system conventions.
+Main entry pages (find them in /frontend/app):</p>
 <ul>
-<li class="">home.html (around line 1021)</li>
-<li class="">children.html(around line 1020-1024?)</li>
-<li class="">expert_preview.html(around line 1049)</li>
-<li class="">admin.html(around line 233)</li>
+<li class="">kids/[id]</li>
+<li class="">login</li>
+<li class="">signup</li>
+<li class="">videos</li>
 </ul>
 </li>
 <li class="">
@@ -49,45 +76,50 @@ Main entry pages (search for them in main.py) :</p>
 </li>
 </ol>
 <ul>
-<li class="">The app UI is rendered as separate HTML files in &quot;templates/&quot;</li>
-<li class="">Each page includes its own &quot;style&quot; and &quot;script&quot; blocks, so behavior and styling live in that file instead of shared JS/CSS bundles.</li>
-<li class="">There is no template inheritance layer, so repeated UI patterns are manually duplicated across pages. (THIS IS BAD)</li>
-<li class="">Result: simple to reason about per page but harder to keep global consistency when changing shared style/interactions.</li>
+<li class="">The UI is built with Next.js (React) and TypeScript.</li>
+<li class="">Pages are composed from reusable components located in components/.</li>
+<li class="">Styling is handled via Tailwind CSS and CSS files.</li>
+<li class="">Shared logic (auth, WebSocket connections) is managed through React Context (context/) and custom hooks (hooks/).</li>
 </ul>
-<p>Data flow:</p>
-<ul>
-<li class="">The browser loads and HTML landing page first. Then uses fetch() to call FastAPI endpoints and update UI dynamically.</li>
-</ul>
-<p>Admin page:</p>
-<ul>
-<li class="">Start processing flow(download/frame extraction /question generation) with API calls in admin.html</li>
-<li class="">Opens a Websocket in admin.html , to stream progress update in real time(instead of polling).</li>
-</ul>
-<p>Expert page:</p>
-<ul>
-<li class="">Pull available videos/questions and submits review/finalization changes through API calls in expert_preview.html.</li>
-</ul>
-<p>Kids page:</p>
-<ul>
-<li class="">Loads the kid-facing catalog and quiz data from backend endpoints in children.html</li>
-<li class="">Calls TTS endpoint for spoken prompts/feedback in children.html.</li>
-</ul>
-<p>Static/Media Serving:</p>
-<ul>
-<li class="">main(main.py) mounts /downloads, so generated assets(videos, extracted frames, question JSON files) are directly reachable by URL.</li>
-<li class="">main also mounts /static for normal static resource (JSON/assets used by pages).</li>
-</ul>
-<p>Practical meaning to all this: frontend doesn’t need a separate file server; FastAPI serves both APIs and files.</p>
-<ol>
-<li class="">Serves API endpoints</li>
-<li class="">Serves files like videos/static assets via /downloads and /static</li>
+<ol start="3">
+<li class="">Data flow:</li>
 </ol>
+<ul>
+<li class="">The browser loads the initial HTML from Next.js.</li>
+<li class="">Client‑side uses fetch() (or libraries like axios) to call the backend REST API.</li>
+<li class="">Real‑time updates are delivered with WebSockets using a custom hook/context.</li>
+</ul>
+<ol start="4">
+<li class="">Parent page:</li>
+</ol>
+<ul>
+<li class="">Processes videos (download, frame extraction, and AI question generation) via API calls.</li>
+<li class="">Opens a WebSocket connection to stream progress updates in real time (no polling).</li>
+<li class="">Fetches the available videos and generated questions from the backend.</li>
+<li class="">Review, edit, and finalize questions via API calls.</li>
+</ul>
+<ol start="5">
+<li class="">Kids page</li>
+</ol>
+<ul>
+<li class="">Loads the video catalog and quiz data.</li>
+<li class="">Calls TTS (text‑to‑speech) endpoints for spoken prompts and feedback.</li>
+<li class="">Record audio responses and transcribes them with backend APIs.</li>
+</ul>
+<ol start="6">
+<li class="">Static/Media Serving:</li>
+</ol>
+<ul>
+<li class="">Static assets are reachable from the public/ directory (Next.js convention).</li>
+<li class="">videos, extracted frames, question JSON can be reached by the backend and accessed via API routes.</li>
+<li class="">The frontend doesn&#x27;t need a separate file server. Next.js serves static assets while Rust serves generated content</li>
+</ul>
 <hr>
 <p><strong>Important Distinctions:</strong></p>
 <ul>
 <li class="">Documentation/ is a different frontend project: Docusaurus + React.</li>
 <li class="">That react site is for docs only and has it own build/runtime flow.</li>
-<li class="">Main product UI is not React; it’s server-rendered templates + vanilla JS in the FastAPI app.</li>
+<li class="">The backend (Loco.rs / Axum) gives both REST APIs and WebSocket endpoints for the frontend.</li>
 </ul>
 <hr>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="use-case-sequence-diagrams">Use Case Sequence Diagrams<a href="#use-case-sequence-diagrams" class="hash-link" aria-label="Direct link to Use Case Sequence Diagrams" title="Direct link to Use Case Sequence Diagrams" translate="no">​</a></h2>
@@ -95,7 +127,7 @@ Main entry pages (search for them in main.py) :</p>
 <p><em>As a user, I want to be able to answer quiz questions with voice recognition.</em></p>
 <ol>
 <li class="">A quiz for the video starts and asks the user a question.</li>
-<li class="">The user answers vocally, after seeing a visual indication that voice input is being accepted (“you can speak now!” or something like that).</li>
+<li class="">The user answers vocally, after seeing a visual indication that voice input is being accepted (“you can speak now! ” or something like that).</li>
 <li class="">The user&#x27;s input is mapped to an answer for the quiz.</li>
 <li class="">If incorrect, a fallback option is triggered. Potentially a multiple-choice quiz.</li>
 <li class="">If correct, the video continues playing.</li>
@@ -119,6 +151,6 @@ Main entry pages (search for them in main.py) :</p>
 <li class="">The application receives the data and places it into a dashboard.</li>
 <li class="">The dashboard is then shown to the user.</li>
 <li class="">The user is able to click on individual videos from the dashboard to see detailed stats for past videos watched.</li>
-</ol></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/Capstone-Projects-2026-spring/piggyback-learning-2/edit/main/documentation/docs/system-architecture/design.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div><div class="col lastUpdated_JAkA"><details><summary>Revision History</summary><table><thead><tr><th scope="row">Author</th><th scope="row">Revision</th><th scope="row">Date</th></tr></thead><tbody><tr><td colspan="3" style="text-align:center;font-style:italic;color:#666">Loading...</td></tr></tbody></table></details><span class="theme-last-updated">Last updated<!-- --> by <b>Rp0115</b></span></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/piggyback-learning-2/docs/category/system-architecture"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">System Architecture</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/piggyback-learning-2/docs/system-architecture/development-environment"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Development Environment</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#components" class="table-of-contents__link toc-highlight">Components</a><ul><li><a href="#database" class="table-of-contents__link toc-highlight">Database</a></li><li><a href="#entity-relationship-diagram" class="table-of-contents__link toc-highlight">Entity Relationship Diagram:</a></li></ul></li><li><a href="#piggyback-learning-api" class="table-of-contents__link toc-highlight">Piggyback Learning API</a></li><li><a href="#use-case-sequence-diagrams" class="table-of-contents__link toc-highlight">Use Case Sequence Diagrams</a></li></ul></div></div></div></div></main></div></div></div><footer class="theme-layout-footer footer"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/piggyback-learning-2/docs/intro">Documentation</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://github.com/Capstone-Projects-2026-spring/piggyback-learning-2" target="_blank" rel="noopener noreferrer" class="footer__link-item">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a class="footer__link-item" href="/piggyback-learning-2/tutorial/open-source-usage">Template Contributors</a></li></ul></div></div><div class="footer__bottom text--center"><div class="margin-bottom--sm"><img src="https://upload.wikimedia.org/wikipedia/commons/1/17/Temple_T_logo.svg" alt="My Site Logo" class="footer__logo themedComponent_mlkZ themedComponent--light_NVdE"><img src="https://upload.wikimedia.org/wikipedia/commons/1/17/Temple_T_logo.svg" alt="My Site Logo" class="footer__logo themedComponent_mlkZ themedComponent--dark_xIcU"></div><div class="footer__copyright">Copyright © 2026 Piggyback Learning 2, Inc. Built with Docusaurus.</div></div></div></footer></div>
+</ol></div><footer class="theme-doc-footer docusaurus-mt-lg"><div class="row margin-top--sm theme-doc-footer-edit-meta-row"><div class="col noPrint_WFHX"><a href="https://github.com/Capstone-Projects-2026-spring/piggyback-learning-2/edit/main/documentation/docs/system-architecture/design.md" target="_blank" rel="noopener noreferrer" class="theme-edit-this-page"><svg fill="currentColor" height="20" width="20" viewBox="0 0 40 40" class="iconEdit_Z9Sw" aria-hidden="true"><g><path d="m34.5 11.7l-3 3.1-6.3-6.3 3.1-3q0.5-0.5 1.2-0.5t1.1 0.5l3.9 3.9q0.5 0.4 0.5 1.1t-0.5 1.2z m-29.5 17.1l18.4-18.5 6.3 6.3-18.4 18.4h-6.3v-6.2z"></path></g></svg>Edit this page</a></div><div class="col lastUpdated_JAkA"><details><summary>Revision History</summary><table><thead><tr><th scope="row">Author</th><th scope="row">Revision</th><th scope="row">Date</th></tr></thead><tbody><tr><td colspan="3" style="text-align:center;font-style:italic;color:#666">Loading...</td></tr></tbody></table></details><span class="theme-last-updated">Last updated<!-- --> by <b>tus15481</b></span></div></div></footer></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/piggyback-learning-2/docs/category/system-architecture"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">System Architecture</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/piggyback-learning-2/docs/system-architecture/development-environment"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Development Environment</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#components" class="table-of-contents__link toc-highlight">Components</a><ul><li><a href="#database" class="table-of-contents__link toc-highlight">Database</a></li><li><a href="#entity-relationship-diagram" class="table-of-contents__link toc-highlight">Entity Relationship Diagram:</a></li></ul></li><li><a href="#piggyback-learning-api" class="table-of-contents__link toc-highlight">Piggyback Learning API</a><ul><li><a href="#framework--stack" class="table-of-contents__link toc-highlight">Framework &amp; Stack</a></li><li><a href="#core-functionality" class="table-of-contents__link toc-highlight">Core Functionality</a></li><li><a href="#ai-integration" class="table-of-contents__link toc-highlight">AI Integration</a></li><li><a href="#speech-processing" class="table-of-contents__link toc-highlight">Speech Processing</a></li><li><a href="#static--media-serving" class="table-of-contents__link toc-highlight">Static / Media Serving</a></li></ul></li><li><a href="#use-case-sequence-diagrams" class="table-of-contents__link toc-highlight">Use Case Sequence Diagrams</a></li></ul></div></div></div></div></main></div></div></div><footer class="theme-layout-footer footer"><div class="container container-fluid"><div class="row footer__links"><div class="theme-layout-footer-column col footer__col"><div class="footer__title">Docs</div><ul class="footer__items clean-list"><li class="footer__item"><a class="footer__link-item" href="/piggyback-learning-2/docs/intro">Documentation</a></li></ul></div><div class="theme-layout-footer-column col footer__col"><div class="footer__title">More</div><ul class="footer__items clean-list"><li class="footer__item"><a href="https://github.com/Capstone-Projects-2026-spring/piggyback-learning-2" target="_blank" rel="noopener noreferrer" class="footer__link-item">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a></li><li class="footer__item"><a class="footer__link-item" href="/piggyback-learning-2/tutorial/open-source-usage">Template Contributors</a></li></ul></div></div><div class="footer__bottom text--center"><div class="margin-bottom--sm"><img src="https://upload.wikimedia.org/wikipedia/commons/1/17/Temple_T_logo.svg" alt="My Site Logo" class="footer__logo themedComponent_mlkZ themedComponent--light_NVdE"><img src="https://upload.wikimedia.org/wikipedia/commons/1/17/Temple_T_logo.svg" alt="My Site Logo" class="footer__logo themedComponent_mlkZ themedComponent--dark_xIcU"></div><div class="footer__copyright">Copyright © 2026 Piggyback Learning 2, Inc. Built with Docusaurus.</div></div></div></footer></div>
 </body>
 </html>
