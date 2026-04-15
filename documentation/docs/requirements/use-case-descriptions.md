@@ -19,7 +19,7 @@ _As a user, it is important that I can create an account so that I can maintain 
 
 ### Use case 1 - Find other Accounts
 
-_As a user, I want to search for other users so I can assign videos and quizzes to them._
+_As a parent, I want to search for my children so I can assign videos and quizzes to them._
 
 1.  The user opens the Find Users page/search bar.
 2.  The user types a name/email and searches.

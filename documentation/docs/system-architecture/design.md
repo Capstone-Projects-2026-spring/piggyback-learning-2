@@ -105,18 +105,47 @@ CREATE TABLE watch_histories (
 **Endpoints**
 
 ```
-- POST /api/verify-password
-- POST /api/download
-- POST /api/frames/{video_id}
-- GET /api/admin/videos
-- POST /api/submit-questions
-- WS /ws/questions/{video_id}
-- GET /api/kids_videos
-- GET /api/final-questions/{video_id}
-- GET /api/videos-list
-- GET /api/expert-questions/{video_id}
-```
+Auth
+- POST /api/auth/signup
+- POST /api/auth/login
 
+Answers 
+- POST /api/answers/analyze
+- GET /api/answers/{kid_id}/{video_id}
+
+Frames
+- GET /api/frames/extract{video_id}
+
+Websocket
+- GET /api/ws
+
+Kids
+- GET /api/kids/{kid_id}/tags
+- POST /api/kids/{kid_id}/tags
+- GET /api/kids/{kid_id}/videos_assigned
+- POST /api/kids/{kid_id}/videos_assigned
+- GET /api/kids/{kid_id}/recommendations
+
+Open AI
+- GET /api/openai/{video_id}
+
+Parents
+- GET /api/parents/{parent_id}/kids
+
+Questions
+- GET /api/questions/{video_id}
+
+Tags
+- GET /api/tags
+- POST /api/tags
+
+Videos
+- GET /api/videos/download/{video_id}
+- GET /api/videos/{video_id}/tags
+ POST /api/videos/{video_id}/tags
+
+ See API specification for more details
+```
 **Class Diagram**
 I think we should forgo a class diagram for the api for now:
 - It’s written in python therefore has no classes
@@ -125,54 +154,75 @@ I think we should forgo a class diagram for the api for now:
 ---
 
 **Backend**
-Youtube Downloading: Uses yt_dlp to download video, metadata, and subtitles. 
+### Framework & Stack
+#### Built with Loco.rs, which integrates:
+- Axum – Used for Web server and routing
+- SeaORM – Uses Database ORM for type-safe SQL queries
+- Database: Uses SQLite for lightweight, storage.
+- WebSocket support is provided by Axum for real-time communication. 
 
----
+### Core Functionality
+#### Video Processing
+- YouTube Downloading: Uses yt-dlp to fetch videos, metadata, and subtitles from a YouTube URL.
+- Frame Extraction: Uses FFmpeg to extract key frames from downloaded videos for AI to used during question generation.
+- Processing is triggered with API endpoints and progress of processing is streamed to the frontend over WebSockets.
+
+### AI Integration
+- Question Generation: Processes video metadata, transcripts/subtitles, and extracted frames to generate questions using AI.
+- Answer Validation: Grades user responses (both text and transcribed audio) against expected answers. 
+- Gemini 2.5 Flash is integrated for question generation
+
+### Speech Processing
+- Speech Recognition: Uses Vosk for transcribing children's audio responses without an internet connection, and to comply with COPPA and other similar laws.
+- Model files are stored locally.
+- Text-to-Speech (TTS): Has endpoints for generating spoken prompts and feedback for the mascot to handle the quiz.
+
+### Static / Media Serving
+Generated assets (the videos, extracted frames, question JSON files) are served statically, and can be access by URL for the frontend to use.
 
 **Frontend**
 
 1. Page rendering : 
-FastAPI serves Jinja template from templates/ via JinjaTemplates (somewhere in main)
-Main entry pages (search for them in main.py) : 
-	- home.html (around line 1021)
-	- children.html(around line 1020-1024?)
-	- expert_preview.html(around line 1049) 
-	- admin.html(around line 233) 
+This Next.js application uses the App Router. Pages are React components inside app/, and the routing follows Next.js file-system conventions.
+Main entry pages (find them in /frontend/app): 
+    - kids/[id]
+    - login
+    - signup
+    - videos
 
 2. Frontend tech:
-- The app UI is rendered as separate HTML files in "templates/"
-- Each page includes its own "style" and "script" blocks, so behavior and styling live in that file instead of shared JS/CSS bundles.
-- There is no template inheritance layer, so repeated UI patterns are manually duplicated across pages. (THIS IS BAD)
-- Result: simple to reason about per page but harder to keep global consistency when changing shared style/interactions.
+- The UI is built with Next.js (React) and TypeScript.
+- Pages are composed from reusable components located in components/.
+- Styling is handled via Tailwind CSS and CSS files.
+- Shared logic (auth, WebSocket connections) is managed through React Context (context/) and custom hooks (hooks/).
 
-Data flow: 
-- The browser loads and HTML landing page first. Then uses fetch() to call FastAPI endpoints and update UI dynamically.
+3. Data flow: 
+- The browser loads the initial HTML from Next.js.
+- Client‑side uses fetch() (or libraries like axios) to call the backend REST API.
+- Real‑time updates are delivered with WebSockets using a custom hook/context.
 
-Admin page: 
-- Start processing flow(download/frame extraction /question generation) with API calls in admin.html
-- Opens a Websocket in admin.html , to stream progress update in real time(instead of polling).
+4. Parent page: 
+- Processes videos (download, frame extraction, and AI question generation) via API calls.
+- Opens a WebSocket connection to stream progress updates in real time (no polling).
+- Fetches the available videos and generated questions from the backend.
+- Review, edit, and finalize questions via API calls. 
 
-Expert page: 
-- Pull available videos/questions and submits review/finalization changes through API calls in expert_preview.html. 
+5. Kids page
+- Loads the video catalog and quiz data.
+- Calls TTS (text‑to‑speech) endpoints for spoken prompts and feedback.
+- Record audio responses and transcribes them with backend APIs.
 
-Kids page:
-- Loads the kid-facing catalog and quiz data from backend endpoints in children.html
-- Calls TTS endpoint for spoken prompts/feedback in children.html.
-
-Static/Media Serving:
-- main(main.py) mounts /downloads, so generated assets(videos, extracted frames, question JSON files) are directly reachable by URL.
-- main also mounts /static for normal static resource (JSON/assets used by pages).
-
-Practical meaning to all this: frontend doesn’t need a separate file server; FastAPI serves both APIs and files.
-1. Serves API endpoints 
-2. Serves files like videos/static assets via /downloads and /static
+6. Static/Media Serving:
+- Static assets are reachable from the public/ directory (Next.js convention).
+- videos, extracted frames, question JSON can be reached by the backend and accessed via API routes.
+- The frontend doesn't need a separate file server. Next.js serves static assets while Rust serves generated content
 
 ---
 
 **Important Distinctions:**
 - Documentation/ is a different frontend project: Docusaurus + React.
 - That react site is for docs only and has it own build/runtime flow.
-- Main product UI is not React; it’s server-rendered templates + vanilla JS in the FastAPI app. 
+- The backend (Loco.rs / Axum) gives both REST APIs and WebSocket endpoints for the frontend. 
 
 ---
 
