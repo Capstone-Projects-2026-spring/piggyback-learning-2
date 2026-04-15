@@ -25,6 +25,7 @@ Purpose: Used for getting and adding tags for the kids, assigning videos to kids
     tags: [string]
 }
 ```
+
 ### Response 200 OK example, Recommended videos based on kid's tags
 ```
 {
@@ -67,6 +68,7 @@ Purpose: Used for getting and adding tags for the kids, assigning videos to kids
     }
 ]
 ```
+
 ## POST /api/kids/{kid_id}/tags
 
 ### Request Path Parameters
@@ -83,10 +85,11 @@ Purpose: Used for getting and adding tags for the kids, assigning videos to kids
 }
 ```
 ### Response 200 OK Schema
+```
 {
     success: boolean
 }
-
+```
 
 ### Response 200 OK example, Tags added successfully
 ```
