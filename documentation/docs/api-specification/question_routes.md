@@ -5,7 +5,7 @@ sidebar_position: 9
 # Question Routes
 Purpose: to get all the questions associated with a video, that are generated and approved by a human.
 
-## GET /api/questions/{video_id}
+## ``` GET /api/questions/{video_id} ```
 
 ### Path Parameters
 | Name | Type |

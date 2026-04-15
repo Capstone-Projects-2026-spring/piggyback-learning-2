@@ -5,7 +5,7 @@ sidebar_position: 7
 # Open AI routes
 Purpose: to establish communication with AI to generate specific question types based on the video
 
-## GET /api/openai/{video_id}
+## ``` GET /api/openai/{video_id} ```
 
 ### Parameters
 
