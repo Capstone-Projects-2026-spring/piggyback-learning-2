@@ -10,15 +10,15 @@ Purpose: to establish communication with AI to generate specific question types 
 ### Parameters
 
 #### Path Parameters
-| Name | Type |
-| ____ | ____ |
-| video_id | String |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `video_id` | String | ID of the video  |
 
 #### Query-String Parameters
 | Name | Type | Description |
-| ____ | ____ | ____ |
-| start | int32 | Start of the segment in seconds |
-| end | int32 | End of the segment in seconds |
+| :--- | :--- | :--- |
+| `start` | int32 | Start of the segment in seconds |
+| `end` | int32 | End of the segment in seconds |
 
 ### Response 200 OK Schema
 ```

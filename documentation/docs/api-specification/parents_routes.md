@@ -7,9 +7,9 @@ Purpose: to get kids that belong to the parent so that parents can perform opera
 ## ``` GET /api/parents/{parent_id}/kids ```
 
 ### Path Parameters
-| Name | Type |
-| ____ | ____ |
-| parent_id | int32 |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `parent_id` | int32 | Unique ID for the Parent |
 
 
 ### Response 200 OK Schema

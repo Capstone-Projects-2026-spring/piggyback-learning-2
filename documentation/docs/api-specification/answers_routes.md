@@ -8,15 +8,16 @@ Purpose: used for getting the answers to the quiz and checking the user's answer
 ## POST /api/answers/analyze
 
 
-# Request Body is multipart/form-data which consists of the parts below:
+## Request Body
+Content-Type: multipart/form-data
 
-| Name | Type |
-| ____ | ____ |
-| audio | Array (array of audio files) |
-| expected_answer | String |
-| kid_id | Integer |
-| segment_id | Integer |
-| video_id | String |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `audio` | File[] | Array of audio files to be analyzed. |
+| `expected_answer` | String | The correct text expected. |
+| `kid_id` | Integer | Unique ID for the child. |
+| `segment_id` | Integer | ID of the quiz segment. |
+| `video_id` | String | ID of the video associated with the quiz. |
 
 ### Response 200 OK Schema
 ```
@@ -50,10 +51,10 @@ Missing or invalid fields
 
 Request path is multipart/form-data which consists of the portions below:
 
-| Name | Type |
-| ____ | ____ |
-| kid_id | int32 |
-| video_id | String |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `kid_id `| int32 | Unique ID for the child |
+| `video_id` | String | ID of the video associated with the quiz. |
 
 ### Response 200 OK Schema
 ```
@@ -77,5 +78,3 @@ Request path is multipart/form-data which consists of the portions below:
     "updated_at": "2026-01-15T10:30:00Z"
 }
 ```
-
-

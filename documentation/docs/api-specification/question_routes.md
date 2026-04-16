@@ -8,9 +8,9 @@ Purpose: to get all the questions associated with a video, that are generated an
 ## ``` GET /api/questions/{video_id} ```
 
 ### Path Parameters
-| Name | Type |
-| ____ | ____ |
-| video_id | int32 |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `video_id` | int32 | ID of the video |
 
 ### Response 200 OK Schema
 ```
