@@ -8,9 +8,9 @@ Purpose: To download videos, get tags for a video, and to attach tags to a video
 ## ``` GET /api/videos/download/{video_id} ```
 
 ### Path Parameters
-| Name | Type |
-| ____ | ____ |
-| video_id | string |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `video_id` | string | ID of the video |
 
 ### Response 200 OK Schema
 ```
@@ -31,9 +31,9 @@ Download failed
 ## ``` GET /api/videos/{video_id}/tags ```
 
 ### Path Parameters
-| Name | Type |
-| ____ | ____ |
-| video_id | string |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `video_id` | string | ID of the video |
 
 ### Response 200 OK Schema
 ```

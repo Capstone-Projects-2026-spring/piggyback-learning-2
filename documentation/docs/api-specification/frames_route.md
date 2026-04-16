@@ -10,9 +10,9 @@ Purpose: used for extracting frames for the video, which will be analyzed by the
 
 
 ### Request Path Parameters
-| Name | Type |
-| ____ | ____ |
-| video_id | String |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `video_id` | String | ID of the video |
 
 ### Response 200 OK Schema
 ```

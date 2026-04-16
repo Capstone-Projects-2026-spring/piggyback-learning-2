@@ -7,9 +7,9 @@ sidebar_position: 12
 ## GET /ws
 
 ### Query-String Parameters
-| Name | Type |
-| ____ | ____ |
-|  username | string |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+|  `username` | string | Username associated with the account. |
 
 ### Response 101 Schema
 ```

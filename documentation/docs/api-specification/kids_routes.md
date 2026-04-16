@@ -8,9 +8,9 @@ Purpose: Used for getting and adding tags for the kids, assigning videos to kids
 ## ``` GET /api/kids/{kid_id}/recommendations ```
 
 ### Request Path Parameters
-| Name | Type |
-| ____ | ____ |
-| kid_id | int32 |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `kid_id` | int32 | Unique ID for the child. |
 
 ### Response 200 OK Schema
 ```
@@ -48,9 +48,9 @@ Purpose: Used for getting and adding tags for the kids, assigning videos to kids
 ## ``` GET /api/kids/{kid_id}/tags ```
 
 ### Request Path Parameters
-| Name | Type |
-| ____ | ____ |
-| kid_id | int32 |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `kid_id` | int32 | Unique ID for the child. |
 
 ### Response 200 OK Schema
 ```
@@ -72,9 +72,9 @@ Purpose: Used for getting and adding tags for the kids, assigning videos to kids
 ## ``` POST /api/kids/{kid_id}/tags ```
 
 ### Request Path Parameters
-| Name | Type |
-| ____ | ____ |
-| kid_id | int32 |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `kid_id` | int32 | Unique ID for the child. |
 
 ## Request Body
 ```
@@ -105,9 +105,9 @@ Unknown error occurred
 ## ``` GET /api/kids/{kid_id}/videos_assigned ```
 
 ### Request Path Parameters
-| Name | Type |
-| ____ | ____ |
-| kid_id | int32 |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `kid_id` | int32 | Unique ID for the child. |
 
 ## Request Body
 ```
@@ -141,9 +141,9 @@ Unknown error occurred
 ## ``` POST /api/kids/{kid_id}/videos_assigned ```
 
 ### Request Path Parameters
-| Name | Type |
-| ____ | ____ |
-| kid_id | int32 |
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `kid_id` | int32 | Unique ID for the child. |
 
 ## Request Body
 ```
