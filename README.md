@@ -15,6 +15,7 @@ The project is split into two main parts:
 
 ### Repositories
 
+- Docker Setup: [Docker Setup](#docker)
 - Frontend setup and development: [Frontend Setup](frontend/README.md)
 - Backend setup and development: [Backend Setup](backend/README.md)
 
@@ -67,6 +68,50 @@ The project is split into two main parts:
 ## Running the Project
 
 To run the full application locally:
+
+### Docker Setup
+The fastest way to get the backend up and running is by using Docker. This environment handles all dependencies—including the Rust toolchain and Vosk speech-to-text libraries—automatically.
+
+* **Docker Desktop:** Ensure you have it installed. [Download here](https://docs.docker.com/desktop/setup/install/windows-install/).
+* **Running Status:** Open Docker Desktop and leave it opened on the Containers Screen.
+
+Open your terminal (PowerShell, CMD, or WSL) and follow these steps:
+
+**Navigate to the correct directory:**
+```bash
+cd piggyback-learning-2
+```
+
+**Make an .env file in the Frontend Directory:**
+```bash
+cp frontend/env.example frontend/.env
+```
+
+**Make .env file in the Backend Directory:**
+```bash
+cp backend/env.example backend/.env
+```
+
+**OpenAI API:**
+You should have received a mail with an OpenAI API Key. If you have not, reach out to: tuu01096@temple.edu
+```bash
+# In backend/.env, update the OPENAI_API_KEY
+```
+
+**Run the following command:**
+```bash
+docker compose up
+```
+
+Now, the project is ready. Click Frontend to see the project.
+
+Make sure to have Docker Desktop open while running the project!
+
+* **Frontend:** http://localhost:3000
+* **Backend:** http://localhost:3000
+
+If you have followed the above steps, you may ignore the setups below.
+
 
 ### 1. Start the Backend
 
