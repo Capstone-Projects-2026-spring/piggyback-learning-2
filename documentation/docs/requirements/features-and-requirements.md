@@ -52,9 +52,6 @@ sidebar_position: 4
 - Users must be able to create an with a unique username, secure password, and accountID
 - Various Permission levels must exist.  Parent account type must be able to assign specific video access to a Child account type, along with controlling "No Distraction Mode".
 
-### Video processing
-- Use a YouTube URL provided by the user and process the video file using yt-dlp and FFmpeg to prepare it for the internal player.
-
 ## Nonfunctional Requirements
 
 ### Performance & Latency
