@@ -4,4 +4,4 @@ sidebar_position: 5
 
 # Version Control
 
-- Git
+- We use Git for version control
