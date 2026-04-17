@@ -102,50 +102,6 @@ CREATE TABLE watch_histories (
 ```
 ## Piggyback Learning API
 
-**Endpoints**
-
-```
-Auth
-- POST /api/auth/signup
-- POST /api/auth/login
-
-Answers 
-- POST /api/answers/analyze
-- GET /api/answers/{kid_id}/{video_id}
-
-Frames
-- GET /api/frames/extract{video_id}
-
-Websocket
-- GET /api/ws
-
-Kids
-- GET /api/kids/{kid_id}/tags
-- POST /api/kids/{kid_id}/tags
-- GET /api/kids/{kid_id}/videos_assigned
-- POST /api/kids/{kid_id}/videos_assigned
-- GET /api/kids/{kid_id}/recommendations
-
-Open AI
-- GET /api/openai/{video_id}
-
-Parents
-- GET /api/parents/{parent_id}/kids
-
-Questions
-- GET /api/questions/{video_id}
-
-Tags
-- GET /api/tags
-- POST /api/tags
-
-Videos
-- GET /api/videos/download/{video_id}
-- GET /api/videos/{video_id}/tags
- POST /api/videos/{video_id}/tags
-
- See API specification for more details
-```
 **Class Diagram**
 I think we should forgo a class diagram for the api for now:
 - It’s written in python therefore has no classes
