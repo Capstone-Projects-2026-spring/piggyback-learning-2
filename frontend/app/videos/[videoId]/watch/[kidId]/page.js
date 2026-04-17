@@ -173,6 +173,7 @@ const threeSecondShownRef = useRef(false);
       const match = segment.questions?.find(
         (x) =>
           x.question === segment.best_question ||
+          x.qtype === segment.best_question ||
           x.question.includes(segment.best_question) ||
           (segment.best_question && segment.best_question.includes(x.question))
       );
