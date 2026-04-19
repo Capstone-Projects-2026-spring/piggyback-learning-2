@@ -16,7 +16,7 @@ export function useGazeTracker({
   debug = true,
   thresholdLeftRight = 0.55,
   thresholdUp = 0.55,
-  thresholdDown = 0.75,
+  thresholdDown = 0.55,
 }) {
   const awayTimerRef = useRef(null);
   const isAwayRef = useRef(false);
