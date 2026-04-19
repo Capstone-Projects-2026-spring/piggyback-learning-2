@@ -1,7 +1,8 @@
 use hound;
 
 pub struct AudioData {
-    pub samples: Vec<i16>,
+    pub samples: Vec<i16>,     // Normalized, use this for STT (Vosk)
+    pub raw_samples: Vec<i16>, // Un-normalized, use this for Mood detection
     pub sample_rate: u32,
 }
 
@@ -22,26 +23,29 @@ pub fn parse_wav(bytes: &[u8]) -> Result<AudioData, String> {
         return Err("Sample rate must be 16kHz".to_string());
     }
 
-    let samples: Vec<i16> = reader
+    let initial_samples: Vec<i16> = reader
         .into_samples::<i16>()
         .filter_map(Result::ok)
         .collect();
 
-    let samples = preprocess_audio(samples);
+    // 1. Trim silence and noise gate FIRST
+    let mut cleaned_samples = trim_silence(&initial_samples, 500);
+    cleaned_samples = noise_gate(&cleaned_samples, 600);
+    
+    // 2. Clone the cleaned (but NOT normalized) audio for Mood Detection
+    let raw_for_mood = cleaned_samples.clone();
+    
+    // 3. Normalize the audio for Vosk STT
+    normalize(&mut cleaned_samples);
 
     Ok(AudioData {
-        samples,
+        samples: cleaned_samples, // Loud version
+        raw_samples: raw_for_mood, // Quiet/Accurate version
         sample_rate: spec.sample_rate,
     })
 }
 
-fn preprocess_audio(mut samples: Vec<i16>) -> Vec<i16> {
-    samples = trim_silence(&samples, 500);
-    samples = noise_gate(&samples, 600);
-    normalize(&mut samples);
-    samples
-}
-
+// NOTE: I kept your helper functions exactly the same!
 fn trim_silence(samples: &[i16], threshold: i16) -> Vec<i16> {
     let start = samples
         .iter()

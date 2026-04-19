@@ -28,9 +28,12 @@ pub fn detect_mood(samples: &[i16]) -> (String, f32) {
     let energy = rms_energy(samples);
     let zcr = zero_crossing_rate(samples);
 
-    let mood = if energy < 500.0 && zcr < 0.05 {
+    // Adjusted thresholds now that we are using raw un-normalized audio
+    let mood = if energy < 800.0 && zcr < 0.06 {
+        // Very quiet volume, low frequency variation (monotone)
         "bored"
-    } else if energy > 2000.0 && zcr > 0.1 {
+    } else if energy > 1800.0 && zcr > 0.12 {
+        // High volume, high frequency variation (sharp sounds, yelling/laughing)
         "excited"
     } else {
         "neutral"
