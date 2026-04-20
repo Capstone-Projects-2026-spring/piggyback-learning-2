@@ -29,7 +29,7 @@ Download-If-Missing `
 # ── WeSpeaker ONNX ────────────────────────────────────────────────────────────
 Download-If-Missing `
     -Path  "$ModelDir\wespeaker.onnx" `
-    -Url   "https://huggingface.co/pyannote/wespeaker-voxceleb-resnet34-LM/resolve/main/wespeaker.onnx" `
+    -Url   "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/resolve/main/voxceleb_resnet34_LM.onnx" `
     -Label "wespeaker ONNX (~25MB)"
 
 # ── Emotion ONNX ──────────────────────────────────────────────────────────────

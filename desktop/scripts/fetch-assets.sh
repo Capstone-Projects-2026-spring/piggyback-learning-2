@@ -51,7 +51,7 @@ download_if_missing \
 # ── WeSpeaker ONNX ────────────────────────────────────────────────────────────
 download_if_missing \
     "$MODEL_DIR/wespeaker.onnx" \
-    "https://huggingface.co/pyannote/wespeaker-voxceleb-resnet34-LM/resolve/main/wespeaker.onnx" \
+    "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM/resolve/main/voxceleb_resnet34_LM.onnx" \
     "wespeaker ONNX (~25MB)"
 
 # ── Emotion ONNX ──────────────────────────────────────────────────────────────
