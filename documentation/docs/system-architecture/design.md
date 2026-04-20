@@ -105,7 +105,7 @@ CREATE TABLE watch_histories (
 **Class Diagram**
 ```mermaid
 classDiagram
-    %% Backend
+    %% Core Backend Models (Entities) 
     class User {
         <<Entity>>
         +i32 id
@@ -212,21 +212,21 @@ classDiagram
         +broadcast(WsMessage)
     }
 
-    %%  Relationships 
+    %% Relationships
     User <|-- Parent
     User <|-- Kid
-    Parent "1" *-- "many" Kid : manages
-    Kid "1" -- "many" VideoAssignment
-    Video "1" *-- "many" Segment : contains
-    Segment "1" *-- "many" Question : contains
-    Video "1" -- "many" Frame : has_extracted
-    VideoAssignment "1" -- "many" Answer : stores_as_json
+    Parent "1" -- "✱" Kid : manages
+    Kid "1" -- "✱" VideoAssignment
+    Video "1" -- "✱" Segment : contains
+    Segment "1" -- "✱" Question : contains
+    Video "1" -- "✱" Frame : has_extracted
+    VideoAssignment "1" -- "✱" Answer : stores_as_json
     
     %% Junctions
-    Kid "many" -- "many" Tag : kid_tags
-    Video "many" -- "many" Tag : video_tags
+    Kid "✱" -- "✱" Tag : kid_tags
+    Video "✱" -- "✱" Tag : video_tags
 
-    %% Logic
+    %% Logic Flow
     VideoController ..> Video : creates
     AnswerController ..> VideoAssignment : updates
     WS_Manager ..> Kid : streams_to
