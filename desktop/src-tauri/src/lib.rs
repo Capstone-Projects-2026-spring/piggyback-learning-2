@@ -1,3 +1,4 @@
+mod handlers;
 mod utils;
 
 use tauri::Manager;
