@@ -4,10 +4,12 @@ sidebar_position: 3
 
 # Acceptance Test
 
-### AT-AUTO-01: Homepage Loads Successfully
+### AT-01: Homepage Loads Successfully
 
-**Command Executed:**
-curl -i http://127.0.0.1:8000/
+**Actions Taken:**
+curl -i http://127.0.0.1:3000/
+OR
+visit http://localhost:3000/ in your favorite browser
 
 **Observed Result:**
 
@@ -21,63 +23,36 @@ curl -i http://127.0.0.1:8000/
 
 * * * * *
 
-### AT-AUTO-02: API Documentation Accessible
+### AT-02: Create an Account and Log In
 
-**Command Executed:**
-
-curl -i http://127.0.0.1:8000/api/docs/
+**Actions Taken:**
+- visit http://localhost:3000/
+- click "Sign up"
+- Create a new parent account
+- Sign into the account
 
 **Observed Result:**
 
--   HTTP/1.1 200 OK
-
--   Swagger UI documentation loaded successfully
+-   Account is created and able to be logged in to
 
 **Status:** PASS
 
 * * * * *
 
-### AT-AUTO-03: OpenAPI Schema Generated Successfully
 
-**Command Executed:**
+### AT-03: Mood Detection
 
-curl -i http://127.0.0.1:8000/api/schema/
+**Actions Taken:**
 
-**Observed Result:**
-
--   HTTP/1.1 200 OK
-
--   OpenAPI 3.0.3 schema returned
-
--   API endpoints listed correctly
-
-**Status:** PASS
-
-* * * * *
-
-### AT-AUTO-04: Protected Admin Route Requires Authentication
-
-**Command Executed:**
-
-curl -i http://127.0.0.1:8000/django-admin/
+- Begin watching a video with questions generated
+- Look away from the screen or leave the camera view. Video should pause
+- Do not answer a question or answer in a very low voice. Should be flagged as bored (will be able to check in video results).
+- Check the video results.
 
 **Observed Result:**
 
--   HTTP/1.1 302 Found
-
--   Redirected to `/django-admin/login/?next=/django-admin/`
-
--   Authentication enforced properly
+- Video pauses when looking away from screen.
+- Answer is flagged as "Bored" in the results screen
 
 **Status:** PASS
 
-## Manual Acceptance Confirmation
-
-The following tests were manually verified in a web browser.
-
-| Test ID | Description | Performed | Result | Observed Outcome |
-|---------|------------|-----------|--------|-----------------|
-| AT-01 | Homepage loads in browser | Yes | PASS | Page rendered successfully |
-| AT-02 | API documentation accessible | Yes | PASS | Swagger UI displayed |
-| AT-03 | OpenAPI schema accessible | Yes | PASS | Schema displayed |
-| AT-04 | Admin route redirects to login | Yes | PASS | Login page shown |
