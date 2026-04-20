@@ -28,51 +28,50 @@ pub fn parse_wav(bytes: &[u8]) -> Result<AudioData, String> {
         .filter_map(Result::ok)
         .collect();
 
-    // 1. Trim silence and noise gate FIRST
-    let mut cleaned_samples = trim_silence(&initial_samples, 500);
-    cleaned_samples = noise_gate(&cleaned_samples, 600);
+    // 1. Trim dead silence from the beginning and end
+    // LOWERED THRESHOLD: 200 cuts out dead static, but keeps quiet whispering!
+    let trimmed_samples = trim_silence(&initial_samples, 200);
     
-    // 2. Clone the cleaned (but NOT normalized) audio for Mood Detection
-    let raw_for_mood = cleaned_samples.clone();
+    // 2. Capture the pure audio for Mood Detection BEFORE the noise gate!
+    let raw_for_mood = trimmed_samples.clone();
     
-    // 3. Normalize the audio for Vosk STT
+    // 3. Apply noise gate and normalize for Vosk STT ONLY
+    let mut cleaned_samples = noise_gate(&trimmed_samples, 600);
     normalize(&mut cleaned_samples);
 
     Ok(AudioData {
-        samples: cleaned_samples, // Loud version
-        raw_samples: raw_for_mood, // Quiet/Accurate version
+        samples: cleaned_samples,
+        raw_samples: raw_for_mood,
         sample_rate: spec.sample_rate,
     })
 }
 
-// NOTE: I kept your helper functions exactly the same!
+// --- FIXED HELPER FUNCTIONS ---
+
 fn trim_silence(samples: &[i16], threshold: i16) -> Vec<i16> {
-    let start = samples
-        .iter()
-        .position(|x| x.abs() > threshold)
-        .unwrap_or(0);
+    // Cast to i32 before abs() to prevent i16::MIN overflow panics
+    let start = samples.iter().position(|&x| (x as i32).abs() > threshold as i32);
+    let end = samples.iter().rposition(|&x| (x as i32).abs() > threshold as i32);
 
-    let end = samples
-        .iter()
-        .rposition(|x| x.abs() > threshold)
-        .unwrap_or(samples.len());
-
-    if start >= end {
-        return vec![];
+    match (start, end) {
+        // THE FIX: Use ..= to make the slice inclusive of the final sample!
+        (Some(s), Some(e)) => samples[s..=e].to_vec(),
+        
+        // THE FIX: If the entire clip is below the threshold, don't delete it!
+        // Return it as-is so Vosk can still try to transcribe the whispering.
+        _ => samples.to_vec(), 
     }
-
-    samples[start..end].to_vec()
 }
 
 fn noise_gate(samples: &[i16], threshold: i16) -> Vec<i16> {
     samples
         .iter()
-        .map(|&s| if s.abs() < threshold { 0 } else { s })
+        .map(|&s| if (s as i32).abs() < threshold as i32 { 0 } else { s })
         .collect()
 }
 
 fn normalize(samples: &mut [i16]) {
-    let max = samples.iter().map(|x| x.abs()).max().unwrap_or(1) as f32;
+    let max = samples.iter().map(|&x| (x as i32).abs()).max().unwrap_or(1) as f32;
 
     if max == 0.0 {
         return;
@@ -80,7 +79,7 @@ fn normalize(samples: &mut [i16]) {
 
     let scale = i16::MAX as f32 / max;
 
-    for s in samples {
+    for s in samples.iter_mut() {
         *s = (*s as f32 * scale) as i16;
     }
 }

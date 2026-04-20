@@ -45,7 +45,7 @@ function downsampleBuffer(buffer, inputRate, outputRate) {
 
 const TARGET_SAMPLE_RATE = 16000;
 const RECORD_DELAY_MS = 3000;
-const RECORD_DURATION_MS = 5000;
+const RECORD_DURATION_MS = 3000;
 
 export function useAudioRecorder({ onStateChange, onStatusChange, onResult }) {
   const timeoutsRef = useRef([]);

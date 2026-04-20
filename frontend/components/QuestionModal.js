@@ -192,6 +192,34 @@ export default function QuestionModal({
               </div>
             )}
 
+            {/* --- NEW MOOD DEBUGGER PANEL --- */}
+            {/* {analysisResult && (
+              <div className="w-full mt-4 p-3 bg-gray-900 rounded-lg text-left font-mono text-xs text-green-400 shadow-inner">
+                <p className="font-bold text-white mb-2 border-b border-gray-700 pb-1">
+                  🔍 MOOD DEBUGGER
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-gray-500">Energy:</span>{" "}
+                    <span className={analysisResult.energy > 2000 ? "text-yellow-400 font-bold" : ""}>
+                      {Math.round(analysisResult.energy)}
+                    </span>
+                  </div> */}
+                  {/* Removed the ZCR div entirely */}
+                  {/* <div className="col-span-2 mt-1">
+                    <span className="text-gray-500">Result:</span>{" "}
+                    <span className={`uppercase font-bold ${
+                      analysisResult.mood === "excited" ? "text-green-500" : 
+                      analysisResult.mood === "bored" ? "text-red-500" : "text-gray-300"
+                    }`}>
+                      {analysisResult.mood}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )} */}
+            {/* ------------------------------- */}
+
             {isWrong && (
               <p className="text-xs text-gray-400 mt-1">
                 Replaying the segment…
