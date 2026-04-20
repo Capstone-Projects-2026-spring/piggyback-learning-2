@@ -105,7 +105,7 @@ CREATE TABLE watch_histories (
 **Class Diagram**
 ```mermaid
 classDiagram
-    %% Core Backend Models (Entities) 
+    direction LR
     class User {
         <<Entity>>
         +i32 id
@@ -188,7 +188,6 @@ classDiagram
         +String name
     }
 
-    %% Services & Controllers
     class VideoController {
         +download_and_store(video_id)
         +extract_frames(video_id)
@@ -212,24 +211,23 @@ classDiagram
         +broadcast(WsMessage)
     }
 
-    %% Relationships
     User <|-- Parent
     User <|-- Kid
     Parent "1" -- "✱" Kid : manages
-    Kid "1" -- "✱" VideoAssignment
+    
     Video "1" -- "✱" Segment : contains
     Segment "1" -- "✱" Question : contains
-    Video "1" -- "✱" Frame : has_extracted
-    VideoAssignment "1" -- "✱" Answer : stores_as_json
+    Video "1" -- "✱" Frame : has extracted
     
-    %% Junctions
-    Kid "✱" -- "✱" Tag : kid_tags
-    Video "✱" -- "✱" Tag : video_tags
+    Kid "1" -- "✱" VideoAssignment
+    VideoAssignment "1" -- "✱" Answer : stores as json
+    Kid "✱" -- "✱" Tag : kid tags
+    Video "✱" -- "✱" Tag : video tags
 
-    %% Logic Flow
     VideoController ..> Video : creates
     AnswerController ..> VideoAssignment : updates
-    WS_Manager ..> Kid : streams_to
+    WS_Manager ..> Kid : streams to
+    AuthController ..> User : authenticates
 ```
 
 ---
