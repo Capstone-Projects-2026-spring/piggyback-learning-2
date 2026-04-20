@@ -125,10 +125,15 @@ pub async fn analyze_answer(
 
     let audio =
         parse_wav(&audio_bytes).map_err(|e| Error::BadRequest(format!("Invalid audio: {}", e)))?;
+        
+    // 1. Give Vosk the LOUD, normalized audio so it can transcribe the words clearly
     let transcript =
         transcribe(&audio.samples).map_err(|e| Error::BadRequest(format!("STT failed: {}", e)))?;
+        
     let (is_correct, similarity_score) = compute_similarity(&transcript, &expected_answer);
-    let (mood, energy) = detect_mood(&audio.samples);
+    
+    // 2. Give the Mood Detector the RAW, un-altered audio so it can detect true volume whispers vs yells
+    let (mood, energy) = detect_mood(&audio.raw_samples);
 
     let answer = Answer {
         transcript: transcript.clone(),

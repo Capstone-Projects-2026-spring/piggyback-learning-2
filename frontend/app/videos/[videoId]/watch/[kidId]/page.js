@@ -100,19 +100,22 @@ const threeSecondShownRef = useRef(false);
     const segs = segmentsRef.current;
     const idx = segmentIndexRef.current;
     if (!playerRef.current || idx >= segs.length) return;
+    
     sixSecondShownRef.current = false;
-  threeSecondShownRef.current = false;
+    threeSecondShownRef.current = false;
 
-  setPiggyMode("talk");
-  setPiggyText("Let’s try that part again 👀");
+    setPiggyMode("talk");
+    setPiggyText("Let’s try that part again 👀");
 
-  setTimeout(() => {
-    setPiggyMode("watch");
-    setPiggyText("Let’s watch carefully 👀");
-  }, 2000);
+    setTimeout(() => {
+      setPiggyMode("watch");
+      setPiggyText("Let’s watch carefully 👀");
+    }, 2000);
 
+    // No locks or timeouts needed anymore, just tell it to seek and play!
     playerRef.current.seekTo(segs[idx].start_seconds ?? 0, true);
     playerRef.current.playVideo();
+
   }, [segmentsRef]);
 
   const handleResult = useCallback(

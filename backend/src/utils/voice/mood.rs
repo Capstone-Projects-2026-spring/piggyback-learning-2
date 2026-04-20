@@ -8,29 +8,13 @@ pub fn rms_energy(samples: &[i16]) -> f32 {
     (sum / samples.len() as f32).sqrt()
 }
 
-pub fn zero_crossing_rate(samples: &[i16]) -> f32 {
-    if samples.len() < 2 {
-        return 0.0;
-    }
-
-    let mut crossings = 0;
-
-    for i in 1..samples.len() {
-        if (samples[i - 1] >= 0 && samples[i] < 0) || (samples[i - 1] < 0 && samples[i] >= 0) {
-            crossings += 1;
-        }
-    }
-
-    crossings as f32 / samples.len() as f32
-}
-
 pub fn detect_mood(samples: &[i16]) -> (String, f32) {
     let energy = rms_energy(samples);
-    let zcr = zero_crossing_rate(samples);
 
-    let mood = if energy < 500.0 && zcr < 0.05 {
+    // Using ONLY energy thresholds now
+    let mood = if energy < 2500.0 {
         "bored"
-    } else if energy > 2000.0 && zcr > 0.1 {
+    } else if energy > 4500.0 {
         "excited"
     } else {
         "neutral"
