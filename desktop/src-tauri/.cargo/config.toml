@@ -1,0 +1,13 @@
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "linker=clang", "-C", "link-arg=-fuse-ld=lld"]
+
+# Tells the vosk crate's build.rs where to find vosk_api.h and libvosk
+# at compile time. These point at our bundled copies in src-tauri/lib/.
+
+[env]
+VOSK_INCLUDE_PATH = { value = "lib",        relative = true }
+VOSK_LIB_PATH     = { value = "lib",        relative = true }
+
+# Prevents the vosk crate from trying to download or locate a system-level
+# libvosk — we always use our own bundled copy.
+VOSK_STATIC = { value = "0" }   # dynamic linking — we ship the .so/.dylib/.dll
