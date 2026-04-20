@@ -1,30 +1,24 @@
 use std::path::PathBuf;
 use std::sync::OnceLock;
-use vosk::Model;
+use whisper_rs::{WhisperContext, WhisperContextParameters};
 
-static VOSK_MODEL: OnceLock<Model> = OnceLock::new();
+static WHISPER_CTX: OnceLock<WhisperContext> = OnceLock::new();
 
-/// Call once at app startup with the resolved bundled lgraph model path.
-/// Panics on failure — Peppa cannot function without a working ASR model.
-pub fn init_model(model_path: PathBuf) {
-    VOSK_MODEL.get_or_init(|| {
-        let path_str = model_path
+pub fn init_whisper(model_path: PathBuf) {
+    WHISPER_CTX.get_or_init(|| {
+        let path = model_path
             .to_str()
-            .expect("Vosk lgraph model path must be valid UTF-8");
+            .expect("[Peppa] whisper model path must be valid UTF-8");
 
-        println!("[Peppa] Loading Vosk lgraph model from: {path_str}");
+        eprintln!("[state] loading whisper model from: {path}");
 
-        Model::new(path_str).unwrap_or_else(|| {
-            panic!(
-                "[Peppa] Failed to load Vosk lgraph model from '{path_str}'.\n\
-                 Did you run scripts/fetch-assets.sh (or .ps1)?"
-            )
-        })
+        WhisperContext::new_with_params(path, WhisperContextParameters::default())
+            .unwrap_or_else(|e| panic!("[Peppa] failed to load whisper model: {e}"))
     });
 }
 
-pub fn get_model() -> &'static Model {
-    VOSK_MODEL
+pub fn get_whisper() -> &'static WhisperContext {
+    WHISPER_CTX
         .get()
-        .expect("[Peppa] Vosk model not initialised — call init_model() at startup")
+        .expect("[Peppa] whisper model not initialised — call init_whisper() at startup")
 }
