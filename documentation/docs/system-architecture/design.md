@@ -103,9 +103,134 @@ CREATE TABLE watch_histories (
 ## Piggyback Learning API
 
 **Class Diagram**
-I think we should forgo a class diagram for the api for now:
-- It’s written in python therefore has no classes
-- It’s already developed / difficult to decipher
+```mermaid
+classDiagram
+    %% Backend
+    class User {
+        <<Entity>>
+        +i32 id
+        +String username
+        +String password_hash
+        +DateTime created_at
+    }
+
+    class Parent {
+        <<Entity>>
+        +String name
+        +get_kids(parent_id)
+    }
+
+    class Kid {
+        <<Entity>>
+        +i32 parent_id
+        +String name
+        +get_recommendations()
+        +get_kid_tags()
+    }
+
+    class Video {
+        <<Entity>>
+        +String id (Youtube ID)
+        +String title
+        +String thumbnail_url
+        +i32 duration_seconds
+        +String local_video_path
+    }
+
+    class Segment {
+        <<Entity>>
+        +i32 id
+        +String video_id
+        +i32 start_seconds
+        +i32 end_seconds
+        +String best_question
+    }
+
+    class Question {
+        <<Entity>>
+        +i32 id
+        +i32 segment_id
+        +String qtype
+        +String question
+        +String answer
+        +i32 rank
+    }
+
+    class Frame {
+        <<Entity>>
+        +String video_id
+        +i32 frame_number
+        +i32 timestamp_seconds
+        +String timestamp_formatted
+        +String file_path
+    }
+
+    class VideoAssignment {
+        <<Entity>>
+        +i32 kid_id
+        +String video_id
+        +JsonValue answers (List of Answer)
+    }
+
+    class Answer {
+        <<Struct>>
+        +String transcript
+        +bool is_correct
+        +f32 similarity_score
+        +String mood
+        +f32 energy
+        +i32 segment_id
+    }
+
+    class Tag {
+        <<Entity>>
+        +i32 id
+        +String name
+    }
+
+    %% Services & Controllers
+    class VideoController {
+        +download_and_store(video_id)
+        +extract_frames(video_id)
+        +add_video_tags(video_id, tags)
+    }
+
+    class AuthController {
+        +signup(SignupData)
+        +login(LoginData)
+        +generate_jwt(id)
+    }
+
+    class AnswerController {
+        +analyze_answer(audio, expected)
+        +get_answers(kid_id, video_id)
+    }
+
+    class WS_Manager {
+        +AppState users_map
+        +handle_socket(stream, username)
+        +broadcast(WsMessage)
+    }
+
+    %%  Relationships 
+    User <|-- Parent
+    User <|-- Kid
+    Parent "1" *-- "many" Kid : manages
+    Kid "1" -- "many" VideoAssignment
+    Video "1" *-- "many" Segment : contains
+    Segment "1" *-- "many" Question : contains
+    Video "1" -- "many" Frame : has_extracted
+    VideoAssignment "1" -- "many" Answer : stores_as_json
+    
+    %% Junctions
+    Kid "many" -- "many" Tag : kid_tags
+    Video "many" -- "many" Tag : video_tags
+
+    %% Logic
+    VideoController ..> Video : creates
+    AnswerController ..> VideoAssignment : updates
+    WS_Manager ..> Kid : streams_to
+```
 
 ---
 
