@@ -17,7 +17,7 @@ graph TD
         direction TB
         Auth["Auth & Permissions"]
         Video_P["Video Processor (FFmpeg)"]
-        AI["AI (Gemini)"]
+        AI["AI (OPENAI)"]
         Vosk["Speech Recognition And Transcription (Vosk)"]
         Quiz["Quiz Logic"]
     end
@@ -30,7 +30,7 @@ graph TD
 
     subgraph External ["External APIs"]
         YT["YouTube API"]
-        G_API["Gemini API"]
+        OPENAI_API["OpenAI API"]
     end
 
     UI --> API
@@ -51,7 +51,7 @@ graph TD
     Assets --- FS
 
     Video_P --- YT
-    AI --- G_API
+    AI --- OPENAI_API
 
     Quiz --- AI
     Vosk --- AI
