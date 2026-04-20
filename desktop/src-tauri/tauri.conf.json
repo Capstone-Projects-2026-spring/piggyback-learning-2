@@ -30,6 +30,15 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "externalBin": ["binaries/yt-dlp", "binaries/ffmpeg"],
+    "resources": {
+      "models/vosk-lgraph-model/**/*": "models/vosk-lgraph-model/",
+      "models/mood/emotion-ferplus-8.onnx": "models/mood/emotion-ferplus-8.onnx",
+      "lib/libvosk.so": "lib/libvosk.so",
+      "lib/libvosk.dylib": "lib/libvosk.dylib",
+      "lib/libvosk.dll": "lib/libvosk.dll",
+      "lib/vosk_api.h": "lib/vosk_api.h"
+    }
   }
 }
