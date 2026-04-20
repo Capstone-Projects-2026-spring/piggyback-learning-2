@@ -16,7 +16,7 @@ graph TB
     subgraph Logic_Layer ["Backend (Loco.rs / Rust)"]
         Auth_Service["Auth & Permissions"]
         Video_Proc["Video Processor (yt-dlp / FFmpeg)"]
-        AI_Orch["AI Orchestrator (Gemini 2.5 Flash)"]
+        AI["AI (Gemini 2.5 Flash)"]
         Speech_Logic["Speech Transcription (Vosk)"]
         Quiz_Engine["Quiz Logic & Fallback"]
     end
@@ -38,18 +38,18 @@ graph TB
     
     REST --- Auth_Service
     REST --- Video_Proc
-    REST --- AI_Orch
+    REST --- AI
     
     Video_Proc --- YouTube
     Video_Proc --- FileSystem
-    AI_Orch --- Gemini_API
+    AI --- Gemini_API
     
     Speech_Logic --- FileSystem
-    Quiz_Engine --- AI_Orch
+    Quiz_Engine --- AI
     
     Auth_Service --- DB
     Video_Proc --- DB
-    AI_Orch --- DB
+    AI --- DB
     
     Static --- FileSystem
     Media_Player <--- Static
