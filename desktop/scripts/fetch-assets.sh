@@ -118,35 +118,52 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# libvosk
+# libvosk — download ALL platforms so tauri.conf.json stays static
 # ---------------------------------------------------------------------------
-if [ "$OS" = "Linux" ]; then
-  LIBVOSK_DEST="$TAURI_DIR/lib/libvosk.so"
-elif [ "$OS" = "Darwin" ]; then
-  LIBVOSK_DEST="$TAURI_DIR/lib/libvosk.dylib"
+echo "==> Fetching libvosk ${LIBVOSK_VER} (all platforms)..."
+
+# Linux
+if check_file "$TAURI_DIR/lib/libvosk.so"; then
+  echo "   [skip] libvosk.so already present"
+else
+  curl -fSL "https://github.com/alphacep/vosk-api/releases/download/v${LIBVOSK_VER}/vosk-linux-x86_64-${LIBVOSK_VER}.zip" \
+    -o /tmp/libvosk-linux.zip
+  unzip -o /tmp/libvosk-linux.zip -d /tmp/libvosk-linux
+  VDIR=$(find /tmp/libvosk-linux -name "libvosk.so" | head -1 | xargs dirname)
+  cp "$VDIR/libvosk.so"  "$TAURI_DIR/lib/libvosk.so"
+  cp "$VDIR/vosk_api.h"  "$TAURI_DIR/lib/vosk_api.h"
+  rm -rf /tmp/libvosk-linux.zip /tmp/libvosk-linux
+  echo "   libvosk.so done."
 fi
 
-if check_file "$LIBVOSK_DEST" && check_file "$TAURI_DIR/lib/vosk_api.h"; then
-  echo "==> [skip] libvosk already present"
+# macOS
+if check_file "$TAURI_DIR/lib/libvosk.dylib"; then
+  echo "   [skip] libvosk.dylib already present"
 else
-  echo "==> Fetching libvosk ${LIBVOSK_VER}..."
-  if [ "$OS" = "Linux" ]; then
-    curl -fSL "https://github.com/alphacep/vosk-api/releases/download/v${LIBVOSK_VER}/vosk-linux-x86_64-${LIBVOSK_VER}.zip" \
-      -o /tmp/libvosk.zip
-    unzip -o /tmp/libvosk.zip -d /tmp/libvosk-extracted
-    VDIR=$(find /tmp/libvosk-extracted -maxdepth 2 -name "libvosk.so" | head -1 | xargs dirname)
-    cp "$VDIR/libvosk.so"  "$TAURI_DIR/lib/libvosk.so"
-    cp "$VDIR/vosk_api.h"  "$TAURI_DIR/lib/vosk_api.h"
-  elif [ "$OS" = "Darwin" ]; then
-    curl -fSL "https://github.com/alphacep/vosk-api/releases/download/v${LIBVOSK_VER}/vosk-osx-${LIBVOSK_VER}.zip" \
-      -o /tmp/libvosk.zip
-    unzip -o /tmp/libvosk.zip -d /tmp/libvosk-extracted
-    VDIR=$(find /tmp/libvosk-extracted -maxdepth 2 -name "libvosk.dylib" | head -1 | xargs dirname)
-    cp "$VDIR/libvosk.dylib" "$TAURI_DIR/lib/libvosk.dylib"
-    cp "$VDIR/vosk_api.h"    "$TAURI_DIR/lib/vosk_api.h"
+  curl -fSL "https://github.com/alphacep/vosk-api/releases/download/v${LIBVOSK_VER}/vosk-osx-${LIBVOSK_VER}.zip" \
+    -o /tmp/libvosk-osx.zip
+  unzip -o /tmp/libvosk-osx.zip -d /tmp/libvosk-osx
+  VDIR=$(find /tmp/libvosk-osx -name "libvosk.dylib" | head -1 | xargs dirname)
+  cp "$VDIR/libvosk.dylib" "$TAURI_DIR/lib/libvosk.dylib"
+  # vosk_api.h is identical across platforms, only copy if not already there
+  if ! check_file "$TAURI_DIR/lib/vosk_api.h"; then
+    cp "$VDIR/vosk_api.h" "$TAURI_DIR/lib/vosk_api.h"
   fi
-  rm -rf /tmp/libvosk.zip /tmp/libvosk-extracted
-  echo "   Done."
+  rm -rf /tmp/libvosk-osx.zip /tmp/libvosk-osx
+  echo "   libvosk.dylib done."
+fi
+
+# Windows
+if check_file "$TAURI_DIR/lib/libvosk.dll"; then
+  echo "   [skip] libvosk.dll already present"
+else
+  curl -fSL "https://github.com/alphacep/vosk-api/releases/download/v${LIBVOSK_VER}/vosk-win64-${LIBVOSK_VER}.zip" \
+    -o /tmp/libvosk-win.zip
+  unzip -o /tmp/libvosk-win.zip -d /tmp/libvosk-win
+  VDIR=$(find /tmp/libvosk-win -name "libvosk.dll" | head -1 | xargs dirname)
+  cp "$VDIR/libvosk.dll" "$TAURI_DIR/lib/libvosk.dll"
+  rm -rf /tmp/libvosk-win.zip /tmp/libvosk-win
+  echo "   libvosk.dll done."
 fi
 
 # ---------------------------------------------------------------------------

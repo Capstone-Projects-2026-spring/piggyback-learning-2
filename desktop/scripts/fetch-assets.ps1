@@ -114,24 +114,60 @@ if (Test-NonEmptyDir "$TauriDir\models\vosk-lgraph-model") {
 }
 
 # ---------------------------------------------------------------------------
-# libvosk — Windows DLL
+# libvosk — download ALL platforms so tauri.conf.json stays static
 # ---------------------------------------------------------------------------
-if ((Test-NonEmptyFile "$TauriDir\lib\libvosk.dll") -and (Test-NonEmptyFile "$TauriDir\lib\vosk_api.h")) {
-    Write-Host "==> [skip] libvosk already present"
+Write-Host "==> Fetching libvosk $LIBVOSK_VER (all platforms)..."
+
+# Linux
+if (Test-NonEmptyFile "$TauriDir\lib\libvosk.so") {
+    Write-Host "   [skip] libvosk.so already present"
 } else {
-    Write-Host "==> Fetching libvosk $LIBVOSK_VER (Windows)..."
+    $zip     = "$env:TEMP\libvosk-linux.zip"
+    $extract = "$env:TEMP\libvosk-linux"
+    Invoke-WebRequest `
+        -Uri "https://github.com/alphacep/vosk-api/releases/download/v$LIBVOSK_VER/vosk-linux-x86_64-$LIBVOSK_VER.zip" `
+        -OutFile $zip
+    Expand-Archive -Path $zip -DestinationPath $extract -Force
+    $so = Get-ChildItem -Path $extract -Recurse -Filter "libvosk.so" | Select-Object -First 1
+    $h  = Get-ChildItem -Path $extract -Recurse -Filter "vosk_api.h"  | Select-Object -First 1
+    Copy-Item $so.FullName "$TauriDir\lib\libvosk.so"
+    if (-not (Test-NonEmptyFile "$TauriDir\lib\vosk_api.h")) {
+        Copy-Item $h.FullName "$TauriDir\lib\vosk_api.h"
+    }
+    Remove-Item $zip, $extract -Recurse -Force
+    Write-Host "   libvosk.so done."
+}
+
+# macOS
+if (Test-NonEmptyFile "$TauriDir\lib\libvosk.dylib") {
+    Write-Host "   [skip] libvosk.dylib already present"
+} else {
+    $zip     = "$env:TEMP\libvosk-osx.zip"
+    $extract = "$env:TEMP\libvosk-osx"
+    Invoke-WebRequest `
+        -Uri "https://github.com/alphacep/vosk-api/releases/download/v$LIBVOSK_VER/vosk-osx-$LIBVOSK_VER.zip" `
+        -OutFile $zip
+    Expand-Archive -Path $zip -DestinationPath $extract -Force
+    $dylib = Get-ChildItem -Path $extract -Recurse -Filter "libvosk.dylib" | Select-Object -First 1
+    Copy-Item $dylib.FullName "$TauriDir\lib\libvosk.dylib"
+    Remove-Item $zip, $extract -Recurse -Force
+    Write-Host "   libvosk.dylib done."
+}
+
+# Windows
+if (Test-NonEmptyFile "$TauriDir\lib\libvosk.dll") {
+    Write-Host "   [skip] libvosk.dll already present"
+} else {
     $zip     = "$env:TEMP\libvosk-win.zip"
-    $extract = "$env:TEMP\libvosk-win-extracted"
+    $extract = "$env:TEMP\libvosk-win"
     Invoke-WebRequest `
         -Uri "https://github.com/alphacep/vosk-api/releases/download/v$LIBVOSK_VER/vosk-win64-$LIBVOSK_VER.zip" `
         -OutFile $zip
     Expand-Archive -Path $zip -DestinationPath $extract -Force
     $dll = Get-ChildItem -Path $extract -Recurse -Filter "libvosk.dll" | Select-Object -First 1
-    $h   = Get-ChildItem -Path $extract -Recurse -Filter "vosk_api.h"   | Select-Object -First 1
     Copy-Item $dll.FullName "$TauriDir\lib\libvosk.dll"
-    Copy-Item $h.FullName   "$TauriDir\lib\vosk_api.h"
     Remove-Item $zip, $extract -Recurse -Force
-    Write-Host "   Done."
+    Write-Host "   libvosk.dll done."
 }
 
 # ---------------------------------------------------------------------------
