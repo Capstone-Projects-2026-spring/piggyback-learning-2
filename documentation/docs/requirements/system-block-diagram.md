@@ -26,7 +26,7 @@ graph TB
         FileSystem["Local File System (Videos, Frames, JSON)"]
     end
 
-    subgraph External_Services ["External Integrations"]
+    subgraph External_Services ["External Services"]
         YouTube["YouTube Content"]
         Gemini_API["Gemini AI (Question Gen)"]
     end
