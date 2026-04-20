@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 use whisper_rs::{FullParams, SamplingStrategy};
 
+use crate::utils::voice::dispatcher;
 use crate::utils::voice::{
     audio_processor, command_resolver, speaker, state::get_whisper, wake_word,
 };
@@ -135,7 +136,15 @@ pub fn start(app: AppHandle) -> Result<CaptureHandle, String> {
         );
 
         let command = if wake.wake_detected {
-            Some(command_resolver::resolve(&wake.command_text))
+            let resolved = command_resolver::resolve(&wake.command_text);
+
+            // fire and forget — doesn't block the audio loop
+            let resolved_clone = resolved.clone();
+            tauri::async_runtime::spawn(async move {
+                dispatcher::dispatch(resolved_clone).await;
+            });
+
+            Some(resolved)
         } else {
             None
         };
