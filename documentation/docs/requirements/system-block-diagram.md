@@ -3,25 +3,48 @@ sidebar_position: 2
 ---
 
 # System Block Diagram
-```mermaid
-    flowchart TD
-        Admin["Admin User Browser"]
-        Admin --> ARouter["Admin Router <br/> (admin_routes)"]
-        ARouter --> ATubeDownload["Youtube Downloader <br/>(yt-dlp)"]
-        ATubeDownload --> AFrameExtractor["Frame Extractor <br/>OpenCV to extracted_frames/(JPEG, CSV,JSON)"]
-        AFrameExtractor --> AQuestGen["Question Generator <br/> OpenAI WebSocket"]
-        AQuestGen --> AVidSave["Save to <br/> Database <br/> Video files, meta.json, subtitles "]
-        AVidSave --> AQuestSave["Save questions to Database <br/> in questions/"]
-
-        Expert["Expert User Browser"]
-        Expert --> EEndpoints["Expert Endpoints <br/> /expert-preview, /api/tts"]
-        EEndpoints --> EQuestLoad[" Load questions from Database <br/> questions/ "]
-        EQuestLoad --> ESaveEditQuest["Save expert edited questions to Database <br/> /api/expert-annotations, expert_questions/"]
-        ESaveEditQuest --> ESaveFinal["Finalize and save questions to Database <br/> /api/save-final-questions, final_questions/ "]
-
-        Child["Child User Browser"]
-        Child --> CVidRouter["Video Quiz Router <br/> video_quiz_routes.py"]
-        CVidRouter --> CLoadQuest["Load final questions from Database <br/> final_questions/"]
-        CLoadQuest --> CVidQuiz["Play video with quiz <br/> Whisper TTS"]
-        CVidQuiz --> CAnswer["Answer Submission and Grading<br/> Whisper speech‑to‑text"]
+graph TB
+    subgraph Client_Layer ["Frontend (Next.js / React)"]
+        UI["User Interface (App Router)"]
+        WS_Client["WebSocket Hook (Real-time Progress)"]
+        Media_Player["Video Player & Mascot Overlay"]
+        Recorder["Audio Recorder (Vosk Integration)"]
+    end
+    subgraph API_Gateway ["Communication Layer"]
+        REST["REST API (HTTP)"]
+        WS_Server["WebSockets (Axum)"]
+        Static["Static Asset Server"]
+    end
+    subgraph Logic_Layer ["Backend (Loco.rs / Rust)"]
+        Auth_Service["Auth & Permissions"]
+        Video_Proc["Video Processor (yt-dlp / FFmpeg)"]
+        AI_Orch["AI Orchestrator (Gemini 2.5 Flash)"]
+        Speech_Logic["Speech Transcription (Vosk)"]
+        Quiz_Engine["Quiz Logic & Fallback"]
+    end
+    subgraph Data_Layer ["Persistence & Storage"]
+        DB[(SQLite / SeaORM)]
+        FileSystem["Local File System (Videos, Frames, JSON)"]
+    end
+    subgraph External_Services ["External Integrations"]
+        YouTube["YouTube Content"]
+        Gemini_API["Gemini AI (Question Gen)"]
+    end
+    %% Connections
+    UI <--> REST
+    WS_Client <--> WS_Server
+    UI --- Media_Player
+    REST --- Auth_Service
+    REST --- Video_Proc
+    REST --- AI_Orch
+    Video_Proc --- YouTube
+    Video_Proc --- FileSystem
+    AI_Orch --- Gemini_API
+    Speech_Logic --- FileSystem
+    Quiz_Engine --- AI_Orch
+    Auth_Service --- DB
+    Video_Proc --- DB
+    AI_Orch --- DB
+    Static --- FileSystem
+    Media_Player <--- Static
         
