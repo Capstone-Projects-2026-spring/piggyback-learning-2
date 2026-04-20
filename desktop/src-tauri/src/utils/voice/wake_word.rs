@@ -1,31 +1,65 @@
 use serde::Serialize;
 
-/// Phonetic variants Vosk might produce for "hey peppa"
 const WAKE_PHRASES: &[&str] = &[
+    // canonical
     "hey peppa",
     "hey pepper",
-    "a peppa",
+    "hi peppa",
+    "hi pepper",
+    "hello peppa",
+    "hello pepper",
+    // without hey/hi
     "peppa",
-    "hey pepa",
+    "pepper",
+    // mishearings
+    "hey papa",
+    "hey pappa",
+    "a peppa",
     "a pepper",
+    "hey paper",
+    "hi paper",
+    "hello paper",
+    "paper",
+    "papa",
+    "peper",
+    "pepa",
+    "hepa",
 ];
 
 #[derive(Debug, Serialize)]
 pub struct WakeWordResult {
-    /// Whether the wake word was detected in this transcript
     pub wake_detected: bool,
-    /// Everything after the wake word — empty string if wake word only
     pub command_text: String,
 }
 
-/// Check a transcript for the wake word and strip it out.
-/// Returns the command text that follows (may be empty).
-pub fn detect(transcript: &str) -> WakeWordResult {
-    let normalized = transcript.trim().to_lowercase();
+/// Strip punctuation and normalize whitespace
+fn sanitize(text: &str) -> String {
+    text.chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == ' ' {
+                c
+            } else {
+                ' '
+            }
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
 
-    for phrase in WAKE_PHRASES {
+pub fn detect(transcript: &str) -> WakeWordResult {
+    let normalized = sanitize(&transcript.trim().to_lowercase());
+
+    // Try longest phrases first so "hey peppa do x" doesn't match just "peppa"
+    // and leave "hey " as part of command_text
+    let mut phrases_sorted = WAKE_PHRASES.to_vec();
+    phrases_sorted.sort_by_key(|p| std::cmp::Reverse(p.len()));
+
+    for phrase in &phrases_sorted {
         if let Some(pos) = normalized.find(phrase) {
-            let after = normalized[pos + phrase.len()..].trim().to_string();
+            let after = sanitize(normalized[pos + phrase.len()..].trim());
+            eprintln!("[wake] matched '{phrase}' → command='{after}'");
             return WakeWordResult {
                 wake_detected: true,
                 command_text: after,
@@ -33,6 +67,23 @@ pub fn detect(transcript: &str) -> WakeWordResult {
         }
     }
 
+    // Secondary check — fuzzy: does the transcript contain any wake-word token?
+    // Catches cases like "okay peppa" or "yeah pepper stop"
+    let tokens: Vec<&str> = normalized.split_whitespace().collect();
+    const WAKE_TOKENS: &[&str] = &["peppa", "pepper", "pepa", "peper", "hepa", "paper", "papa"];
+    for (i, token) in tokens.iter().enumerate() {
+        if WAKE_TOKENS.contains(token) {
+            // everything after this token is the command
+            let after = sanitize(&tokens[i + 1..].join(" "));
+            eprintln!("[wake] fuzzy match on token '{token}' → command='{after}'");
+            return WakeWordResult {
+                wake_detected: true,
+                command_text: after,
+            };
+        }
+    }
+
+    eprintln!("[wake] no wake word in: '{normalized}'");
     WakeWordResult {
         wake_detected: false,
         command_text: String::new(),
