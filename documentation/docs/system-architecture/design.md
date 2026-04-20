@@ -249,7 +249,7 @@ classDiagram
 ### AI Integration
 - Question Generation: Processes video metadata, transcripts/subtitles, and extracted frames to generate questions using AI.
 - Answer Validation: Grades user responses (both text and transcribed audio) against expected answers. 
-- Gemini 2.5 Flash is integrated for question generation
+- OpenAI is integrated for question generation
 
 ### Speech Processing
 - Speech Recognition: Uses Vosk for transcribing children's audio responses without an internet connection, and to comply with COPPA and other similar laws.
