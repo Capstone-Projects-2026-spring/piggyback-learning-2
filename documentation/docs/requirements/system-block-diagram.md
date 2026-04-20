@@ -1,56 +1,57 @@
 ```mermaid
-graph TB
-    subgraph Client_Layer ["Frontend (Next.js / React)"]
+graph TD
+    subgraph Frontend ["Frontend (Next.js)"]
+        direction LR
         UI["User Interface (App Router)"]
-        WS_Client["WebSocket Hook (Real-time Progress)"]
-        Media_Player["Video Player & Mascot Overlay"]
-        Recorder["Audio Recorder (Vosk Integration)"]
+        WSH["WS Hook (Progress)"]
+        AV["Video Player & Mascot"]
+    end
+    subgraph Comm ["Communications"]
+        direction LR
+        API["REST API (Axum)"]
+        WSS["WebSockets (Axum)"]
+        Assets["Static Assets Server"]
     end
 
-    subgraph API_Gateway ["Communication Layer"]
-        REST["REST API (HTTP)"]
-        WS_Server["WebSockets (Axum)"]
-        Static["Static Asset Server"]
+    subgraph Backend ["Backend (Rust)"]
+        direction TB
+        Auth["Auth & Permissions"]
+        Video_P["Video Processor (FFmpeg)"]
+        AI["AI (Gemini)"]
+        Vosk["Speech Recognition And Transcription (Vosk)"]
+        Quiz["Quiz Logic"]
     end
 
-    subgraph Logic_Layer ["Backend (Loco.rs / Rust)"]
-        Auth_Service["Auth & Permissions"]
-        Video_Proc["Video Processor (yt-dlp / FFmpeg)"]
-        AI["AI (Gemini 2.5 Flash)"]
-        Speech_Logic["Speech Transcription (Vosk)"]
-        Quiz_Engine["Quiz Logic & Fallback"]
-    end
-
-    subgraph Data_Layer ["Persistence & Storage"]
+    subgraph Storage ["Data"]
+        direction LR
         DB[(SQLite / SeaORM)]
-        FileSystem["Local File System (Videos, Frames, JSON)"]
+        FS["Local File System"]
     end
 
-    subgraph External_Services ["External Services"]
-        YouTube["YouTube Content"]
-        Gemini_API["Gemini AI (Question Gen)"]
+    subgraph External ["External APIs"]
+        YT["YouTube API"]
+        G_API["Gemini API"]
     end
 
-    %% Connections
-    UI <--> REST
-    WS_Client <--> WS_Server
-    UI --- Media_Player
-    
-    REST --- Auth_Service
-    REST --- Video_Proc
-    REST --- AI
-    
-    Video_Proc --- YouTube
-    Video_Proc --- FileSystem
-    AI --- Gemini_API
-    
-    Speech_Logic --- FileSystem
-    Quiz_Engine --- AI
-    
-    Auth_Service --- DB
-    Video_Proc --- DB
+    UI --> API
+    WSH --- WSS
+    AV <--- Assets
+
+    API --- Auth
+    API --- AI
+    API --- Video_P
+    API --- Vosk
+    WSS --- Video_P
+
+    Auth --- DB
+    Video_P --- FS
     AI --- DB
-    
-    Static --- FileSystem
-    Media_Player <--- Static
-        
+    AI --- FS
+    Vosk --- FS
+    Assets --- FS
+
+    Video_P --- YT
+    AI --- G_API
+
+    Quiz --- AI
+    Vosk --- AI
