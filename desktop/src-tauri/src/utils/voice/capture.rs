@@ -5,6 +5,7 @@ use tauri::{AppHandle, Emitter};
 use whisper_rs::{FullParams, SamplingStrategy};
 
 use crate::utils::voice::dispatcher;
+use crate::utils::voice::session::SharedSession;
 use crate::utils::voice::{
     audio_processor, command_resolver, speaker, state::get_whisper, wake_word,
 };
@@ -16,7 +17,7 @@ pub struct CaptureHandle {
     _stream: cpal::Stream,
 }
 
-pub fn start(app: AppHandle) -> Result<CaptureHandle, String> {
+pub fn start(app: AppHandle, session: SharedSession) -> Result<CaptureHandle, String> {
     let host = cpal::default_host();
 
     let device = host
@@ -107,7 +108,7 @@ pub fn start(app: AppHandle) -> Result<CaptureHandle, String> {
                     transcript: String::new(),
                     wake_detected: false,
                     command: None,
-                    speaker_match: None,
+                    speaker_identified: None,
                 },
             );
             continue;
@@ -123,47 +124,69 @@ pub fn start(app: AppHandle) -> Result<CaptureHandle, String> {
                     transcript,
                     wake_detected: false,
                     command: None,
-                    speaker_match: None,
+                    speaker_identified: None,
                 },
             );
             continue;
         }
 
         let wake = wake_word::detect(&transcript);
-        eprintln!(
-            "[capture] wake={} cmd={:?}",
-            wake.wake_detected, wake.command_text
-        );
+        eprintln!("[capture] wake={}", wake.wake_detected);
 
-        let command = if wake.wake_detected {
-            let resolved = command_resolver::resolve(&wake.command_text);
-
-            // fire and forget — doesn't block the audio loop
-            let resolved_clone = resolved.clone();
-            tauri::async_runtime::spawn(async move {
-                dispatcher::dispatch(resolved_clone).await;
+        if wake.wake_detected {
+            // Wake word = identify who is speaking, fill session, nothing else
+            let emb = speaker::extract_embedding(&resampled);
+            let speaker_name = emb.as_ref().map(|e| {
+                eprintln!(
+                    "[capture] wake detected — identifying speaker (dim={})",
+                    e.len()
+                );
+                e.clone()
             });
 
-            Some(resolved)
+            if let Some(emb) = emb {
+                let session_clone = session.clone();
+                tauri::async_runtime::spawn(async move {
+                    speaker::identify_speaker(&emb, &session_clone).await;
+                });
+            }
+
+            emit(
+                &app_flush,
+                VoiceEvent {
+                    transcript,
+                    wake_detected: true,
+                    command: None,
+                    speaker_identified: speaker_name,
+                },
+            );
         } else {
-            None
-        };
+            // No wake word — try to match a command directly from transcript
+            let resolved = command_resolver::resolve(&transcript);
 
-        // Speaker embedding — non-blocking, returns None if model not loaded
-        let speaker_match = speaker::extract_embedding(&resampled).map(|emb| {
-            eprintln!("[capture] speaker embedding dim={}", emb.len());
-            emb
-        });
+            let command = if resolved.intent != "chat" && resolved.intent != "wake_only" {
+                // Only dispatch if we actually matched something meaningful
+                let resolved_clone = resolved.clone();
+                let session_clone = session.clone();
+                tauri::async_runtime::spawn(async move {
+                    dispatcher::dispatch(resolved_clone, session_clone).await;
+                });
+                Some(resolved)
+            } else {
+                eprintln!("[capture] no command matched — passive listen");
+                None
+            };
 
-        emit(
-            &app_flush,
-            VoiceEvent {
-                transcript,
-                wake_detected: wake.wake_detected,
-                command,
-                speaker_match,
-            },
-        );
+            emit(
+                &app_flush,
+                VoiceEvent {
+                    transcript,
+                    wake_detected: false,
+                    command,
+                    speaker_identified: None,
+                },
+            );
+        }
     });
 
     Ok(CaptureHandle { _stream: stream })
@@ -232,8 +255,8 @@ pub struct VoiceEvent {
     pub transcript: String,
     pub wake_detected: bool,
     pub command: Option<crate::utils::voice::command_resolver::ResolvedCommand>,
-    /// Raw speaker embedding — JS side compares against stored profile
-    pub speaker_match: Option<Vec<f32>>,
+    /// Raw embedding sent to frontend when wake word fires — JS can display who was identified
+    pub speaker_identified: Option<Vec<f32>>,
 }
 
 fn emit(app: &AppHandle, event: VoiceEvent) {

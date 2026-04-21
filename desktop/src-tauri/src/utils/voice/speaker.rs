@@ -1,3 +1,6 @@
+use crate::db::init::get_db;
+use crate::utils::voice::session::SharedSession;
+
 use ndarray::Array2;
 use ort::session::{builder::GraphOptimizationLevel, Session};
 use ort::value::Tensor;
@@ -37,18 +40,90 @@ pub fn extract_embedding(samples: &[f32]) -> Option<Vec<f32>> {
     Some(embedding)
 }
 
-pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
-    if a.len() != b.len() || a.is_empty() {
-        return 0.0;
+const MATCH_THRESHOLD: f32 = 0.75;
+
+pub async fn identify_speaker(embedding: &[f32], session: &SharedSession) {
+    let pool = get_db();
+
+    let rows = match sqlx::query_as::<_, (i64, String, String, Option<i64>, Option<Vec<u8>>)>(
+        "SELECT id, name, role, parent_id, voice_embedding FROM users WHERE voice_embedding IS NOT NULL"
+    )
+    .fetch_all(pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("[speaker] db query failed: {e}");
+            return;
+        }
+    };
+
+    let mut best_id: Option<i64> = None;
+    let mut best_name = String::new();
+    let mut best_role = String::new();
+    let mut best_parent: Option<i64> = None;
+    let mut best_score = 0.0_f32;
+
+    for (id, name, role, parent_id, blob) in rows {
+        let Some(blob) = blob else { continue };
+
+        let stored: Vec<f32> = blob
+            .chunks_exact(4)
+            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .collect();
+
+        let score = cosine_similarity(embedding, &stored);
+        eprintln!("[speaker] user_id={id} score={score:.3}");
+
+        if score > best_score {
+            best_score = score;
+            best_id = Some(id);
+            best_name = name;
+            best_role = role;
+            best_parent = parent_id;
+        }
     }
-    let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
-    let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
-    let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
-    if norm_a == 0.0 || norm_b == 0.0 {
-        0.0
+
+    if best_score >= MATCH_THRESHOLD {
+        if let Some(id) = best_id {
+            session.lock().unwrap().set_user(
+                id as i32,
+                best_name,
+                best_role,
+                best_parent.map(|p| p as i32),
+            );
+        }
     } else {
-        dot / (norm_a * norm_b)
+        eprintln!("[speaker] no match above threshold ({best_score:.3}) — session unchanged");
     }
 }
 
-pub const SPEAKER_THRESHOLD: f32 = 0.75;
+pub async fn enroll_speaker(user_id: i32, embedding: &[f32]) -> Result<(), String> {
+    let pool = get_db();
+
+    let blob: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+
+    sqlx::query("UPDATE users SET voice_embedding = ? WHERE id = ?")
+        .bind(blob)
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("[speaker] enroll failed: {e}"))?;
+
+    eprintln!("[speaker] enrolled embedding for user_id={user_id}");
+    Ok(())
+}
+
+fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    if a.len() != b.len() {
+        return 0.0;
+    }
+    let dot: f32 = a.iter().zip(b).map(|(x, y)| x * y).sum();
+    let na: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+    let nb: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+    if na == 0.0 || nb == 0.0 {
+        0.0
+    } else {
+        dot / (na * nb)
+    }
+}

@@ -1,56 +1,60 @@
-use crate::handlers;
-
 use super::command_resolver::ResolvedCommand;
+use crate::handlers;
+use crate::utils::voice::session::SharedSession;
 
-pub async fn dispatch(resolved: ResolvedCommand) {
+pub async fn dispatch(resolved: ResolvedCommand, session: SharedSession) {
     let args = &resolved.args;
-    println!("[dispatch] intent={} args={args:?}", resolved.intent);
+    eprintln!("[dispatch] intent={} args={args:?}", resolved.intent);
+
+    // Guard — don't run commands if no user is identified yet
+    if !session.lock().unwrap().is_identified() {
+        eprintln!(
+            "[dispatch] no user identified — ignoring intent '{}'",
+            resolved.intent
+        );
+        return;
+    }
 
     match resolved.intent.as_str() {
-        // ── existing ──────────────────────────────────────────────
-        "open" => println!("[dispatch] open — args={args:?}"),
-        "close" => println!("[dispatch] close — args={args:?}"),
-        "play" => println!("[dispatch] play — args={args:?}"),
-        "stop" => println!("[dispatch] stop"),
-        "search" => println!("[dispatch] search — args={args:?}"),
-        "volume" => println!("[dispatch] volume — args={args:?}"),
-        "help" => println!("[dispatch] help"),
-        "chat" => println!("[dispatch] chat — args={args:?}"),
-        "wake_only" => println!("[dispatch] wake only, no command"),
-
-        // ── auth ──────────────────────────────────────────────────
-        "login" => handlers::auth::login(args).await,
-        "signup" => handlers::auth::signup(args).await,
+        "open" => eprintln!("[dispatch] open — args={args:?}"),
+        "close" => eprintln!("[dispatch] close — args={args:?}"),
+        "play" => eprintln!("[dispatch] play — args={args:?}"),
+        "stop" => eprintln!("[dispatch] stop"),
+        "search" => eprintln!("[dispatch] search — args={args:?}"),
+        "volume" => eprintln!("[dispatch] volume — args={args:?}"),
+        "help" => eprintln!("[dispatch] help"),
+        "chat" => eprintln!("[dispatch] chat — args={args:?}"),
+        "wake_only" => eprintln!("[dispatch] wake only"),
 
         // ── answers ───────────────────────────────────────────────
-        "submit_answer" => handlers::answers::analyze_answer(args).await,
-        "my_answers" => handlers::answers::get_answers(args).await,
+        "submit_answer" => handlers::answers::analyze_answer(args, &session).await,
+        "my_answers" => handlers::answers::get_answers(args, &session).await,
 
         // ── kids ──────────────────────────────────────────────────
-        "my_tags" => handlers::kids::get_tags(args).await,
-        "add_tag" => handlers::kids::add_tags(args).await,
-        "my_videos" => handlers::kids::get_video_assignments(args).await,
-        "assign_video" => handlers::kids::assign_video(args).await,
-        "recommendations" => handlers::kids::get_recommendations(args).await,
+        "my_tags" => handlers::kids::get_tags(args, &session).await,
+        "add_tag" => handlers::kids::add_tags(args, &session).await,
+        "my_videos" => handlers::kids::get_video_assignments(args, &session).await,
+        "assign_video" => handlers::kids::assign_video(args, &session).await,
+        "recommendations" => handlers::kids::get_recommendations(args, &session).await,
 
         // ── parents ───────────────────────────────────────────────
-        "my_kids" => handlers::parents::get_kids(args).await,
+        "my_kids" => handlers::parents::get_kids(args, &session).await,
 
         // ── videos ────────────────────────────────────────────────
-        "download_video" => handlers::videos::download(args).await,
-        "video_tags" => handlers::videos::get_tags(args).await,
+        "download_video" => handlers::videos::download(args, &session).await,
+        "video_tags" => handlers::videos::get_tags(args, &session).await,
 
         // ── questions ─────────────────────────────────────────────
-        "get_questions" => handlers::questions::get_by_video(args).await,
-        "generate_questions" => handlers::questions::generate(args).await,
+        "get_questions" => handlers::questions::get_by_video(args, &session).await,
+        "generate_questions" => handlers::questions::generate(args, &session).await,
 
         // ── tags ──────────────────────────────────────────────────
-        "all_tags" => handlers::tags::get_all(args).await,
-        "create_tag" => handlers::tags::create(args).await,
+        "all_tags" => handlers::tags::get_all(args, &session).await,
+        "create_tag" => handlers::tags::create(args, &session).await,
 
         // ── frames ────────────────────────────────────────────────
-        "extract_frames" => handlers::frames::extract(args).await,
+        "extract_frames" => handlers::frames::extract(args, &session).await,
 
-        other => println!("[dispatch] unknown intent '{other}', ignoring"),
+        other => eprintln!("[dispatch] unknown intent '{other}'"),
     }
 }
