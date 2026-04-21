@@ -24,24 +24,24 @@ pub fn run() {
                 eprintln!("[Peppa] wespeaker.onnx not found, speaker ID disabled");
             }
 
-            let is_first_run = tauri::async_runtime::block_on(async {
+            tauri::async_runtime::block_on(async {
                 match db::init::init_db().await {
-                    Ok(info) => {
-                        eprintln!("[app] db ready at {}", info.db_path.display());
-                        info.is_first_run
-                    }
-                    Err(e) => {
-                        eprintln!("[app] db init failed: {e}");
-                        false
-                    }
+                    Ok(info) => eprintln!("[app] db ready at {}", info.db_path.display()),
+                    Err(e) => eprintln!("[app] db init failed: {e}"),
                 }
             });
 
             let session = session::new_session();
             let onboarding = onboarding::new_onboarding();
 
-            if is_first_run {
+            let needs_onboarding =
+                tauri::async_runtime::block_on(async { !db::init::has_parent_account().await });
+
+            if needs_onboarding {
+                eprintln!("[app] no parent account found — starting onboarding");
                 onboarding::start(app.handle(), &onboarding);
+            } else {
+                eprintln!("[app] parent account exists — skipping onboarding");
             }
 
             let handle = capture::start(app.handle().clone(), session, onboarding)

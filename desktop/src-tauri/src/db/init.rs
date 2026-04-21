@@ -75,3 +75,18 @@ pub async fn init_db() -> Result<FirstRunInfo, String> {
         db_path,
     })
 }
+
+pub async fn has_parent_account() -> bool {
+    let pool = get_db();
+    let row = sqlx::query_as::<_, (i64,)>("SELECT COUNT(*) FROM users WHERE role = 'parent'")
+        .fetch_one(pool)
+        .await;
+
+    match row {
+        Ok((count,)) => count > 0,
+        Err(e) => {
+            eprintln!("[db] has_parent_account query failed: {e}");
+            false
+        }
+    }
+}
