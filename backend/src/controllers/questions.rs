@@ -7,11 +7,20 @@ use utoipa::ToSchema;
 use crate::models::_entities::{questions, segments};
 
 #[derive(Serialize, ToSchema)]
+pub struct FollowUp {
+    pub question: String,
+    pub answer: String,
+}
+
+#[derive(Serialize, ToSchema)]
 pub struct QuestionItem {
     pub qtype: String,
     pub question: String,
     pub answer: String,
     pub rank: Option<i32>,
+    pub followup_enabled: Option<bool>,
+    pub followup_for_correct_answer: Option<FollowUp>,
+    pub followup_for_wrong_answer: Option<FollowUp>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -72,6 +81,24 @@ async fn get_questions_by_video(
             question: q.question,
             answer: q.answer,
             rank: q.rank,
+            // followup_enabled: q.followup_enabled.unwrap_or(false),
+            // followup_for_correct_answer: q.followup_for_correct_answer.map(|f| FollowUp {
+            //     question: f.question,
+            //     answer: f.answer,
+            // }),
+            // followup_for_wrong_answer: q.followup_for_wrong_answer.map(|f| FollowUp {
+            //     question: f.question,
+            //     answer: f.answer,
+            // }),
+            followup_enabled: Some(true),
+            followup_for_correct_answer: Some(FollowUp {
+                question: "Bob question".to_string(),
+                answer: "Bob answer".to_string(),
+            }),
+            followup_for_wrong_answer: Some(FollowUp {
+                question: "Tom question".to_string(),
+                answer: "Tom answer".to_string(),
+            }),
         });
     }
 
