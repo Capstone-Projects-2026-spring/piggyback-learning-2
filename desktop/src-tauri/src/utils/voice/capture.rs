@@ -323,7 +323,6 @@ fn handle_onboarding_audio(
                                 id,
                                 name.clone(),
                                 "parent".to_string(),
-                                None,
                             );
                             emit_enrollment(
                                 &app_clone,

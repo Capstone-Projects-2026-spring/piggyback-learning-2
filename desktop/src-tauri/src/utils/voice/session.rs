@@ -4,8 +4,7 @@ use std::sync::{Arc, Mutex};
 pub struct SessionContext {
     pub user_id: Option<i32>,
     pub user_name: Option<String>,
-    pub role: Option<String>,   // "parent" | "kid"
-    pub parent_id: Option<i32>, // set if role == "kid"
+    pub role: Option<String>, // "parent" | "kid"
     pub current_video: Option<String>,
     pub current_segment: Option<i32>,
     pub expected_answer: Option<String>,
@@ -17,11 +16,10 @@ impl SessionContext {
         self.user_id.is_some()
     }
 
-    pub fn set_user(&mut self, id: i32, name: String, role: String, parent_id: Option<i32>) {
+    pub fn set_user(&mut self, id: i32, name: String, role: String) {
         self.user_id = Some(id);
         self.user_name = Some(name);
         self.role = Some(role);
-        self.parent_id = parent_id;
         eprintln!("[session] identified as user_id={id}");
     }
 
@@ -30,7 +28,6 @@ impl SessionContext {
         self.user_id = None;
         self.user_name = None;
         self.role = None;
-        self.parent_id = None;
     }
 }
 
