@@ -3,7 +3,12 @@ mod handlers;
 mod utils;
 
 use tauri::Manager;
-use utils::voice::{capture, intent_classifier, onboarding, session, speaker, state::init_whisper};
+use utils::voice::{
+    capture, intent_classifier,
+    onboarding::{self, OnboardingFlow},
+    session, speaker,
+    state::init_whisper,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -24,7 +29,6 @@ pub fn run() {
                 eprintln!("[Peppa] wespeaker.onnx not found, speaker ID disabled");
             }
 
-            // Loads in background thread — keyword fallback used until ready
             intent_classifier::init_classifier();
 
             tauri::async_runtime::block_on(async {
@@ -46,7 +50,7 @@ pub fn run() {
                 tauri::async_runtime::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                     eprintln!("[app] emitting onboarding start");
-                    onboarding::start(&app_handle, &onboarding_clone);
+                    onboarding::start(&app_handle, &onboarding_clone, OnboardingFlow::Parent);
                 });
             } else {
                 eprintln!("[app] parent account exists — skipping onboarding");
@@ -54,8 +58,8 @@ pub fn run() {
 
             let handle = capture::start(app.handle().clone(), session, onboarding)
                 .unwrap_or_else(|e| panic!("[Peppa] audio capture failed: {e}"));
-            Box::leak(Box::new(handle));
 
+            Box::leak(Box::new(handle));
             Ok(())
         })
         .run(tauri::generate_context!())

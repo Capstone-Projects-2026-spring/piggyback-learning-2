@@ -4,9 +4,9 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 use whisper_rs::{FullParams, SamplingStrategy};
 
-use super::enrollment::{create_parent, emit_enrollment, EnrollmentEvent};
+use super::enrollment::{create_user, emit_enrollment, EnrollmentEvent};
 use super::onboarding::{
-    average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
+    average_embeddings, begin_voice_collection, record_embedding, OnboardingFlow, OnboardingStage,
 };
 use super::vad::VadChunker;
 use crate::utils::voice::{
@@ -95,7 +95,6 @@ pub fn start(
         let mut chunker = VadChunker::new();
 
         loop {
-            // Poll every 30ms — matches VAD frame size
             std::thread::sleep(std::time::Duration::from_millis(30));
 
             let raw: Vec<f32> = {
@@ -107,10 +106,8 @@ pub fn start(
                 continue;
             }
 
-            // Resample to 16kHz for VAD + Whisper
             let resampled = resample(raw, native_rate, TARGET_RATE);
 
-            // Feed VAD — only proceed when a full utterance is detected
             let Some(chunk) = chunker.push(&resampled) else {
                 continue;
             };
@@ -148,10 +145,7 @@ pub fn start(
 
             if wake.wake_detected {
                 let emb = speaker::extract_embedding(&chunk);
-                let speaker_identified = emb.as_ref().map(|e| {
-                    eprintln!("[capture] identifying speaker (dim={})", e.len());
-                    e.clone()
-                });
+                let speaker_identified = emb.as_ref().map(|e| e.clone());
 
                 if let Some(emb) = emb {
                     let session_clone = session.clone();
@@ -174,8 +168,10 @@ pub fn start(
                 let command = if resolved.intent != "chat" && resolved.intent != "wake_only" {
                     let rc = resolved.clone();
                     let sc = session.clone();
+                    let oc = onboarding.clone();
+                    let ac = app_flush.clone();
                     tauri::async_runtime::spawn(async move {
-                        dispatcher::dispatch(rc, sc).await;
+                        dispatcher::dispatch(ac, rc, sc, oc).await;
                     });
                     Some(resolved)
                 } else {
@@ -309,7 +305,8 @@ fn handle_onboarding_audio(
 
             if done {
                 let o = onboarding.lock().unwrap();
-                let name = o.parent_name.clone().unwrap_or("Parent".to_string());
+                let name = o.name.clone().unwrap_or("User".to_string());
+                let role = o.flow.role().to_string();
                 let avg = average_embeddings(&o.embeddings);
                 drop(o);
 
@@ -317,29 +314,46 @@ fn handle_onboarding_audio(
                 let session_clone = session.clone();
 
                 tauri::async_runtime::spawn(async move {
-                    match create_parent(name.clone(), avg).await {
+                    match create_user(name.clone(), avg, &role).await {
                         Ok(id) => {
-                            session_clone.lock().unwrap().set_user(
-                                id,
-                                name.clone(),
-                                "parent".to_string(),
-                            );
+                            // Only populate session for parent — kid enrollment is
+                            // initiated by an already-identified parent so we leave
+                            // the session as-is after kid creation.
+                            if role == "parent" {
+                                session_clone.lock().unwrap().set_user(
+                                    id,
+                                    name.clone(),
+                                    role.clone(),
+                                );
+                            }
                             emit_enrollment(
                                 &app_clone,
                                 EnrollmentEvent {
-                                    stage: "done".to_string(),
-                                    message: format!(
-                                        "You're all set, {name}! \
-                                     Say 'hey Peppa' whenever you need me!"
-                                    ),
+                                    stage: if role == "parent" {
+                                        "done".to_string()
+                                    } else {
+                                        "kid_done".to_string()
+                                    },
+                                    message: if role == "parent" {
+                                        format!(
+                                            "You're all set, {name}! \
+                                             Say 'hey Peppa' whenever you need me!"
+                                        )
+                                    } else {
+                                        format!(
+                                            "You're all set, {name}! \
+                                             Say 'hey Peppa' whenever you want to learn something!"
+                                        )
+                                    },
                                     prompt_index: 0,
                                     total_prompts: 0,
                                     prompts: vec![],
+                                    flow: role.clone(),
                                 },
                             );
                         }
                         Err(e) => {
-                            eprintln!("[onboarding] create_parent failed: {e}");
+                            eprintln!("[onboarding] create_user failed: {e}");
                             emit_enrollment(
                                 &app_clone,
                                 EnrollmentEvent {
@@ -348,6 +362,7 @@ fn handle_onboarding_audio(
                                     prompt_index: 0,
                                     total_prompts: 0,
                                     prompts: vec![],
+                                    flow: role,
                                 },
                             );
                         }

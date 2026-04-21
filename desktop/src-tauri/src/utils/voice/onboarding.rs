@@ -16,19 +16,12 @@ const REJECTED_TRANSCRIPTS: &[&str] = &[
 ];
 
 fn clean_transcript(text: &str) -> String {
-    // Remove parenthetical noise like "(clicking)", "(music)"
     let mut result = String::new();
     let mut depth = 0usize;
     for c in text.chars() {
         match c {
-            '(' => depth += 1,
-            ')' => {
-                if depth > 0 {
-                    depth -= 1;
-                }
-            }
-            '[' => depth += 1,
-            ']' => {
+            '(' | '[' => depth += 1,
+            ')' | ']' => {
                 if depth > 0 {
                     depth -= 1;
                 }
@@ -37,7 +30,6 @@ fn clean_transcript(text: &str) -> String {
             _ => {}
         }
     }
-    // Strip remaining punctuation, normalize whitespace
     result
         .chars()
         .map(|c| {
@@ -86,6 +78,35 @@ fn capitalise_words(text: &str) -> String {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum OnboardingFlow {
+    Parent,
+    Kid,
+}
+
+impl OnboardingFlow {
+    pub fn role(&self) -> &'static str {
+        match self {
+            OnboardingFlow::Parent => "parent",
+            OnboardingFlow::Kid => "kid",
+        }
+    }
+
+    fn flow_name(&self) -> &'static str {
+        match self {
+            OnboardingFlow::Parent => "parent",
+            OnboardingFlow::Kid => "kid",
+        }
+    }
+
+    fn stage(&self, event: &str) -> String {
+        match self {
+            OnboardingFlow::Parent => event.to_string(),
+            OnboardingFlow::Kid => format!("kid_{event}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum OnboardingStage {
     Idle,
     WaitingForName,
@@ -96,7 +117,8 @@ pub enum OnboardingStage {
 #[derive(Debug, Clone)]
 pub struct OnboardingState {
     pub stage: OnboardingStage,
-    pub parent_name: Option<String>,
+    pub flow: OnboardingFlow,
+    pub name: Option<String>,
     pub embeddings: Vec<Vec<f32>>,
 }
 
@@ -104,7 +126,8 @@ impl OnboardingState {
     pub fn new() -> Self {
         Self {
             stage: OnboardingStage::Idle,
-            parent_name: None,
+            flow: OnboardingFlow::Parent,
+            name: None,
             embeddings: Vec::new(),
         }
     }
@@ -120,32 +143,45 @@ pub fn new_onboarding() -> SharedOnboarding {
     Arc::new(Mutex::new(OnboardingState::new()))
 }
 
-pub fn start(app: &AppHandle, onboarding: &SharedOnboarding) {
+pub fn start(app: &AppHandle, onboarding: &SharedOnboarding, flow: OnboardingFlow) {
     {
         let mut o = onboarding.lock().unwrap();
+        *o = OnboardingState::new();
+        o.flow = flow;
         o.stage = OnboardingStage::WaitingForName;
     }
+
+    let o = onboarding.lock().unwrap();
+    let message = match o.flow {
+        OnboardingFlow::Parent => {
+            "Hi there! I'm Peppa, your learning buddy. Let's get started — what's your name?"
+                .to_string()
+        }
+        OnboardingFlow::Kid => {
+            "Hi! Let's set up a new kid account. Kid, what's your name?".to_string()
+        }
+    };
 
     emit_enrollment(
         app,
         EnrollmentEvent {
-            stage: "greet".to_string(),
-            message:
-                "Hi there! I'm Peppa, your learning buddy. Let's get started — what's your name?"
-                    .to_string(),
+            stage: o.flow.stage("greet"),
+            message,
             prompt_index: 0,
             total_prompts: ENROLLMENT_PROMPTS.len(),
             prompts: ENROLLMENT_PROMPTS.iter().map(|s| s.to_string()).collect(),
+            flow: o.flow.flow_name().to_string(),
         },
     );
 
-    eprintln!("[onboarding] started — waiting for name");
+    eprintln!(
+        "[onboarding] started — flow={} waiting for name",
+        o.flow.role()
+    );
 }
 
-/// Validates and accepts the transcript as a name. Returns true if accepted.
 pub fn try_set_name(app: &AppHandle, onboarding: &SharedOnboarding, transcript: &str) -> bool {
     let cleaned = clean_transcript(transcript);
-
     if !is_valid_name(&cleaned) {
         eprintln!("[onboarding] rejected name: '{transcript}' → cleaned='{cleaned}'");
         return false;
@@ -154,19 +190,29 @@ pub fn try_set_name(app: &AppHandle, onboarding: &SharedOnboarding, transcript: 
     let name = capitalise_words(&cleaned);
     eprintln!("[onboarding] accepted name: '{name}'");
 
-    onboarding.lock().unwrap().parent_name = Some(name.clone());
+    let mut o = onboarding.lock().unwrap();
+    o.name = Some(name.clone());
+
+    let message = match o.flow {
+        OnboardingFlow::Parent => format!(
+            "Nice to meet you, {name}! Now I need to learn your voice so I can recognise you. \
+             Read each sentence below out loud clearly."
+        ),
+        OnboardingFlow::Kid => format!(
+            "Great, {name}! Now I need to learn your voice. \
+             Read each sentence below out loud clearly."
+        ),
+    };
 
     emit_enrollment(
         app,
         EnrollmentEvent {
-            stage: "name_confirmed".to_string(),
-            message: format!(
-                "Nice to meet you, {name}! Now I need to learn your voice so I can recognise you. \
-             Read each sentence below out loud clearly."
-            ),
+            stage: o.flow.stage("name_confirmed"),
+            message,
             prompt_index: 0,
             total_prompts: ENROLLMENT_PROMPTS.len(),
             prompts: ENROLLMENT_PROMPTS.iter().map(|s| s.to_string()).collect(),
+            flow: o.flow.flow_name().to_string(),
         },
     );
 
@@ -174,26 +220,25 @@ pub fn try_set_name(app: &AppHandle, onboarding: &SharedOnboarding, transcript: 
 }
 
 pub fn begin_voice_collection(app: &AppHandle, onboarding: &SharedOnboarding) {
-    {
-        let mut o = onboarding.lock().unwrap();
-        o.stage = OnboardingStage::CollectingVoice { prompt_index: 0 };
-    }
+    let mut o = onboarding.lock().unwrap();
+    o.stage = OnboardingStage::CollectingVoice { prompt_index: 0 };
 
     emit_enrollment(
         app,
         EnrollmentEvent {
-            stage: "prompt".to_string(),
+            stage: o.flow.stage("prompt"),
             message: format!("Read this sentence: \"{}\"", ENROLLMENT_PROMPTS[0]),
             prompt_index: 0,
             total_prompts: ENROLLMENT_PROMPTS.len(),
             prompts: ENROLLMENT_PROMPTS.iter().map(|s| s.to_string()).collect(),
+            flow: o.flow.flow_name().to_string(),
         },
     );
 
     eprintln!("[onboarding] voice collection started — prompt 0");
 }
 
-/// Returns true when all prompts are collected
+/// Returns true when all prompts are collected.
 pub fn record_embedding(
     app: &AppHandle,
     onboarding: &SharedOnboarding,
@@ -219,11 +264,12 @@ pub fn record_embedding(
     emit_enrollment(
         app,
         EnrollmentEvent {
-            stage: "prompt".to_string(),
+            stage: o.flow.stage("prompt"),
             message: format!("Read this sentence: \"{}\"", ENROLLMENT_PROMPTS[next]),
             prompt_index: next,
             total_prompts: ENROLLMENT_PROMPTS.len(),
             prompts: ENROLLMENT_PROMPTS.iter().map(|s| s.to_string()).collect(),
+            flow: o.flow.flow_name().to_string(),
         },
     );
 
