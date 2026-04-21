@@ -63,7 +63,7 @@ sequenceDiagram
 _As a parent I want to detect if my child is paying attention to the video, so that I can keep them on track._
 
 1. The child starts watching an assigned video.
-2. The eye tracker monitors the child's gaze (locally).
+2. The eye tracker monitors the child's eyes (locally).
 3. If the kid's eyes wander for a few seconds, the system will consider the kid distracted
 4. The application automatically pauses the video and displays a prompt for the kid to focus.
 5. The application sends a notification to the Parent.
