@@ -5,24 +5,34 @@ import { startPeppa, commandBus } from "./lib/stt/index.js";
 
 export default function App() {
   const [mode, setMode] = useState("loading");
+  const [kidEnrolling, setKidEnrolling] = useState(false);
 
   useEffect(() => {
-    // Register BEFORE startPeppa so we never miss an event
     const off = commandBus.onEnrollment((data) => {
-      console.log("[App] enrollment stage:", data.stage, data);
-      if (data.stage === "done") {
-        setMode("ready");
-      } else {
-        setMode("enrolling");
+      console.log("[App] enrollment event:", data.stage, "flow:", data.flow);
+
+      if (data.flow === "parent") {
+        if (data.stage === "done") {
+          setMode("ready");
+        } else {
+          setMode("enrolling");
+        }
+      }
+
+      if (data.flow === "kid") {
+        if (data.stage === "kid_done") {
+          // Brief delay so the done state is visible before dismissing
+          setTimeout(() => setKidEnrolling(false), 3000);
+        } else {
+          setKidEnrolling(true);
+        }
       }
     });
 
-    // Give the listener a tick to register, then start
     setTimeout(() => {
       startPeppa().catch(console.error);
     }, 100);
 
-    // Fall back to ready after 6s if no enrollment event ever arrives
     const fallback = setTimeout(() => {
       setMode((m) => (m === "loading" ? "ready" : m));
     }, 6000);
@@ -42,8 +52,17 @@ export default function App() {
   }
 
   if (mode === "enrolling") {
-    return <EnrollmentOverlay onDone={() => setMode("ready")} />;
+    return <EnrollmentOverlay flow="parent" onDone={() => setMode("ready")} />;
   }
 
-  return <PeppaOrb />;
+  return (
+    <>
+      <PeppaOrb />
+      {kidEnrolling && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm">
+          <EnrollmentOverlay flow="kid" onDone={() => setKidEnrolling(false)} />
+        </div>
+      )}
+    </>
+  );
 }

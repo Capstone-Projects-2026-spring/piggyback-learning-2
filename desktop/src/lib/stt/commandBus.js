@@ -28,8 +28,10 @@ class CommandBus {
 
   onEnrollment(handler) {
     this.#enrollmentListeners.add(handler);
-    // Replay last event immediately if it arrived before this subscriber registered
-    if (this.#lastEnrollmentEvent) {
+    // Only replay parent enrollment events — those can arrive before the
+    // subscriber registers. Kid enrollment is triggered while the app is
+    // already in "ready" mode so the overlay is mounted first.
+    if (this.#lastEnrollmentEvent?.flow === "parent") {
       try {
         handler(this.#lastEnrollmentEvent);
       } catch (e) {
@@ -80,6 +82,7 @@ class CommandBus {
   }
 
   dispatchEnrollment(data) {
+    // Always cache — but onEnrollment() only replays parent flow events
     this.#lastEnrollmentEvent = data;
     console.info("[Peppa Bus] enrollment ←", data);
     this.#enrollmentListeners.forEach((h) => {

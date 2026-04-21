@@ -2,13 +2,48 @@ import { useEffect, useState, useRef } from "react";
 import { commandBus } from "../lib/stt/commandBus.js";
 import peppaPng from "../assets/peppa.png";
 
-export default function EnrollmentOverlay({ onDone }) {
+// Stage strings coming from Rust per flow:
+// parent: greet | name_confirmed | prompt | done | error
+// kid:    kid_greet | kid_name_confirmed | kid_prompt | kid_done | error
+function normaliseStage(stage) {
+  return stage.replace(/^kid_/, "");
+}
+
+const THEME = {
+  parent: {
+    bg: "from-pink-50 to-white",
+    pill: "bg-pink-100 border-pink-200 text-pink-500",
+    orb: {
+      greet: "ring-pink-100",
+      name_confirmed: "ring-pink-200",
+      prompt: "ring-blue-200",
+      done: "ring-green-300",
+    },
+    listening: "text-gray-400",
+    dot: "bg-pink-400",
+  },
+  kid: {
+    bg: "from-violet-50 to-white",
+    pill: "bg-violet-100 border-violet-200 text-violet-500",
+    orb: {
+      greet: "ring-violet-100",
+      name_confirmed: "ring-violet-200",
+      prompt: "ring-blue-200",
+      done: "ring-green-300",
+    },
+    listening: "text-gray-400",
+    dot: "bg-violet-400",
+  },
+};
+
+export default function EnrollmentOverlay({ flow = "parent", onDone }) {
   const [stage, setStage] = useState("greet");
   const [message, setMessage] = useState("");
   const [prompts, setPrompts] = useState([]);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [parentName, setParentName] = useState("");
+  const [userName, setUserName] = useState("");
   const spokenRef = useRef(false);
+  const theme = THEME[flow] ?? THEME.parent;
 
   const speak = (text) => {
     if (!text || spokenRef.current) return;
@@ -25,37 +60,53 @@ export default function EnrollmentOverlay({ onDone }) {
 
   useEffect(() => {
     const off = commandBus.onEnrollment((data) => {
-      setStage(data.stage);
+      // Only handle events for our flow
+      if (data.flow !== flow) return;
+
+      const normalised = normaliseStage(data.stage);
+      setStage(normalised);
       setMessage(data.message);
       if (data.prompts?.length) setPrompts(data.prompts);
       setActiveIdx(data.prompt_index ?? 0);
 
-      if (data.stage === "greet") {
+      if (normalised === "greet") {
         speak(data.message);
-      } else if (data.stage === "name_confirmed") {
+      } else if (normalised === "name_confirmed") {
         const match = data.message.match(/you,\s+([^!]+)!/);
-        if (match) setParentName(match[1].trim());
+        if (match) setUserName(match[1].trim());
         speak(data.message);
-      } else if (data.stage === "prompt") {
+      } else if (normalised === "prompt") {
         const phrase = data.prompts?.[data.prompt_index];
         speak(phrase ? `Read this: ${phrase}` : data.message);
-      } else if (data.stage === "done") {
-        speak("You're all set! I'll recognise your voice from now on.");
+      } else if (normalised === "done") {
+        speak(data.message);
         setTimeout(() => onDone?.(), 3000);
       } else {
         speak(data.message);
       }
     });
     return off;
-  }, [onDone]);
+  }, [flow, onDone]);
 
   const completedCount =
     stage === "prompt" ? activeIdx : stage === "done" ? prompts.length : 0;
 
-  // Startup placeholder before first event arrives
+  const pillLabel = () => {
+    if (stage === "greet")
+      return flow === "kid" ? "new kid setup" : "getting started";
+    if (stage === "name_confirmed") return `hey, ${userName || "there"}!`;
+    if (stage === "prompt")
+      return `voice setup — ${completedCount} of ${prompts.length} done`;
+    if (stage === "done") return "all set!";
+    if (stage === "error") return "something went wrong";
+    return "";
+  };
+
   if (!message) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-pink-50 to-white select-none">
+      <div
+        className={`flex flex-col items-center justify-center min-h-screen bg-gradient-to-b ${theme.bg} select-none`}
+      >
         <img
           src={peppaPng}
           alt="Peppa"
@@ -67,20 +118,21 @@ export default function EnrollmentOverlay({ onDone }) {
     );
   }
 
+  const orbRing = theme.orb[stage] ?? "";
+
   return (
-    <div className="flex flex-col items-center min-h-screen bg-gradient-to-b from-pink-50 to-white select-none px-6 py-12">
+    <div
+      className={`flex flex-col items-center min-h-screen bg-gradient-to-b ${theme.bg} select-none px-6 py-12`}
+    >
       {/* Peppa orb */}
       <div
         className={`rounded-full transition-all duration-500 ${
-          stage === "prompt"
-            ? "ring-4 ring-blue-200 ring-offset-4 animate-pulse"
-            : stage === "done"
-              ? "ring-4 ring-green-300 ring-offset-4"
-              : stage === "name_confirmed"
-                ? "ring-4 ring-pink-200 ring-offset-4"
-                : stage === "greet"
-                  ? "ring-4 ring-pink-100 ring-offset-4"
-                  : ""
+          stage === "greet" ||
+          stage === "name_confirmed" ||
+          stage === "prompt" ||
+          stage === "done"
+            ? `ring-4 ring-offset-4 ${orbRing} ${stage === "prompt" ? "animate-pulse" : ""}`
+            : ""
         }`}
       >
         <img
@@ -92,41 +144,32 @@ export default function EnrollmentOverlay({ onDone }) {
       </div>
 
       {/* Status pill */}
-      <div className="mt-5 px-4 py-1.5 rounded-full bg-pink-100 border border-pink-200">
-        <p className="text-xs font-medium text-pink-500 tracking-wide">
-          {stage === "greet" && "getting started"}
-          {stage === "name_confirmed" && `hey, ${parentName || "there"}!`}
-          {stage === "prompt" &&
-            `voice setup — ${completedCount} of ${prompts.length} done`}
-          {stage === "done" && "all set!"}
-          {stage === "error" && "something went wrong"}
-        </p>
+      <div className={`mt-5 px-4 py-1.5 rounded-full border ${theme.pill}`}>
+        <p className="text-xs font-medium tracking-wide">{pillLabel()}</p>
       </div>
 
       {/* Main message bubble */}
-      <div className="mt-5 max-w-sm w-full px-5 py-4 bg-white rounded-3xl border border-pink-100 text-center">
+      <div className="mt-5 max-w-sm w-full px-5 py-4 bg-white rounded-3xl border border-gray-100 text-center">
         <p className="text-sm text-gray-500 leading-relaxed">
-          {stage === "greet"
-            ? message
-            : stage === "name_confirmed"
-              ? message
-              : stage === "prompt"
-                ? "Read each sentence out loud. Peppa will move on automatically when she hears you."
-                : message}
+          {stage === "prompt"
+            ? "Read each sentence out loud. Peppa will move on automatically when she hears you."
+            : message}
         </p>
       </div>
 
-      {/* Listening pulse for name stage */}
+      {/* Listening pulse — greet stage */}
       {stage === "greet" && (
         <div className="mt-5 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-pink-400 animate-pulse" />
-          <p className="text-xs text-gray-400">
-            Peppa is listening for your name…
+          <span className={`w-2 h-2 rounded-full animate-pulse ${theme.dot}`} />
+          <p className={`text-xs ${theme.listening}`}>
+            {flow === "kid"
+              ? "Peppa is listening for the kid's name…"
+              : "Peppa is listening for your name…"}
           </p>
         </div>
       )}
 
-      {/* Phrase list — shown during name_confirmed and prompt stages */}
+      {/* Phrase list */}
       {prompts.length > 0 &&
         (stage === "name_confirmed" || stage === "prompt") && (
           <div className="mt-6 w-full max-w-sm flex flex-col gap-3">
@@ -136,7 +179,6 @@ export default function EnrollmentOverlay({ onDone }) {
             {prompts.map((phrase, i) => {
               const done = i < completedCount;
               const active = i === completedCount && stage === "prompt";
-              const pending = !done && !active;
 
               return (
                 <div
@@ -217,7 +259,9 @@ export default function EnrollmentOverlay({ onDone }) {
             Voice profile saved!
           </p>
           <p className="text-xs text-gray-400">
-            Say "hey Peppa" any time to wake me up.
+            {flow === "kid"
+              ? `Say "hey Peppa" to start learning!`
+              : `Say "hey Peppa" any time to wake me up.`}
           </p>
         </div>
       )}
