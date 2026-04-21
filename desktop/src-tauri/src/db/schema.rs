@@ -3,7 +3,6 @@ CREATE TABLE IF NOT EXISTS users (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     name            TEXT    NOT NULL,
     role            TEXT    NOT NULL CHECK(role IN ('parent', 'kid')),
-    parent_id       INTEGER REFERENCES users(id),
     voice_embedding BLOB
 );
 
