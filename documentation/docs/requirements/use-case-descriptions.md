@@ -150,7 +150,7 @@ sequenceDiagram
 
     Parent->>WebApp: Open 'User Data Dashboard'
     WebApp->>API: GET /api/answers/{kid_id}/{video_id}
-    API->>DB:  Request Quiz Data Data
+    API->>DB:  Request Quiz Data
     DB-->>API: Return Answer
     
     API-->>WebApp: List of Quiz Performance Data
