@@ -5,6 +5,7 @@ use tauri::{AppHandle, Emitter};
 use whisper_rs::{FullParams, SamplingStrategy};
 
 use crate::utils::voice::dispatcher;
+use crate::utils::voice::onboarding::SharedOnboarding;
 use crate::utils::voice::session::SharedSession;
 use crate::utils::voice::{
     audio_processor, command_resolver, speaker, state::get_whisper, wake_word,
@@ -17,7 +18,11 @@ pub struct CaptureHandle {
     _stream: cpal::Stream,
 }
 
-pub fn start(app: AppHandle, session: SharedSession) -> Result<CaptureHandle, String> {
+pub fn start(
+    app: AppHandle,
+    session: SharedSession,
+    onboarding: SharedOnboarding,
+) -> Result<CaptureHandle, String> {
     let host = cpal::default_host();
 
     let device = host
@@ -128,6 +133,15 @@ pub fn start(app: AppHandle, session: SharedSession) -> Result<CaptureHandle, St
                 },
             );
             continue;
+        }
+
+        {
+            let o = onboarding.lock().unwrap();
+            if o.is_active() {
+                drop(o); // release lock before async work
+                handle_onboarding_audio(&app_flush, &onboarding, &session, &resampled, &transcript);
+                continue; // skip normal wake/command flow
+            }
         }
 
         let wake = wake_word::detect(&transcript);
@@ -262,5 +276,109 @@ pub struct VoiceEvent {
 fn emit(app: &AppHandle, event: VoiceEvent) {
     if let Err(e) = app.emit("peppa://voice-result", event) {
         eprintln!("[capture] emit error: {e}");
+    }
+}
+
+fn handle_onboarding_audio(
+    app: &AppHandle,
+    onboarding: &SharedOnboarding,
+    session: &SharedSession,
+    audio: &[f32],
+    transcript: &str,
+) {
+    use super::enrollment::{create_parent, emit_enrollment, EnrollmentEvent};
+    use super::onboarding::{
+        average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
+    };
+
+    let stage = onboarding.lock().unwrap().stage.clone();
+
+    match stage {
+        OnboardingStage::WaitingForName => {
+            // Treat the transcript as the parent's name
+            let name = transcript.trim().to_string();
+            if name.is_empty() {
+                return;
+            }
+
+            eprintln!("[onboarding] got name: '{name}'");
+            onboarding.lock().unwrap().parent_name = Some(name.clone());
+
+            emit_enrollment(
+                app,
+                EnrollmentEvent {
+                    stage: "name_confirmed".to_string(),
+                    message: format!("Nice to meet you, {name}! Let's set up your voice."),
+                    prompt_index: 0,
+                    total_prompts: super::enrollment::ENROLLMENT_PROMPTS.len(),
+                },
+            );
+
+            begin_voice_collection(app, onboarding);
+        }
+
+        OnboardingStage::CollectingVoice { .. } => {
+            let embedding = match super::speaker::extract_embedding(audio) {
+                Some(e) => e,
+                None => {
+                    eprintln!("[onboarding] no embedding extracted, skipping chunk");
+                    return;
+                }
+            };
+
+            let done = record_embedding(app, onboarding, embedding);
+
+            if done {
+                let o = onboarding.lock().unwrap();
+                let name = o.parent_name.clone().unwrap_or("Parent".to_string());
+                let avg = average_embeddings(&o.embeddings);
+                drop(o);
+
+                let app_clone = app.clone();
+                let session_clone = session.clone();
+
+                tauri::async_runtime::spawn(async move {
+                    match create_parent(name.clone(), avg).await {
+                        Ok(id) => {
+                            session_clone.lock().unwrap().set_user(
+                                id,
+                                name.clone(),
+                                "parent".to_string(),
+                                None,
+                            );
+                            emit_enrollment(
+                                &app_clone,
+                                EnrollmentEvent {
+                                    stage: "done".to_string(),
+                                    message: format!(
+                                        "You're all set, {name}! \
+                                     I'll recognise your voice from now on. \
+                                     Say 'hey Peppa' whenever you need me!"
+                                    ),
+                                    prompt_index: 0,
+                                    total_prompts: 0,
+                                },
+                            );
+                        }
+                        Err(e) => {
+                            eprintln!("[onboarding] create_parent failed: {e}");
+                            emit_enrollment(
+                                &app_clone,
+                                EnrollmentEvent {
+                                    stage: "error".to_string(),
+                                    message:
+                                        "Something went wrong saving your profile. Please restart."
+                                            .to_string(),
+                                    prompt_index: 0,
+                                    total_prompts: 0,
+                                },
+                            );
+                        }
+                    }
+                });
+            }
+        }
+
+        _ => {}
     }
 }

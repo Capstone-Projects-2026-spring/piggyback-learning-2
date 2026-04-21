@@ -3,7 +3,7 @@ mod handlers;
 mod utils;
 
 use tauri::Manager;
-use utils::voice::{capture, session, speaker, state::init_whisper};
+use utils::voice::{capture, onboarding, session, speaker, state::init_whisper};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,10 +15,8 @@ pub fn run() {
                 .resource_dir()
                 .expect("[Peppa] resource dir must exist");
 
-            // Whisper STT model
             init_whisper(res.join("models/ggml-base.en.bin"));
 
-            // Speaker embedding model — optional, silently skips if missing
             let spk_path = res.join("models/wespeaker.onnx");
             if spk_path.exists() {
                 speaker::init_speaker(&spk_path);
@@ -26,24 +24,27 @@ pub fn run() {
                 eprintln!("[Peppa] wespeaker.onnx not found, speaker ID disabled");
             }
 
-            // DB
-            tauri::async_runtime::block_on(async {
+            let is_first_run = tauri::async_runtime::block_on(async {
                 match db::init::init_db().await {
                     Ok(info) => {
                         eprintln!("[app] db ready at {}", info.db_path.display());
-                        if info.is_first_run {
-                            eprintln!("[app] first run — show onboarding");
-                            // TODO: emit event to frontend to trigger onboarding flow
-                        }
+                        info.is_first_run
                     }
-                    Err(e) => eprintln!("[app] db init failed: {e}"),
+                    Err(e) => {
+                        eprintln!("[app] db init failed: {e}");
+                        false
+                    }
                 }
             });
 
-            // Shared session — created once, passed into capture
             let session = session::new_session();
+            let onboarding = onboarding::new_onboarding();
 
-            let handle = capture::start(app.handle().clone(), session)
+            if is_first_run {
+                onboarding::start(app.handle(), &onboarding);
+            }
+
+            let handle = capture::start(app.handle().clone(), session, onboarding)
                 .unwrap_or_else(|e| panic!("[Peppa] audio capture failed: {e}"));
             Box::leak(Box::new(handle));
 
