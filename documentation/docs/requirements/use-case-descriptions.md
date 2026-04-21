@@ -16,7 +16,174 @@ _As a user, it is important that I can create an account so that I can maintain 
 6.  Since the user is logging in for the first time, they are redirected to a landing page (tutorial?)
 
 --- -->
+<!-- 
+## New use cases
+--- -->
+### Use case 1 - Add children to my account and assign videos to them
+_As a parent I want to create a children's account attached to mine, so that I can download and assign videos to them._
 
+1. Parent opens the 'Your Kids Dashboard' and enters the kid's details.
+2. Application then creates the kid account linked to the parent's account.
+3. Parent searches for a YouTube video and tell app to download it.
+4. The app downloads the video and extracts the frames.
+5. Parent sets time intervals for the quiz and starts question generation (OpenAI).
+6. Parent reviews the questions and assigns the video to their kid.
+
+```mermaid
+sequenceDiagram
+    actor Parent
+    participant WebApp as Frontend (Next.js)
+    participant API as Backend (Rust/Axum)
+    participant AI as AI Service (OpenAI)
+    participant DB as SQLite (SeaORM)
+    
+    Parent->>WebApp: Signup Kid with kid details (username/pass)
+    WebApp->>API: sends a POST /api/auth/signup
+    API->>DB: Save Kid record
+    DB-->>WebApp: Success
+
+    Parent->>WebApp: Search And Select YouTube Video
+    WebApp->>API: Get and download video with GET /api/videos/download/{id}
+    API->>API: yt-dlp download and FFmpeg frames
+    API->>DB: Store Video Metadata
+    
+    Parent->>WebApp: Request AI Questions
+    WebApp->>API: GET /api/openai/{video_id}?start=x&end=y
+    API->>AI: Generate questions from transcripts and the frames
+    AI-->>API: Return questions in Json
+    API-->>WebApp: Display questions for review
+
+    Parent->>WebApp: Review and Click 'Assign'
+    WebApp->>API: POST /api/kids/{id}/videos_assigned
+    API->>DB: Create VideoAssignment
+    DB-->>Parent: Video Assigned to Kid
+```
+
+### Use case 2 - Detect if my child is paying attention to the video
+_As a parent I want to detect if my child is paying attention to the video, so that I can keep them on track._
+
+1. The child starts watching an assigned video.
+2. The eye tracker monitors the child's gaze (locally).
+3. If the kid's eyes wander for a few seconds, the system will consider the kid distracted
+4. The application automatically pauses the video and displays a prompt for the kid to focus.
+5. The application sends a notification to the Parent.
+
+```mermaid
+sequenceDiagram
+    actor Kid
+    participant WebApp as Frontend (Next.js)
+    participant Gaze as Gaze Detection (Client Side)
+    participant API as Backend (Rust/Axum)
+    participant WS as WebSocket
+    actor Parent
+
+    Kid->>WebApp: Starts Watching Video
+      rect rgb(240, 240, 240)
+      loop Monitor Locally
+          Gaze->>Kid: Tracks Position of the Kids Eyes with Camera
+      end
+    end
+
+    Note over Gaze: Gaze is diverted for a few seconds
+    Gaze->>WebApp: Event: Child Distracted
+    
+    WebApp->>WebApp: Pause Video Player
+    WebApp->>WebApp: Popup appears on Kids Screen telling them to focus
+    
+
+    API->>WS: Alerts the Parent with a notification
+    WS-->>Parent: Parent receives the alert "Child is distracted!"
+
+```
+
+### Use case 3 - Answering a Quiz Question with voice recognition
+_As a child I want to be able to answer questions based on the video, using my voice._
+
+1. Video reaches a quiz timestamp and pauses.
+2. The Mascot uses text-to-speech (TTS) to read the question aloud.
+3. The child speaks their answer, which is recorded by the application.
+4. Audio is analyzed by the app for correctness.
+5. If correct, the Mascot gives feedback and the video resumes.
+6. If incorrect, the system will perform a fallback (replays the video segment or question layering).
+
+
+```mermaid
+sequenceDiagram
+    actor Kid
+    participant WebApp as Frontend (Next.js) 
+    participant API as Backend (Rust/Axum)
+    participant Vosk as Speech To Text (Vosk)
+    participant DB as SQLite (SeaORM)
+
+    WebApp->>WebApp: Video reaches Quiz Timestamp (Pause)
+    WebApp->>WebApp: Mascot TTS: Reads Question
+    Kid->>WebApp: Speaks Answer
+    
+    WebApp->>API: POST /api/answers/analyze
+    API->>Vosk: Process and transcribe audio locally
+    Vosk-->>API: Transcribed Text
+    API->>API: Check if answers are correct, and detect mood
+    
+    alt is_correct: true
+        API->>DB: Update VideoAssignment answers.
+        API-->>WebApp: { is_correct: true }
+        WebApp->>WebApp: Mascot: Feedback and Resume the video
+    else is_correct: false
+        API-->>WebApp: { is_correct: false }
+        WebApp->>WebApp: Replay video segment or start question layering
+    end
+```
+
+### Use case 4 - View Quiz Results for Kids
+_As a parent I want to view how well my kids did on the quizzes._
+1. Parent navigates to the dashboard and request data on Kid's quizzes.
+2. The Application requests the history of answers for a specific child and video.
+3. The history of answers from the Database.
+4. The Parent sees child answers, quiz results, quiz answers, and detected mood.
+
+```mermaid
+sequenceDiagram
+    actor Parent
+    participant WebApp as Frontend (Next.js)
+    participant API as Backend (Rust/Axum)
+    participant DB as SQLite (SeaORM)
+
+    Parent->>WebApp: Open 'User Data Dashboard'
+    WebApp->>API: GET /api/answers/{kid_id}/{video_id}
+    API->>DB:  Request Quiz Data Data
+    DB-->>API: Return Answer
+    
+    API-->>WebApp: List of Quiz Performance Data
+    WebApp-->>Parent: Display the Child's Quiz Performance and Mood 
+```
+### Use case 5 - Add tags to Kids Accounts
+_As a parent, I want to add tags related to my kid's interests to their accounts so that I can see reccomended videos relevant to what my kid likes._
+1. Parent goes to the 'Kid Dashboard' of their kid.
+2. Parent goes to the 'Tags' tab.
+3. Parent adds tags to their kids.
+4. Parent clicks the 'Recommended' tab.
+5. The application runs a search to find videos with matching tags.
+```mermaid
+sequenceDiagram
+    actor Parent
+    participant WebApp as Frontend (Next.js)
+    participant API as Backend (Rust/Axum)
+    participant DB as SQLite (SeaORM)
+
+    Parent->>WebApp: Select interest tags for Kids account
+    WebApp->>API: POST /api/kids/{id}/tags
+    API->>DB: Insert tags into kid's account in database
+    DB-->>WebApp: Success
+
+    Parent->>WebApp: Click 'Recommended' Tab
+    WebApp->>API: GET /api/kids/{id}/recommendations
+    API->>DB: Looks for Videos matching Tags
+    DB-->>API: List of Recommended Videos
+    API-->>WebApp: Displays Videos
+```    
+
+<!--
+## Below is old use cases
 ### Use case 1 - Find other Accounts
 
 _As a parent, I want to search for my children so I can assign videos and quizzes to them._
@@ -39,7 +206,7 @@ _As a user, I want a dashboard so I can view my history and quiz performance._
 3.  The user can click a video to see more detailed stats.
 
 --- -->
-
+<!--
 ### Use Case 2 - Answering a Quiz Question
 
 _As a user, I want to be able to answer quiz questions with voice recognition._
@@ -64,3 +231,5 @@ _As a user, I want my video and quiz activity to be saved automatically so that 
 4. The system stores quiz results.
 
 [![](https://mermaid.ink/img/pako:eNptkk9PwkAQxb_KZs6IlNqW7sFEbLwZE40xMb2M3RE20N26f1AkfHd3KRhAL83O5L23v53OBhotCDhY-vCkGqokzgy2tWIMG6cNe7ZkYtWhcbKRHSrHXujtpuvOu1NsFqTEebua1ir2YtDF9XXv5ewFXTNnKylIs0vmcEHsw8vvqOwlQbtP5OwpfFln9MyQtZdRF-nkSrp1NOx1wVFNgxhXxD538U621MuD0S-djepqenGSHeTiX8SHjhSr0M7fNBrBluj6Ufzle4zTs47ZmPUL-hftjiKVD9ec8J8RPZLzRjGBDo8jjshO5nGEFCTxDZxV0nZLXB-eDQOYGSmAO-NpAC2ZFmMJm2iuwc2ppRp4OAo0ixpqtQ2e8P9etW4PNqP9bA78HZc2VL4LgId9-e2aQEbmVnvlgCfjvNylAN_AF_AiG14VZVaM8nySFkmSDGANfJIN8zS5yotyPMnKfJxtB_C9u3Y0zIssTcu8nBRlko3SkEZChrW877d2t7zbH1GT6rk?type=png)](https://mermaid.live/edit#pako:eNptkk9PwkAQxb_KZs6IlNqW7sFEbLwZE40xMb2M3RE20N26f1AkfHd3KRhAL83O5L23v53OBhotCDhY-vCkGqokzgy2tWIMG6cNe7ZkYtWhcbKRHSrHXujtpuvOu1NsFqTEebua1ir2YtDF9XXv5ewFXTNnKylIs0vmcEHsw8vvqOwlQbtP5OwpfFln9MyQtZdRF-nkSrp1NOx1wVFNgxhXxD538U621MuD0S-djepqenGSHeTiX8SHjhSr0M7fNBrBluj6Ufzle4zTs47ZmPUL-hftjiKVD9ec8J8RPZLzRjGBDo8jjshO5nGEFCTxDZxV0nZLXB-eDQOYGSmAO-NpAC2ZFmMJm2iuwc2ppRp4OAo0ixpqtQ2e8P9etW4PNqP9bA78HZc2VL4LgId9-e2aQEbmVnvlgCfjvNylAN_AF_AiG14VZVaM8nySFkmSDGANfJIN8zS5yotyPMnKfJxtB_C9u3Y0zIssTcu8nBRlko3SkEZChrW877d2t7zbH1GT6rk)
+
+--- -->
