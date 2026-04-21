@@ -3,7 +3,7 @@ mod handlers;
 mod utils;
 
 use tauri::Manager;
-use utils::voice::{capture, onboarding, session, speaker, state::init_whisper};
+use utils::voice::{capture, intent_classifier, onboarding, session, speaker, state::init_whisper};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -24,6 +24,9 @@ pub fn run() {
                 eprintln!("[Peppa] wespeaker.onnx not found, speaker ID disabled");
             }
 
+            // Loads in background thread — keyword fallback used until ready
+            intent_classifier::init_classifier();
+
             tauri::async_runtime::block_on(async {
                 match db::init::init_db().await {
                     Ok(info) => eprintln!("[app] db ready at {}", info.db_path.display()),
@@ -38,8 +41,13 @@ pub fn run() {
                 tauri::async_runtime::block_on(async { !db::init::has_parent_account().await });
 
             if needs_onboarding {
-                eprintln!("[app] no parent account found — starting onboarding");
-                onboarding::start(app.handle(), &onboarding);
+                let app_handle = app.handle().clone();
+                let onboarding_clone = onboarding.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    eprintln!("[app] emitting onboarding start");
+                    onboarding::start(&app_handle, &onboarding_clone);
+                });
             } else {
                 eprintln!("[app] parent account exists — skipping onboarding");
             }

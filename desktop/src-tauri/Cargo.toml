@@ -34,6 +34,9 @@ keyring = "2"
 aes-gcm = "0.10"
 rand = "0.8"
 hex = "0.4"
+regex-lite = "0.1"
+webrtc-vad = "0.4"
+fastembed = "5.13.3"
 
 [profile.dev]
 incremental = true

@@ -1,48 +1,51 @@
 import { listen } from "@tauri-apps/api/event";
 import { commandBus } from "./commandBus.js";
 
-let unlisten = null;
+let unlistenVoice = null;
+let unlistenEnrollment = null;
 
 export async function startPeppa() {
-  if (unlisten) return;
+  if (unlistenVoice) return;
 
-  unlisten = await listen("peppa://voice-result", (event) => {
-    const result = event.payload;
-    console.log("[recorder] voice-result:", JSON.stringify(result));
-
-    if (result.transcript) {
-      console.log("[recorder] transcript:", result.transcript);
-      commandBus.dispatchTranscript(result.transcript);
-    }
-
-    if (result.wake_detected) {
-      if (result.command) {
-        console.log("[recorder] dispatching command:", result.command);
-        if (typeof result.command.intent === "undefined") {
-          console.warn(
-            "[recorder] command missing 'intent'. Got keys:",
-            Object.keys(result.command),
-          );
-        }
-        commandBus.dispatch(result.command);
-      } else {
-        console.log("[recorder] wake only");
-        commandBus.dispatch({
-          intent: "wake_only",
-          args: null,
-          raw: result.transcript,
-        });
+  // Register enrollment listener first
+  unlistenEnrollment = await listen("peppa://enrollment", (event) => {
+    let data = event.payload;
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data);
+      } catch (e) {
+        console.error("[recorder] parse failed:", e);
+        return;
       }
-    } else {
-      console.log("[recorder] no wake in this chunk");
+    }
+    console.log("[recorder] enrollment:", data.stage, data);
+    commandBus.dispatchEnrollment(data);
+  });
+
+  unlistenVoice = await listen("peppa://voice-result", (event) => {
+    let result = event.payload;
+    if (typeof result === "string") {
+      try {
+        result = JSON.parse(result);
+      } catch (e) {
+        console.error("[recorder] parse failed:", e);
+        return;
+      }
+    }
+    if (result.transcript) commandBus.dispatchTranscript(result.transcript);
+    if (result.wake_detected) {
+      commandBus.dispatchWake(!!result.speaker_identified);
+    } else if (result.command) {
+      commandBus.dispatch(result.command);
     }
   });
 
-  console.info("[recorder] listening for peppa://voice-result events");
+  console.info("[recorder] listeners registered");
 }
 
 export function stopPeppa() {
-  unlisten?.();
-  unlisten = null;
-  console.info("[recorder] stopped");
+  unlistenVoice?.();
+  unlistenEnrollment?.();
+  unlistenVoice = null;
+  unlistenEnrollment = null;
 }

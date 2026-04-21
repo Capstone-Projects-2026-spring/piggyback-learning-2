@@ -1,6 +1,5 @@
 use crate::db::init::{get_db, get_voice_key};
 use crate::utils::crypto;
-use crate::utils::voice::session::SharedSession;
 use tauri::{AppHandle, Emitter};
 
 /// Sentences chosen for maximum phonetic diversity —
@@ -20,6 +19,7 @@ pub struct EnrollmentEvent {
     pub message: String,
     pub prompt_index: usize,
     pub total_prompts: usize,
+    pub prompts: Vec<String>,
 }
 
 pub fn emit_enrollment(app: &AppHandle, event: EnrollmentEvent) {

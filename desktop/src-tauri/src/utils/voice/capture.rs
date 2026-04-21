@@ -4,15 +4,21 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 use whisper_rs::{FullParams, SamplingStrategy};
 
-use crate::utils::voice::dispatcher;
-use crate::utils::voice::onboarding::SharedOnboarding;
-use crate::utils::voice::session::SharedSession;
+use super::enrollment::{create_parent, emit_enrollment, EnrollmentEvent};
+use super::onboarding::{
+    average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
+};
+use super::vad::VadChunker;
 use crate::utils::voice::{
-    audio_processor, command_resolver, speaker, state::get_whisper, wake_word,
+    audio_processor, command_resolver, dispatcher,
+    onboarding::{self, SharedOnboarding},
+    session::SharedSession,
+    speaker,
+    state::get_whisper,
+    wake_word,
 };
 
 const TARGET_RATE: u32 = 16000;
-const FLUSH_SECS: u64 = 5;
 
 pub struct CaptureHandle {
     _stream: cpal::Stream,
@@ -24,7 +30,6 @@ pub fn start(
     onboarding: SharedOnboarding,
 ) -> Result<CaptureHandle, String> {
     let host = cpal::default_host();
-
     let device = host
         .default_input_device()
         .ok_or("[capture] no input device found")?;
@@ -49,7 +54,6 @@ pub fn start(
     let buffer: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
     let buffer_w = buffer.clone();
     let app_flush = app.clone();
-
     let err_fn = |e| eprintln!("[capture] stream error: {e}");
 
     let stream = match supported.sample_format() {
@@ -87,119 +91,108 @@ pub fn start(
         native_rate, channels
     );
 
-    let native_chunk = native_rate as usize * FLUSH_SECS as usize;
+    std::thread::spawn(move || {
+        let mut chunker = VadChunker::new();
 
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_secs(FLUSH_SECS));
+        loop {
+            // Poll every 30ms — matches VAD frame size
+            std::thread::sleep(std::time::Duration::from_millis(30));
 
-        let chunk: Vec<f32> = {
-            let mut buf = buffer.lock().unwrap();
-            if buf.len() < native_chunk / 4 {
-                eprintln!("[capture] buffer too small, skipping");
-                continue;
-            }
-            buf.drain(..).collect()
-        };
-
-        let resampled = resample(chunk, native_rate, TARGET_RATE);
-        eprintln!("[capture] resampled to {} samples", resampled.len());
-
-        let processed = audio_processor::process_f32(resampled.clone());
-        if processed.is_empty() {
-            eprintln!("[capture] silence — skipping");
-            emit(
-                &app_flush,
-                VoiceEvent {
-                    transcript: String::new(),
-                    wake_detected: false,
-                    command: None,
-                    speaker_identified: None,
-                },
-            );
-            continue;
-        }
-
-        let transcript = transcribe(&processed);
-        eprintln!("[capture] transcript: {:?}", transcript);
-
-        if transcript.is_empty() {
-            emit(
-                &app_flush,
-                VoiceEvent {
-                    transcript,
-                    wake_detected: false,
-                    command: None,
-                    speaker_identified: None,
-                },
-            );
-            continue;
-        }
-
-        {
-            let o = onboarding.lock().unwrap();
-            if o.is_active() {
-                drop(o); // release lock before async work
-                handle_onboarding_audio(&app_flush, &onboarding, &session, &resampled, &transcript);
-                continue; // skip normal wake/command flow
-            }
-        }
-
-        let wake = wake_word::detect(&transcript);
-        eprintln!("[capture] wake={}", wake.wake_detected);
-
-        if wake.wake_detected {
-            // Wake word = identify who is speaking, fill session, nothing else
-            let emb = speaker::extract_embedding(&resampled);
-            let speaker_name = emb.as_ref().map(|e| {
-                eprintln!(
-                    "[capture] wake detected — identifying speaker (dim={})",
-                    e.len()
-                );
-                e.clone()
-            });
-
-            if let Some(emb) = emb {
-                let session_clone = session.clone();
-                tauri::async_runtime::spawn(async move {
-                    speaker::identify_speaker(&emb, &session_clone).await;
-                });
-            }
-
-            emit(
-                &app_flush,
-                VoiceEvent {
-                    transcript,
-                    wake_detected: true,
-                    command: None,
-                    speaker_identified: speaker_name,
-                },
-            );
-        } else {
-            // No wake word — try to match a command directly from transcript
-            let resolved = command_resolver::resolve(&transcript);
-
-            let command = if resolved.intent != "chat" && resolved.intent != "wake_only" {
-                // Only dispatch if we actually matched something meaningful
-                let resolved_clone = resolved.clone();
-                let session_clone = session.clone();
-                tauri::async_runtime::spawn(async move {
-                    dispatcher::dispatch(resolved_clone, session_clone).await;
-                });
-                Some(resolved)
-            } else {
-                eprintln!("[capture] no command matched — passive listen");
-                None
+            let raw: Vec<f32> = {
+                let mut buf = buffer.lock().unwrap();
+                buf.drain(..).collect()
             };
 
-            emit(
-                &app_flush,
-                VoiceEvent {
-                    transcript,
-                    wake_detected: false,
-                    command,
-                    speaker_identified: None,
-                },
+            if raw.is_empty() {
+                continue;
+            }
+
+            // Resample to 16kHz for VAD + Whisper
+            let resampled = resample(raw, native_rate, TARGET_RATE);
+
+            // Feed VAD — only proceed when a full utterance is detected
+            let Some(chunk) = chunker.push(&resampled) else {
+                continue;
+            };
+
+            eprintln!(
+                "[capture] utterance ready: {} samples ({:.1}s)",
+                chunk.len(),
+                chunk.len() as f32 / TARGET_RATE as f32
             );
+
+            let processed = audio_processor::process_f32(chunk.clone());
+            if processed.is_empty() {
+                eprintln!("[capture] silence after processing — skipping");
+                continue;
+            }
+
+            let transcript = transcribe(&processed);
+            eprintln!("[capture] transcript: {:?}", transcript);
+            if transcript.is_empty() {
+                continue;
+            }
+
+            // Onboarding takes priority over normal pipeline
+            {
+                let o = onboarding.lock().unwrap();
+                if o.is_active() {
+                    drop(o);
+                    handle_onboarding_audio(&app_flush, &onboarding, &session, &chunk, &transcript);
+                    continue;
+                }
+            }
+
+            let wake = wake_word::detect(&transcript);
+            eprintln!("[capture] wake={}", wake.wake_detected);
+
+            if wake.wake_detected {
+                let emb = speaker::extract_embedding(&chunk);
+                let speaker_identified = emb.as_ref().map(|e| {
+                    eprintln!("[capture] identifying speaker (dim={})", e.len());
+                    e.clone()
+                });
+
+                if let Some(emb) = emb {
+                    let session_clone = session.clone();
+                    tauri::async_runtime::spawn(async move {
+                        speaker::identify_speaker(&emb, &session_clone).await;
+                    });
+                }
+
+                emit(
+                    &app_flush,
+                    VoiceEvent {
+                        transcript,
+                        wake_detected: true,
+                        command: None,
+                        speaker_identified,
+                    },
+                );
+            } else {
+                let resolved = command_resolver::resolve(&transcript);
+                let command = if resolved.intent != "chat" && resolved.intent != "wake_only" {
+                    let rc = resolved.clone();
+                    let sc = session.clone();
+                    tauri::async_runtime::spawn(async move {
+                        dispatcher::dispatch(rc, sc).await;
+                    });
+                    Some(resolved)
+                } else {
+                    eprintln!("[capture] no command matched — passive listen");
+                    None
+                };
+
+                emit(
+                    &app_flush,
+                    VoiceEvent {
+                        transcript,
+                        wake_detected: false,
+                        command,
+                        speaker_identified: None,
+                    },
+                );
+            }
         }
     });
 
@@ -255,7 +248,6 @@ fn transcribe(samples: &[f32]) -> String {
     }
 
     let n = state.full_n_segments();
-
     (0..n)
         .filter_map(|i| state.get_segment(i).map(|s| s.to_string()))
         .collect::<Vec<_>>()
@@ -269,7 +261,6 @@ pub struct VoiceEvent {
     pub transcript: String,
     pub wake_detected: bool,
     pub command: Option<crate::utils::voice::command_resolver::ResolvedCommand>,
-    /// Raw embedding sent to frontend when wake word fires — JS can display who was identified
     pub speaker_identified: Option<Vec<f32>>,
 }
 
@@ -286,46 +277,34 @@ fn handle_onboarding_audio(
     audio: &[f32],
     transcript: &str,
 ) {
-    use super::enrollment::{create_parent, emit_enrollment, EnrollmentEvent};
-    use super::onboarding::{
-        average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
-    };
-
     let stage = onboarding.lock().unwrap().stage.clone();
 
     match stage {
         OnboardingStage::WaitingForName => {
-            // Treat the transcript as the parent's name
-            let name = transcript.trim().to_string();
-            if name.is_empty() {
+            let accepted = onboarding::try_set_name(app, onboarding, transcript);
+            if !accepted {
+                eprintln!("[onboarding] name rejected, still waiting");
                 return;
             }
-
-            eprintln!("[onboarding] got name: '{name}'");
-            onboarding.lock().unwrap().parent_name = Some(name.clone());
-
-            emit_enrollment(
-                app,
-                EnrollmentEvent {
-                    stage: "name_confirmed".to_string(),
-                    message: format!("Nice to meet you, {name}! Let's set up your voice."),
-                    prompt_index: 0,
-                    total_prompts: super::enrollment::ENROLLMENT_PROMPTS.len(),
-                },
-            );
-
+            std::thread::sleep(std::time::Duration::from_secs(2));
             begin_voice_collection(app, onboarding);
         }
 
-        OnboardingStage::CollectingVoice { .. } => {
-            let embedding = match super::speaker::extract_embedding(audio) {
+        OnboardingStage::CollectingVoice { prompt_index } => {
+            eprintln!(
+                "[onboarding] collecting prompt {prompt_index}, audio_len={}",
+                audio.len()
+            );
+
+            let embedding = match speaker::extract_embedding(audio) {
                 Some(e) => e,
                 None => {
-                    eprintln!("[onboarding] no embedding extracted, skipping chunk");
+                    eprintln!("[onboarding] no embedding — waiting for next chunk");
                     return;
                 }
             };
 
+            eprintln!("[onboarding] embedding dim={}", embedding.len());
             let done = record_embedding(app, onboarding, embedding);
 
             if done {
@@ -352,11 +331,11 @@ fn handle_onboarding_audio(
                                     stage: "done".to_string(),
                                     message: format!(
                                         "You're all set, {name}! \
-                                     I'll recognise your voice from now on. \
                                      Say 'hey Peppa' whenever you need me!"
                                     ),
                                     prompt_index: 0,
                                     total_prompts: 0,
+                                    prompts: vec![],
                                 },
                             );
                         }
@@ -366,11 +345,10 @@ fn handle_onboarding_audio(
                                 &app_clone,
                                 EnrollmentEvent {
                                     stage: "error".to_string(),
-                                    message:
-                                        "Something went wrong saving your profile. Please restart."
-                                            .to_string(),
+                                    message: "Something went wrong. Please restart.".to_string(),
                                     prompt_index: 0,
                                     total_prompts: 0,
+                                    prompts: vec![],
                                 },
                             );
                         }

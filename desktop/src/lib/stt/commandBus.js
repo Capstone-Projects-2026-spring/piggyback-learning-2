@@ -1,25 +1,11 @@
-const INTENT_MAP = {
-  open: ["open", "show", "launch", "go", "start"],
-  close: ["close", "hide", "dismiss", "exit", "quit"],
-  play: ["play", "watch"],
-  stop: ["stop", "pause", "freeze"],
-  search: ["search", "find", "look"],
-  volume: ["volume", "louder", "quieter", "mute", "unmute"],
-  help: ["help", "what", "how"],
-  wake_only: [], // wake word with no command body
-  chat: [], // catch-all
-};
-
 class CommandBus {
   #handlers = new Map();
   #wildcards = new Set();
   #transcriptListeners = new Set();
+  #wakeListeners = new Set();
+  #enrollmentListeners = new Set();
+  #lastEnrollmentEvent = null;
 
-  /**
-   * Subscribe to a resolved command intent.
-   * Use '*' to receive every command regardless of intent.
-   * Returns an unsubscribe function.
-   */
   on(intent, handler) {
     if (intent === "*") {
       this.#wildcards.add(handler);
@@ -30,43 +16,77 @@ class CommandBus {
     return () => this.#handlers.get(intent)?.delete(handler);
   }
 
-  /**
-   * Subscribe to raw transcript text (every 5s chunk, wake word or not).
-   * Useful for showing a live "heard: ..." indicator in the UI.
-   */
   onTranscript(handler) {
     this.#transcriptListeners.add(handler);
     return () => this.#transcriptListeners.delete(handler);
   }
 
-  /** Called by recorder.js with the ResolvedCommand from Rust. */
+  onWake(handler) {
+    this.#wakeListeners.add(handler);
+    return () => this.#wakeListeners.delete(handler);
+  }
+
+  onEnrollment(handler) {
+    this.#enrollmentListeners.add(handler);
+    // Replay last event immediately if it arrived before this subscriber registered
+    if (this.#lastEnrollmentEvent) {
+      try {
+        handler(this.#lastEnrollmentEvent);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return () => this.#enrollmentListeners.delete(handler);
+  }
+
   dispatch({ intent, args, raw }) {
     const event = { intent, args, raw };
-    console.info("[Peppa Bus] ←", event);
-
+    console.info("[Peppa Bus] command ←", event);
     this.#handlers.get(intent)?.forEach((h) => {
       try {
         h(event);
       } catch (e) {
-        console.error("[Peppa Bus]", e);
+        console.error(e);
       }
     });
     this.#wildcards.forEach((h) => {
       try {
         h(event);
       } catch (e) {
-        console.error("[Peppa Bus]", e);
+        console.error(e);
       }
     });
   }
 
-  /** Called by recorder.js with the raw transcript string. */
   dispatchTranscript(text) {
     this.#transcriptListeners.forEach((h) => {
       try {
         h(text);
       } catch (e) {
-        console.error("[Peppa Bus]", e);
+        console.error(e);
+      }
+    });
+  }
+
+  dispatchWake(hasEmbedding) {
+    console.info("[Peppa Bus] wake ← embedding present:", hasEmbedding);
+    this.#wakeListeners.forEach((h) => {
+      try {
+        h(hasEmbedding);
+      } catch (e) {
+        console.error(e);
+      }
+    });
+  }
+
+  dispatchEnrollment(data) {
+    this.#lastEnrollmentEvent = data;
+    console.info("[Peppa Bus] enrollment ←", data);
+    this.#enrollmentListeners.forEach((h) => {
+      try {
+        h(data);
+      } catch (e) {
+        console.error(e);
       }
     });
   }
