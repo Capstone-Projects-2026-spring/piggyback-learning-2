@@ -1,4 +1,5 @@
-use crate::db::init::get_db;
+use crate::db::init::{get_db, get_voice_key};
+use crate::utils::crypto;
 use crate::utils::voice::session::SharedSession;
 
 use ndarray::Array2;
@@ -44,9 +45,10 @@ const MATCH_THRESHOLD: f32 = 0.75;
 
 pub async fn identify_speaker(embedding: &[f32], session: &SharedSession) {
     let pool = get_db();
+    let key = get_voice_key();
 
     let rows = match sqlx::query_as::<_, (i64, String, String, Option<i64>, Option<Vec<u8>>)>(
-        "SELECT id, name, role, parent_id, voice_embedding FROM users WHERE voice_embedding IS NOT NULL"
+        "SELECT id, name, role, parent_id, voice_embedding FROM users WHERE voice_embedding IS NOT NULL",
     )
     .fetch_all(pool)
     .await
@@ -65,9 +67,18 @@ pub async fn identify_speaker(embedding: &[f32], session: &SharedSession) {
     let mut best_score = 0.0_f32;
 
     for (id, name, role, parent_id, blob) in rows {
-        let Some(blob) = blob else { continue };
+        let Some(encrypted) = blob else { continue };
 
-        let stored: Vec<f32> = blob
+        // Decrypt the stored embedding
+        let raw = match crypto::decrypt(key, &encrypted) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("[speaker] decrypt failed for user_id={id}: {e}");
+                continue;
+            }
+        };
+
+        let stored: Vec<f32> = raw
             .chunks_exact(4)
             .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
             .collect();
@@ -94,23 +105,26 @@ pub async fn identify_speaker(embedding: &[f32], session: &SharedSession) {
             );
         }
     } else {
-        eprintln!("[speaker] no match above threshold ({best_score:.3}) — session unchanged");
+        eprintln!("[speaker] no match above threshold ({best_score:.3})");
     }
 }
 
 pub async fn enroll_speaker(user_id: i32, embedding: &[f32]) -> Result<(), String> {
     let pool = get_db();
+    let key = get_voice_key();
 
-    let blob: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+    let raw: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+
+    let encrypted = crypto::encrypt(key, &raw)?;
 
     sqlx::query("UPDATE users SET voice_embedding = ? WHERE id = ?")
-        .bind(blob)
+        .bind(encrypted)
         .bind(user_id)
         .execute(pool)
         .await
         .map_err(|e| format!("[speaker] enroll failed: {e}"))?;
 
-    eprintln!("[speaker] enrolled embedding for user_id={user_id}");
+    eprintln!("[speaker] enrolled encrypted embedding for user_id={user_id}");
     Ok(())
 }
 

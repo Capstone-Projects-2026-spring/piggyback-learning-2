@@ -30,6 +30,10 @@ whisper-rs = "0.16.0"
 ndarray = "0.17.2"
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros", "migrate"] }
 dirs = "5"
+keyring = "2"
+aes-gcm = "0.10"
+rand = "0.8"
+hex = "0.4"
 
 [profile.dev]
 incremental = true

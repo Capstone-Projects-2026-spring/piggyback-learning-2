@@ -2,9 +2,16 @@ use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::fs;
 use std::sync::OnceLock;
 
+use crate::utils::crypto;
+
 use super::schema::CREATE_TABLES;
 
 static DB: OnceLock<SqlitePool> = OnceLock::new();
+static VOICE_KEY: OnceLock<[u8; 32]> = OnceLock::new();
+
+pub fn get_voice_key() -> &'static [u8; 32] {
+    VOICE_KEY.get().expect("[crypto] voice key not initialised")
+}
 
 pub fn get_db() -> &'static SqlitePool {
     DB.get()
@@ -56,6 +63,12 @@ pub async fn init_db() -> Result<FirstRunInfo, String> {
 
     DB.set(pool)
         .map_err(|_| "[db] already initialised".to_string())?;
+
+    // Load or create encryption key
+    let key = crypto::get_or_create_key().map_err(|e| format!("[db] crypto init failed: {e}"))?;
+    VOICE_KEY
+        .set(key)
+        .map_err(|_| "[db] voice key already set".to_string())?;
 
     Ok(FirstRunInfo {
         is_first_run,
