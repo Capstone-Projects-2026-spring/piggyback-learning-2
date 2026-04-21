@@ -38,20 +38,20 @@ sequenceDiagram
     participant DB as SQLite (SeaORM)
     
     Parent->>WebApp: Signup Kid with kid details (username/pass)
-    WebApp->>API: sends a POST /api/auth/signup
-    API->>DB: Save Kid record
+    WebApp->>API:  POST /api/auth/signup
+    API->>DB: Save Kid Record to Database
     DB-->>WebApp: Success
 
     Parent->>WebApp: Search And Select YouTube Video
-    WebApp->>API: Get and download video with GET /api/videos/download/{id}
-    API->>API: yt-dlp download and FFmpeg frames
+    WebApp->>API: Get and Download Video with GET /api/videos/download/{id}
+    API->>API: yt-dlp Download and FFmpeg Frames
     API->>DB: Store Video Metadata
     
     Parent->>WebApp: Request AI Questions
     WebApp->>API: GET /api/openai/{video_id}?start=x&end=y
-    API->>AI: Generate questions from transcripts and the frames
-    AI-->>API: Return questions in Json
-    API-->>WebApp: Display questions for review
+    API->>AI: Generate Questions from Rranscripts and Rrames
+    AI-->>API: Return Questions in Json
+    API-->>WebApp: Display Questions for Review
 
     Parent->>WebApp: Review and Click 'Assign'
     WebApp->>API: POST /api/kids/{id}/videos_assigned
@@ -84,15 +84,15 @@ sequenceDiagram
       end
     end
 
-    Note over Eye: Eye is diverted for a few seconds
+    Note over Eye: Eye is Diverted for a few seconds
     Eye->>WebApp: Event: Child Distracted
     
     WebApp->>WebApp: Pause Video Player
-    WebApp->>WebApp: Popup appears on Kids Screen telling them to focus
+    WebApp->>WebApp: Popup Appears on Kids Screen Telling Them to Focus
     
 
     API->>WS: Alerts the Parent with a notification
-    WS-->>Parent: Parent receives the alert "Child is distracted!"
+    WS-->>Parent: Parent Receives the Alert that their Child is Distracted
 
 ```
 
@@ -115,22 +115,22 @@ sequenceDiagram
     participant Vosk as Speech To Text (Vosk)
     participant DB as SQLite (SeaORM)
 
-    WebApp->>WebApp: Video reaches Quiz Timestamp (Pause)
+    WebApp->>WebApp: Video reaches Quiz Timestamp (Pauses Video)
     WebApp->>WebApp: Mascot TTS: Reads Question
     Kid->>WebApp: Speaks Answer
     
     WebApp->>API: POST /api/answers/analyze
-    API->>Vosk: Process and transcribe audio locally
+    API->>Vosk: Process and Transcribe Audio Locally
     Vosk-->>API: Transcribed Text
-    API->>API: Check if answers are correct, and detect mood
+    API->>API: Check if Answers are Correct, and Detect Mood
     
     alt is_correct: true
-        API->>DB: Update VideoAssignment answers.
+        API->>DB: Update VideoAssignment Answers.
         API-->>WebApp: { is_correct: true }
-        WebApp->>WebApp: Mascot: Feedback and Resume the video
+        WebApp->>WebApp: Mascot: Feedback and Resume the Video
     else is_correct: false
         API-->>WebApp: { is_correct: false }
-        WebApp->>WebApp: Replay video segment or start question layering
+        WebApp->>WebApp: Replay Video Segment or Start Question Layering
     end
 ```
 
@@ -170,9 +170,9 @@ sequenceDiagram
     participant API as Backend (Rust/Axum)
     participant DB as SQLite (SeaORM)
 
-    Parent->>WebApp: Select interest tags for Kids account
+    Parent->>WebApp: Select Tags for Kids Account
     WebApp->>API: POST /api/kids/{id}/tags
-    API->>DB: Insert tags into kid's account in database
+    API->>DB: Insert Tags into Kid's Account in Database
     DB-->>WebApp: Success
 
     Parent->>WebApp: Click 'Recommended' Tab
