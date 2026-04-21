@@ -72,7 +72,7 @@ _As a parent I want to detect if my child is paying attention to the video, so t
 sequenceDiagram
     actor Kid
     participant WebApp as Frontend (Next.js)
-    participant Gaze as Gaze Detection (Client Side)
+    participant Eye as Eye Detection (Client Side)
     participant API as Backend (Rust/Axum)
     participant WS as WebSocket
     actor Parent
@@ -80,12 +80,12 @@ sequenceDiagram
     Kid->>WebApp: Starts Watching Video
       rect rgb(240, 240, 240)
       loop Monitor Locally
-          Gaze->>Kid: Tracks Position of the Kids Eyes with Camera
+          Eye->>Kid: Tracks Position of the Kids Eyes with Camera
       end
     end
 
-    Note over Gaze: Gaze is diverted for a few seconds
-    Gaze->>WebApp: Event: Child Distracted
+    Note over Eye: Eye is diverted for a few seconds
+    Eye->>WebApp: Event: Child Distracted
     
     WebApp->>WebApp: Pause Video Player
     WebApp->>WebApp: Popup appears on Kids Screen telling them to focus
