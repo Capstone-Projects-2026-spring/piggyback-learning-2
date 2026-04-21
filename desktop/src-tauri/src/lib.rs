@@ -1,8 +1,9 @@
+mod db;
 mod handlers;
 mod utils;
 
 use tauri::Manager;
-use utils::voice::{capture, speaker, state::init_whisper};
+use utils::voice::{capture, session, speaker, state::init_whisper};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -25,7 +26,24 @@ pub fn run() {
                 eprintln!("[Peppa] wespeaker.onnx not found, speaker ID disabled");
             }
 
-            let handle = capture::start(app.handle().clone())
+            // DB
+            tauri::async_runtime::block_on(async {
+                match db::init::init_db().await {
+                    Ok(info) => {
+                        eprintln!("[app] db ready at {}", info.db_path.display());
+                        if info.is_first_run {
+                            eprintln!("[app] first run — show onboarding");
+                            // TODO: emit event to frontend to trigger onboarding flow
+                        }
+                    }
+                    Err(e) => eprintln!("[app] db init failed: {e}"),
+                }
+            });
+
+            // Shared session — created once, passed into capture
+            let session = session::new_session();
+
+            let handle = capture::start(app.handle().clone(), session)
                 .unwrap_or_else(|e| panic!("[Peppa] audio capture failed: {e}"));
             Box::leak(Box::new(handle));
 
