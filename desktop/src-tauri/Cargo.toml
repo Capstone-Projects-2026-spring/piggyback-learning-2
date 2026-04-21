@@ -28,6 +28,8 @@ ort = { version = "2.0.0-rc.12", features = [] }
 cpal = "0.15"
 whisper-rs = "0.16.0"
 ndarray = "0.17.2"
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros", "migrate"] }
+dirs = "5"
 
 [profile.dev]
 incremental = true
