@@ -1,3 +1,5 @@
+use crate::db::init::get_db;
+use crate::handlers::tags::get_or_create_tag;
 use crate::utils::voice::{
     onboarding::{self, OnboardingFlow, SharedOnboarding},
     session::SharedSession,
@@ -5,33 +7,90 @@ use crate::utils::voice::{
 use tauri::AppHandle;
 
 pub async fn get_tags(args: &[String], session: &SharedSession) {
-    println!("[handler:kids] get_tags — args={args:?}");
+    let kid_id = match resolve_kid_id(args, session).await {
+        Some(id) => id,
+        None => return,
+    };
+
+    let pool = get_db();
+    match sqlx::query_as::<_, (i64, String)>(
+        "SELECT t.id, t.name
+         FROM tags t
+         JOIN kid_tags kt ON kt.tag_id = t.id
+         WHERE kt.kid_id = ?
+         ORDER BY t.name",
+    )
+    .bind(kid_id)
+    .fetch_all(pool)
+    .await
+    {
+        Ok(rows) => {
+            eprintln!(
+                "[handler:kids] tags for kid_id={kid_id} → {:?}",
+                rows.iter().map(|(_, n)| n.as_str()).collect::<Vec<_>>()
+            );
+        }
+        Err(e) => eprintln!("[handler:kids] get_tags failed: {e}"),
+    }
 }
 
+/// Called by the dispatcher for "add_tag" intent.
+/// args = the raw transcript words — we parse tags and the optional kid name out of it.
 pub async fn add_tags(args: &[String], session: &SharedSession) {
-    println!("[handler:kids] add_tags — args={args:?}");
+    // Reconstruct the raw transcript from args
+    let transcript = args.join(" ");
+
+    // Extract the topic(s) — everything after "likes", "loves", "enjoys", "into" etc.
+    let topics = extract_topics(&transcript);
+    if topics.is_empty() {
+        eprintln!("[handler:kids] add_tags — could not extract any topics from: {transcript:?}");
+        return;
+    }
+
+    let kid_id = match resolve_kid_id(args, session).await {
+        Some(id) => id,
+        None => return,
+    };
+
+    eprintln!("[handler:kids] add_tags — kid_id={kid_id} topics={topics:?}");
+
+    // Create tags and assign them all — fire and forget per tag
+    for topic in topics {
+        let kid_id_copy = kid_id;
+        tokio::spawn(async move {
+            match get_or_create_tag(&topic).await {
+                Ok(tag_id) => {
+                    if let Err(e) = assign_tag_to_kid(kid_id_copy, tag_id).await {
+                        eprintln!("[handler:kids] assign tag failed: {e}");
+                    } else {
+                        eprintln!("[handler:kids] assigned tag '{topic}' (id={tag_id}) to kid {kid_id_copy}");
+                    }
+                }
+                Err(e) => eprintln!("[handler:kids] get_or_create_tag failed: {e}"),
+            }
+        });
+    }
 }
 
-pub async fn get_video_assignments(args: &[String], session: &SharedSession) {
+pub async fn get_video_assignments(args: &[String], _session: &SharedSession) {
     println!("[handler:kids] get_video_assignments — args={args:?}");
 }
 
-pub async fn assign_video(args: &[String], session: &SharedSession) {
+pub async fn assign_video(args: &[String], _session: &SharedSession) {
     println!("[handler:kids] assign_video — args={args:?}");
 }
 
-pub async fn get_recommendations(args: &[String], session: &SharedSession) {
+pub async fn get_recommendations(args: &[String], _session: &SharedSession) {
     println!("[handler:kids] get_recommendations — args={args:?}");
 }
 
 pub async fn start_kid_enrollment(
     app: &AppHandle,
-    args: &[String],
+    _args: &[String],
     session: &SharedSession,
     onboarding: &SharedOnboarding,
 ) {
     let role = session.lock().unwrap().role.clone();
-
     match role.as_deref() {
         Some("parent") => {
             eprintln!("[handler:kids] starting kid enrollment");
@@ -40,4 +99,117 @@ pub async fn start_kid_enrollment(
         Some(r) => eprintln!("[handler:kids] add_kid — role={r} is not a parent, ignoring"),
         None => eprintln!("[handler:kids] add_kid — no user identified, ignoring"),
     }
+}
+
+// ── Internals ────────────────────────────────────────────────────────────────
+
+async fn assign_tag_to_kid(kid_id: i64, tag_id: i64) -> Result<(), String> {
+    let pool = get_db();
+    // INSERT OR IGNORE gives us the same "do nothing on conflict" behaviour
+    sqlx::query("INSERT OR IGNORE INTO kid_tags (kid_id, tag_id) VALUES (?, ?)")
+        .bind(kid_id)
+        .bind(tag_id)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("[kid_tags] insert failed: {e}"))?;
+    Ok(())
+}
+
+/// Figures out which kid the transcript refers to.
+/// Priority:
+///   1. Name mentioned in transcript matches a kid in DB
+///   2. Only one kid exists → use them
+///   3. Multiple kids, no name → log and return None (Peppa should prompt)
+async fn resolve_kid_id(args: &[String], session: &SharedSession) -> Option<i64> {
+    let pool = get_db();
+
+    // Fetch all kids from DB
+    let kids = sqlx::query_as::<_, (i64, String)>(
+        "SELECT id, name FROM users WHERE role = 'kid' ORDER BY name",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    if kids.is_empty() {
+        eprintln!("[handler:kids] resolve_kid_id — no kids in DB");
+        return None;
+    }
+
+    // Try to match a kid name from the transcript
+    let transcript = args.join(" ").to_lowercase();
+    for (id, name) in &kids {
+        if transcript.contains(&name.to_lowercase()) {
+            eprintln!("[handler:kids] resolve_kid_id — matched name '{name}' → id={id}");
+            return Some(*id);
+        }
+    }
+
+    // Check if the speaker IS a kid (they said "I like...")
+    // In that case use their own user_id
+    {
+        let s = session.lock().unwrap();
+        if s.role.as_deref() == Some("kid") {
+            if let Some(uid) = s.user_id {
+                eprintln!("[handler:kids] resolve_kid_id — speaker is kid, using own id={uid}");
+                return Some(uid as i64);
+            }
+        }
+    }
+
+    // Exactly one kid → unambiguous
+    if kids.len() == 1 {
+        let (id, name) = &kids[0];
+        eprintln!("[handler:kids] resolve_kid_id — only one kid '{name}', using id={id}");
+        return Some(*id);
+    }
+
+    // Ambiguous — multiple kids, no name match
+    eprintln!(
+        "[handler:kids] resolve_kid_id — ambiguous: {} kids, no name in transcript '{transcript}'",
+        kids.len()
+    );
+    None
+}
+
+/// Pulls topic words out of natural language interest phrases.
+/// "my kid likes dinosaurs and space" → ["dinosaurs", "space"]
+/// "Emma loves reading and math"      → ["reading", "math"]
+/// "I'm really into cooking"          → ["cooking"]
+fn extract_topics(transcript: &str) -> Vec<String> {
+    let lower = transcript.to_lowercase();
+
+    const TRIGGERS: &[&str] = &[
+        "is really into ",
+        "is interested in ",
+        "really likes ",
+        "really loves ",
+        "really enjoys ",
+        "interested in ",
+        "really like ",
+        "really love ",
+        "really enjoy ",
+        "likes ",
+        "loves ",
+        "enjoys ",
+        "like ",
+        "love ",
+        "enjoy ",
+        "into ",
+    ];
+
+    let remainder = TRIGGERS
+        .iter()
+        .find_map(|trigger| lower.find(trigger).map(|pos| &lower[pos + trigger.len()..]));
+
+    let Some(raw) = remainder else {
+        return vec![];
+    };
+
+    raw.replace(" and ", ",")
+        .replace(" or ", ",")
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty() && s.split_whitespace().count() <= 3)
+        .collect()
 }

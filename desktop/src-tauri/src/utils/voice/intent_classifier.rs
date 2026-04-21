@@ -93,27 +93,43 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
         ],
     ),
     (
-        "my_tags",
-        &[
-            "my interests",
-            "my tags",
-            "what are my interests",
-            "show my tags",
-            "list my tags",
-            "what do I like",
-            "show my interests",
-        ],
-    ),
-    (
         "add_tag",
         &[
             "add interest",
             "add tag",
-            "I like",
-            "I enjoy",
-            "I love",
+            "I enjoy football",
+            "I love dinosaurs",
+            "I like space",
             "add this to my interests",
-            "I'm interested in",
+            "I'm interested in cooking",
+            "my kid likes dinosaurs",
+            "my daughter likes reading",
+            "my son likes robots",
+            "he likes football",
+            "she loves painting",
+            "they like math",
+            "is really into space",
+            "is interested in animals",
+            "enjoys reading",
+            "loves cooking",
+            "mark me as interested in",
+            "remember that I like",
+            "note that she likes",
+        ],
+    ),
+    (
+        "my_tags",
+        &[
+            "what are my interests",
+            "show my tags",
+            "list my tags",
+            "what tags do I have",
+            "show my interests",
+            "list my interests",
+            "what interests have been saved",
+            "what do you know I like",
+            "show what I like",
+            "what are my saved interests",
         ],
     ),
     (
@@ -320,8 +336,22 @@ fn keyword_fallback(text: &str) -> String {
     if l.contains("my video") || l.contains("assigned") {
         return "my_videos".to_string();
     }
-    if l.contains("my tag") || l.contains("interest") {
+    // Retrieval: must be a question or list request
+    if (l.contains("my tag") || l.contains("my interest"))
+        && (l.contains("show") || l.contains("list") || l.contains("what"))
+    {
         return "my_tags".to_string();
+    }
+    // Assignment: statements of preference
+    if l.contains("likes ")
+        || l.contains("loves ")
+        || l.contains("enjoys ")
+        || l.contains("i like ")
+        || l.contains("i love ")
+        || l.contains("i enjoy ")
+        || l.contains("interested in")
+    {
+        return "add_tag".to_string();
     }
     if l.contains("recommend") || l.contains("suggest") {
         return "recommendations".to_string();
