@@ -93,7 +93,7 @@ cp backend/env.example backend/.env
 ```
 
 **OpenAI API:**
-You should have received a mail with an OpenAI API Key. If you have not, reach out to: tuu01096@temple.edu
+If you're testing, there's a free Open AI API key for you to use on the Canvas Release submission page. If you have any questions, reach out to my email and I can give it to you: tuu01096@temple.edu
 ```bash
 # In backend/.env, update the OPENAI_API_KEY
 ```
