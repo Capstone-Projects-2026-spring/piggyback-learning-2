@@ -18,7 +18,7 @@ pub struct VadChunker {
 
 impl VadChunker {
     pub fn new() -> Self {
-        let vad = Vad::new_with_rate_and_mode(webrtc_vad::SampleRate::Rate16kHz, VadMode::Quality);
+        let vad = Vad::new_with_rate_and_mode(SampleRate::Rate16kHz, VadMode::Aggressive);
         Self {
             vad,
             speech_buf: Vec::new(),

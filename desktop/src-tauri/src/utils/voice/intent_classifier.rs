@@ -36,6 +36,11 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
             "find videos of football",
             "i want to watch something about",
             "can you find videos about",
+            "search for",
+            "find videos of",
+            "look up videos of",
+            "search for something",
+            "find something about",
         ],
     ),
     (
@@ -258,7 +263,7 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
 ];
 
 /// Below this cosine similarity we fall back to chat
-const MATCH_THRESHOLD: f32 = 0.42;
+const MATCH_THRESHOLD: f32 = 0.45;
 
 pub fn init_classifier() {
     std::thread::spawn(|| {

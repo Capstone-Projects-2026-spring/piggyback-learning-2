@@ -6,7 +6,7 @@ use whisper_rs::{FullParams, SamplingStrategy};
 
 use super::enrollment::{create_user, emit_enrollment, EnrollmentEvent};
 use super::onboarding::{
-    average_embeddings, begin_voice_collection, record_embedding, OnboardingFlow, OnboardingStage,
+    average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
 };
 use super::vad::VadChunker;
 use crate::utils::voice::{
@@ -140,6 +140,11 @@ pub fn start(
                 }
             }
 
+            if is_noise_transcript(&transcript) {
+                eprintln!("[capture] transcript looks like noise — skipping");
+                continue;
+            }
+
             let wake = wake_word::detect(&transcript);
             eprintln!("[capture] wake={}", wake.wake_detected);
 
@@ -219,6 +224,37 @@ fn resample(samples: Vec<f32>, from: u32, to: u32) -> Vec<f32> {
             s0 + (s1 - s0) * frac
         })
         .collect()
+}
+
+const NOISE_TRANSCRIPTS: &[&str] = &[
+    "you",
+    "the",
+    "a",
+    "uh",
+    "um",
+    "oh",
+    "ah",
+    "hm",
+    "hmm",
+    "thank you",
+    "thanks",
+    "bye",
+    "okay",
+    "ok",
+];
+
+fn is_noise_transcript(transcript: &str) -> bool {
+    let t = transcript.trim().to_lowercase();
+    // Single word that's just a filler
+    if t.split_whitespace().count() == 1 && NOISE_TRANSCRIPTS.contains(&t.as_str()) {
+        return true;
+    }
+    // Very short — under 3 chars after trimming punctuation
+    let alpha: String = t.chars().filter(|c| c.is_alphabetic()).collect();
+    if alpha.len() < 3 {
+        return true;
+    }
+    false
 }
 
 fn transcribe(samples: &[f32]) -> String {
