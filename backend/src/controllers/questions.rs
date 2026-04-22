@@ -81,24 +81,15 @@ async fn get_questions_by_video(
             question: q.question,
             answer: q.answer,
             rank: q.rank,
-            // followup_enabled: q.followup_enabled.unwrap_or(false),
-            // followup_for_correct_answer: q.followup_for_correct_answer.map(|f| FollowUp {
-            //     question: f.question,
-            //     answer: f.answer,
-            // }),
-            // followup_for_wrong_answer: q.followup_for_wrong_answer.map(|f| FollowUp {
-            //     question: f.question,
-            //     answer: f.answer,
-            // }),
-            followup_enabled: Some(true),
-            followup_for_correct_answer: Some(FollowUp {
-                question: "Bob question".to_string(),
-                answer: "Bob answer".to_string(),
-            }),
-            followup_for_wrong_answer: Some(FollowUp {
-                question: "Tom question".to_string(),
-                answer: "Tom answer".to_string(),
-            }),
+            followup_enabled: Some(q.followup_enabled.unwrap_or(false)),
+            followup_for_correct_answer: match (q.followup_correct_question, q.followup_correct_answer) {
+                (Some(question), Some(answer)) => Some(FollowUp { question, answer }),
+                _ => None,
+            },
+            followup_for_wrong_answer: match (q.followup_wrong_question, q.followup_wrong_answer) {
+                (Some(question), Some(answer)) => Some(FollowUp { question, answer }),
+                _ => None,
+            },
         });
     }
 

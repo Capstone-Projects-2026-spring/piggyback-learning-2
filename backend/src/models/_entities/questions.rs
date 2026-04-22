@@ -15,6 +15,11 @@ pub struct Model {
     pub answer: String,
     pub rank: Option<i32>,
     pub segment_id: i32,
+    pub followup_enabled: Option<bool>,
+    pub followup_correct_question: Option<String>,
+    pub followup_correct_answer: Option<String>,
+    pub followup_wrong_question: Option<String>,
+    pub followup_wrong_answer: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

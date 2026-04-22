@@ -155,6 +155,8 @@ function WatchVideoPageInner() {
         return;
       }
 
+      console.log("Question object:", currentQuestionRef.current);
+
       const q = currentQuestionRef.current;
       setAnalysisResult(result);
 
