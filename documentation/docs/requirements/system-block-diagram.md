@@ -56,19 +56,19 @@ graph TD
 
     Quiz --- AI
     Vosk --- AI
-    linkStyle 3 stroke:#e69f00,stroke-width:3px;
-    linkStyle 4 stroke:#56b4e9,stroke-width:3px;
-    linkStyle 5 stroke:#cc79a7,stroke-width:3px;
-    linkStyle 6 stroke:#3b82f6,stroke-width:3px;
-    linkStyle 7 stroke:#d55e00,stroke-width:3px;
-    linkStyle 8 stroke:#3b82f6,stroke-width:3px;
-    linkStyle 9 stroke:#e69f00,stroke-width:3px;
-    linkStyle 10 stroke:#cc79a7,stroke-width:3px;
-    linkStyle 11 stroke:#d55e00,stroke-width:3px;
-    linkStyle 12 stroke:#000000stroke-width:3px;
-    linkStyle 13 stroke:#f0e442,stroke-width:3px;
-    linkStyle 14 stroke:#d55e00,stroke-width:3px; 
-    linkStyle 15 stroke:#f0e442,stroke-width:3px;
-    linkStyle 16 stroke:#009e73,stroke-width:3px;
-    linkStyle 17 stroke:#009e73,stroke-width:3px;
+    linkStyle 3 stroke:#37474f,stroke-width:3px;
+    linkStyle 4 stroke:#37474f,stroke-width:3px;
+    linkStyle 5 stroke:#e0f2f1,stroke-width:3px;
+    linkStyle 6 stroke:#37474f,stroke-width:3px;
+    linkStyle 7 stroke:#00897b,stroke-width:3px;
+    linkStyle 8 stroke:#e0f2f1,stroke-width:3px;
+    linkStyle 9 stroke:#37474f,stroke-width:3px;
+    linkStyle 10 stroke:#00897b,stroke-width:3px;
+    linkStyle 11 stroke:#e0f2f1,stroke-width:3px;
+    linkStyle 12 stroke:#37474fstroke-width:3px;
+    linkStyle 13 stroke:#00897b,stroke-width:3px;
+    linkStyle 14 stroke:#00897b,stroke-width:3px; 
+    linkStyle 15 stroke:#00897b,stroke-width:3px;
+    linkStyle 16 stroke:#37474f,stroke-width:3px;
+    linkStyle 17 stroke:#00897b,stroke-width:3px;
 ```
