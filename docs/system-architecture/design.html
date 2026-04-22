@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Design | Piggyback Learning 2</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Design | Piggyback Learning 2"><meta data-rh="true" name="description" content="Components"><meta data-rh="true" property="og:description" content="Components"><link data-rh="true" rel="icon" href="/piggyback-learning-2/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design"><link data-rh="true" rel="alternate" href="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design" hreflang="en"><link data-rh="true" rel="alternate" href="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"System Architecture","item":"https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/category/system-architecture"},{"@type":"ListItem","position":2,"name":"Design","item":"https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/docs/system-architecture/design"}]}</script><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script><link rel="stylesheet" href="/piggyback-learning-2/assets/css/styles.7aa687c6.css">
-<script src="/piggyback-learning-2/assets/js/runtime~main.10d6f711.js" defer="defer"></script>
+<script src="/piggyback-learning-2/assets/js/runtime~main.f5e1c11c.js" defer="defer"></script>
 <script src="/piggyback-learning-2/assets/js/main.3c0189ac.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -26,7 +26,7 @@
 <h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="built-with-locors-which-integrates">Built with Loco.rs, which integrates:<a href="#built-with-locors-which-integrates" class="hash-link" aria-label="Direct link to Built with Loco.rs, which integrates:" title="Direct link to Built with Loco.rs, which integrates:" translate="no">​</a></h4>
 <ul>
 <li class="">Axum – Used for Web server and routing</li>
-<li class="">SeaORM – Uses Database ORM for type-safe SQL queries</li>
+<li class="">SeaORM – Uses Database ORM for SQL queries</li>
 <li class="">Database: Uses SQLite for lightweight, storage.</li>
 <li class="">WebSocket support is provided by Axum for real-time communication.</li>
 </ul>
@@ -34,8 +34,8 @@
 <h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="video-processing">Video Processing<a href="#video-processing" class="hash-link" aria-label="Direct link to Video Processing" title="Direct link to Video Processing" translate="no">​</a></h4>
 <ul>
 <li class="">YouTube Downloading: Uses yt-dlp to fetch videos, metadata, and subtitles from a YouTube URL.</li>
-<li class="">Frame Extraction: Uses FFmpeg to extract key frames from downloaded videos for AI to used during question generation.</li>
-<li class="">Processing is triggered with API endpoints and progress of processing is streamed to the frontend over WebSockets.</li>
+<li class="">Frame Extraction: Uses FFmpeg to extract frames from downloaded videos for AI to used during question generation.</li>
+<li class="">Processing is done with API endpoints and progress of processing is streamed to the frontend over WebSockets.</li>
 </ul>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="ai-integration">AI Integration<a href="#ai-integration" class="hash-link" aria-label="Direct link to AI Integration" title="Direct link to AI Integration" translate="no">​</a></h3>
 <ul>
@@ -65,7 +65,7 @@ Main entry pages (find them in /frontend/app):</p>
 </ul>
 </li>
 <li class="">
-<p>Frontend tech:</p>
+<p>Frontend Technology:</p>
 </li>
 </ol>
 <ul>
@@ -88,7 +88,7 @@ Main entry pages (find them in /frontend/app):</p>
 <ul>
 <li class="">Processes videos (download, frame extraction, and AI question generation) via API calls.</li>
 <li class="">Opens a WebSocket connection to stream progress updates in real time (no polling).</li>
-<li class="">Fetches the available videos and generated questions from the backend.</li>
+<li class="">Fetches available videos and generated questions from the backend.</li>
 <li class="">Review, edit, and finalize questions via API calls.</li>
 </ul>
 <ol start="5">
@@ -105,7 +105,7 @@ Main entry pages (find them in /frontend/app):</p>
 <ul>
 <li class="">Static assets are reachable from the public/ directory (Next.js convention).</li>
 <li class="">videos, extracted frames, question JSON can be reached by the backend and accessed via API routes.</li>
-<li class="">The frontend doesn&#x27;t need a separate file server. Next.js serves static assets while Rust serves generated content</li>
+<li class="">Next.js serves static assets while Rust serves the generated content</li>
 </ul>
 <hr>
 <p><strong>Important Distinctions:</strong></p>
