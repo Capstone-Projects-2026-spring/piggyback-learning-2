@@ -43,8 +43,6 @@ pub async fn dispatch(
         // ── tags ──────────────────────────────────────────────────
         "all_tags" => handlers::tags::get_all(args, &session).await,
         "create_tag" => handlers::tags::create(args, &session).await,
-        // ── frames ────────────────────────────────────────────────
-        "extract_frames" => handlers::frames::extract(args, &session).await,
         // ── misc ──────────────────────────────────────────────────
         "open" => eprintln!("[dispatch] open — args={args:?}"),
         "close" => eprintln!("[dispatch] close — args={args:?}"),

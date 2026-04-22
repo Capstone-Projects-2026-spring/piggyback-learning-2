@@ -1,6 +1,7 @@
 use tauri::Emitter;
 
 use crate::db::init::get_db;
+use crate::handlers::frames::extract_frames;
 use crate::utils::download::download_video;
 
 #[tauri::command]
@@ -33,18 +34,7 @@ pub async fn download_video_command(video_id: String, app: tauri::AppHandle) -> 
                     return;
                 }
 
-                // Auto-generate and assign tags from transcript in background
-                if !transcript_path.is_empty() {
-                    let id_clone = id.clone();
-                    let transcript_clone = transcript_path.clone();
-                    tokio::spawn(async move {
-                        if let Err(e) = generate_and_assign_tags(&id_clone, &transcript_clone).await
-                        {
-                            eprintln!("[handler:videos] tag generation failed: {e}");
-                        }
-                    });
-                }
-
+                // Emit done to frontend immediately — frame extraction happens silently after
                 let _ = app.emit(
                     "peppa://video-status",
                     serde_json::json!({
@@ -57,6 +47,26 @@ pub async fn download_video_command(video_id: String, app: tauri::AppHandle) -> 
                         "transcript_path": transcript_path,
                     }),
                 );
+
+                // Auto-tag from transcript in background
+                if !transcript_path.is_empty() {
+                    let id_clone = id.clone();
+                    let transcript_clone = transcript_path.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = generate_and_assign_tags(&id_clone, &transcript_clone).await
+                        {
+                            eprintln!("[handler:videos] tag generation failed: {e}");
+                        }
+                    });
+                }
+
+                // Frame extraction in background — after tagging, independently
+                let id_clone = id.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = extract_frames(&id_clone).await {
+                        eprintln!("[handler:videos] frame extraction failed: {e}");
+                    }
+                });
             }
             Err(e) => {
                 eprintln!("[handler:videos] download failed: {e}");

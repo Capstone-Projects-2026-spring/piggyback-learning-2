@@ -242,15 +242,6 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
         ],
     ),
     (
-        "extract_frames",
-        &[
-            "extract frames",
-            "get frames",
-            "grab frames from video",
-            "pull frames",
-        ],
-    ),
-    (
         "chat",
         &[
             "what is",
