@@ -4,3 +4,4 @@ pub mod parents;
 pub mod questions;
 pub mod tags;
 pub mod videos;
+pub mod auth;
