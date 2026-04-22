@@ -1,1 +1,4 @@
 piggyback.pem
+backend/vosk-linux-x86_64-0.3.45/vosk_api.h
+backend/vosk-linux-x86_64-0.3.45/libvosk.so
+backend/vosk-linux-x86_64-0.3.45.zip
