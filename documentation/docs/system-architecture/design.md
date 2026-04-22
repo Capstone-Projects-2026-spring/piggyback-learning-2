@@ -100,7 +100,6 @@ CREATE TABLE watch_histories (
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
 );
 ```
-## Piggyback Learning API
 
 **Class Diagram**
 ```mermaid
