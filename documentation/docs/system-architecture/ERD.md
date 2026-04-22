@@ -13,6 +13,7 @@ erDiagram
     VIDEOS ||--o{ VIDEO_ASSIGNMENTS : "assigned to kids"
     VIDEOS ||--o{ SEGMENTS : "contains"
     VIDEOS ||--o{ VIDEO_TAGS : "categorized by"
+    VIDEOS ||--o{ FRAMES : "provides context for AI"
     
     SEGMENTS ||--o{ QUESTIONS : "has"
     
