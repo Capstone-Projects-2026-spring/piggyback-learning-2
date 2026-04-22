@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import PeppaOrb from "./components/PeppaOrb.jsx";
 import EnrollmentOverlay from "./components/EnrollmentOverlay.jsx";
-import { startPeppa, commandBus } from "./lib/stt/index.js";
+import VideoPanel from "./components/VideoPanel.jsx";
+import { commandBus } from "./lib/stt/index.js";
 
 export default function App() {
   const [mode, setMode] = useState("loading");
   const [kidEnrolling, setKidEnrolling] = useState(false);
+  const [showVideos, setShowVideos] = useState(false);
 
   useEffect(() => {
-    const off = commandBus.onEnrollment((data) => {
+    const offEnrollment = commandBus.onEnrollment((data) => {
       console.log("[App] enrollment event:", data.stage, "flow:", data.flow);
 
       if (data.flow === "parent") {
@@ -21,7 +23,6 @@ export default function App() {
 
       if (data.flow === "kid") {
         if (data.stage === "kid_done") {
-          // Brief delay so the done state is visible before dismissing
           setTimeout(() => setKidEnrolling(false), 3000);
         } else {
           setKidEnrolling(true);
@@ -29,16 +30,20 @@ export default function App() {
       }
     });
 
-    setTimeout(() => {
-      startPeppa().catch(console.error);
-    }, 100);
+    const offVideos = commandBus.on("my_videos", () => setShowVideos(true));
+    const offSearch = commandBus.on("search", () => {
+      setShowVideos(true);
+      // Panel will auto-populate when peppa://search-results arrives
+    });
 
     const fallback = setTimeout(() => {
       setMode((m) => (m === "loading" ? "ready" : m));
     }, 6000);
 
     return () => {
-      off();
+      offEnrollment();
+      offVideos();
+      offSearch();
       clearTimeout(fallback);
     };
   }, []);
@@ -58,6 +63,9 @@ export default function App() {
   return (
     <>
       <PeppaOrb />
+
+      {showVideos && <VideoPanel onClose={() => setShowVideos(false)} />}
+
       {kidEnrolling && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm">
           <EnrollmentOverlay flow="kid" onDone={() => setKidEnrolling(false)} />
