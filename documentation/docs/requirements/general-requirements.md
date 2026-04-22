@@ -5,8 +5,8 @@ sidebar_position: 3
 # General Requirements
 
 ## General Requirements For Users
-Desktop or laptop
-Internet access
+1. Desktop or laptop
+2. Internet access
 
 
 ## Project Requirments
