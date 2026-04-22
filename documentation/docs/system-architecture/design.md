@@ -235,15 +235,15 @@ classDiagram
 ### Framework & Stack
 #### Built with Loco.rs, which integrates:
 - Axum – Used for Web server and routing
-- SeaORM – Uses Database ORM for type-safe SQL queries
+- SeaORM – Uses Database ORM for SQL queries
 - Database: Uses SQLite for lightweight, storage.
 - WebSocket support is provided by Axum for real-time communication. 
 
 ### Core Functionality
 #### Video Processing
 - YouTube Downloading: Uses yt-dlp to fetch videos, metadata, and subtitles from a YouTube URL.
-- Frame Extraction: Uses FFmpeg to extract key frames from downloaded videos for AI to used during question generation.
-- Processing is triggered with API endpoints and progress of processing is streamed to the frontend over WebSockets.
+- Frame Extraction: Uses FFmpeg to extract frames from downloaded videos for AI to used during question generation.
+- Processing is done with API endpoints and progress of processing is streamed to the frontend over WebSockets.
 
 ### AI Integration
 - Question Generation: Processes video metadata, transcripts/subtitles, and extracted frames to generate questions using AI.
@@ -268,7 +268,7 @@ Main entry pages (find them in /frontend/app):
     - signup
     - videos
 
-2. Frontend tech:
+2. Frontend Technology:
 - The UI is built with Next.js (React) and TypeScript.
 - Pages are composed from reusable components located in components/.
 - Styling is handled via Tailwind CSS and CSS files.
@@ -282,7 +282,7 @@ Main entry pages (find them in /frontend/app):
 4. Parent page: 
 - Processes videos (download, frame extraction, and AI question generation) via API calls.
 - Opens a WebSocket connection to stream progress updates in real time (no polling).
-- Fetches the available videos and generated questions from the backend.
+- Fetches available videos and generated questions from the backend.
 - Review, edit, and finalize questions via API calls. 
 
 5. Kids page
@@ -293,7 +293,7 @@ Main entry pages (find them in /frontend/app):
 6. Static/Media Serving:
 - Static assets are reachable from the public/ directory (Next.js convention).
 - videos, extracted frames, question JSON can be reached by the backend and accessed via API routes.
-- The frontend doesn't need a separate file server. Next.js serves static assets while Rust serves generated content
+- Next.js serves static assets while Rust serves the generated content
 
 ---
 
