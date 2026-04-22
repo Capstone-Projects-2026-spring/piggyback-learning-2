@@ -16,7 +16,6 @@ export default function QuestionsStep({ videoId, kidId }) {
   const [interval, setInterval] = useState(10);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
-  const [saving, setSaving] = useState({});
   const [expandedFollowups, setExpandedFollowups] = useState({});
   const { setPiggyText } = usePiggy();
 
@@ -94,29 +93,6 @@ export default function QuestionsStep({ videoId, kidId }) {
     );
   }
 
-  async function saveQuestion(q) {
-    setSaving((prev) => ({ ...prev, [q.id]: true }));
-    try {
-      await fetch(`${BASE_URL}/api/questions/${q.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: q._question,
-          answer: q._answer,
-          followup_enabled: q._followup_enabled,
-          followup_correct_question: q._followup_correct_question,
-          followup_correct_answer: q._followup_correct_answer,
-          followup_wrong_question: q._followup_wrong_question,
-          followup_wrong_answer: q._followup_wrong_answer,
-        }),
-      });
-    } catch (err) {
-      console.error("Failed to save question", err);
-      alert("⚠️ Failed to save question");
-    }
-    setSaving((prev) => ({ ...prev, [q.id]: false }));
-  }
-
   async function saveSegmentBestQuestion(segmentId, bestQuestion) {
     try {
       await fetch(`${BASE_URL}/api/questions/segment/${segmentId}`, {
@@ -126,13 +102,6 @@ export default function QuestionsStep({ videoId, kidId }) {
       });
     } catch (err) {
       console.error("Failed to save best question", err);
-    }
-  }
-
-  function handleKeyDown(e, q) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      saveQuestion(q);
     }
   }
 
@@ -153,11 +122,33 @@ export default function QuestionsStep({ videoId, kidId }) {
 
   async function handleAssign() {
     setAssigning(true);
+
+    // save all questions
+    await Promise.all(
+      questions.map((q) =>
+        fetch(`${BASE_URL}/api/questions/${q.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: q._question,
+            answer: q._answer,
+            followup_enabled: q._followup_enabled,
+            followup_correct_question: q._followup_correct_question,
+            followup_correct_answer: q._followup_correct_answer,
+            followup_wrong_question: q._followup_wrong_question,
+            followup_wrong_answer: q._followup_wrong_answer,
+          }),
+        })
+      )
+    );
+
+    // assign video
     await fetch(`${BASE_URL}/api/kids/${kidId}/videos_assigned`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ video_id: videoId }),
     });
+
     setAssigning(false);
     router.push(`/kids/${kidId}`);
   }
@@ -251,7 +242,6 @@ export default function QuestionsStep({ videoId, kidId }) {
                       className="w-full font-semibold text-gray-800 border-b border-gray-200 focus:border-blue-400 outline-none bg-transparent py-1"
                       value={q._question}
                       onChange={(e) => updateQuestion(q.id, "_question", e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, q)}
                       placeholder="Question"
                     />
                     {/* Answer */}
@@ -259,7 +249,6 @@ export default function QuestionsStep({ videoId, kidId }) {
                       className="w-full text-sm text-gray-600 border-b border-gray-200 focus:border-blue-400 outline-none bg-transparent py-1"
                       value={q._answer}
                       onChange={(e) => updateQuestion(q.id, "_answer", e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, q)}
                       placeholder="Answer"
                     />
                     {/* Followup toggle */}
@@ -295,14 +284,12 @@ export default function QuestionsStep({ videoId, kidId }) {
                           className="w-full text-sm text-gray-700 border-b border-gray-200 focus:border-green-400 outline-none bg-transparent py-1"
                           value={q._followup_correct_question}
                           onChange={(e) => updateQuestion(q.id, "_followup_correct_question", e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, q)}
                           placeholder="Followup question"
                         />
                         <input
                           className="w-full text-sm text-gray-600 border-b border-gray-200 focus:border-green-400 outline-none bg-transparent py-1"
                           value={q._followup_correct_answer}
                           onChange={(e) => updateQuestion(q.id, "_followup_correct_answer", e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, q)}
                           placeholder="Followup answer"
                         />
                         <p className="text-xs font-semibold text-red-500 pt-1">❌ If wrong:</p>
@@ -310,27 +297,16 @@ export default function QuestionsStep({ videoId, kidId }) {
                           className="w-full text-sm text-gray-700 border-b border-gray-200 focus:border-red-300 outline-none bg-transparent py-1"
                           value={q._followup_wrong_question}
                           onChange={(e) => updateQuestion(q.id, "_followup_wrong_question", e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, q)}
                           placeholder="Followup question"
                         />
                         <input
                           className="w-full text-sm text-gray-600 border-b border-gray-200 focus:border-red-300 outline-none bg-transparent py-1"
                           value={q._followup_wrong_answer}
                           onChange={(e) => updateQuestion(q.id, "_followup_wrong_answer", e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, q)}
                           placeholder="Followup answer"
                         />
                       </div>
                     )}
-
-                    {/* Save button */}
-                    <button
-                      onClick={() => saveQuestion(q)}
-                      disabled={saving[q.id]}
-                      className="mt-1 text-xs px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
-                    >
-                      {saving[q.id] ? "Saving..." : "Save"}
-                    </button>
                   </div>
                 </div>
               ))}
