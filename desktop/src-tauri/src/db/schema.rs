@@ -47,12 +47,16 @@ CREATE TABLE IF NOT EXISTS segments (
 );
 
 CREATE TABLE IF NOT EXISTS questions (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    segment_id INTEGER NOT NULL REFERENCES segments(id),
-    qtype      TEXT    NOT NULL,
-    question   TEXT    NOT NULL,
-    answer     TEXT    NOT NULL,
-    rank       INTEGER
+    id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+    segment_id                  INTEGER NOT NULL REFERENCES segments(id),
+    qtype                       TEXT    NOT NULL,
+    question                    TEXT    NOT NULL,
+    answer                      TEXT    NOT NULL,
+    followup_correct_question   TEXT,
+    followup_correct_answer     TEXT,
+    followup_wrong_question     TEXT,
+    followup_wrong_answer       TEXT,
+    rank                        INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS answers (
