@@ -22,7 +22,21 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
     ),
     (
         "search",
-        &["search for", "find", "look up", "look for", "search"],
+        &[
+            "search for spiderman",
+            "search for dinosaur videos",
+            "find videos about space",
+            "look up minecraft videos",
+            "find me videos about robots",
+            "show me videos about animals",
+            "search youtube for cooking",
+            "find spiderman on youtube",
+            "look for science videos",
+            "search for spider-man",
+            "find videos of football",
+            "i want to watch something about",
+            "can you find videos about",
+        ],
     ),
     (
         "volume",
@@ -44,10 +58,6 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
             "how do I use this",
             "what commands are available",
         ],
-    ),
-    (
-        "login",
-        &["log in", "login", "sign in", "log me in", "sign me in"],
     ),
     (
         "add_kid",
@@ -138,10 +148,11 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
             "my videos",
             "my assignments",
             "assigned videos",
-            "show my videos",
+            "show my assigned videos",
             "what videos do I have",
             "list my videos",
             "what have I been assigned",
+            "videos assigned to me",
         ],
     ),
     (
@@ -186,16 +197,6 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
             "download",
             "save this video",
             "save video locally",
-        ],
-    ),
-    (
-        "video_tags",
-        &[
-            "video tags",
-            "tags for this video",
-            "what tags does this have",
-            "tags for video",
-            "what tags",
         ],
     ),
     (
@@ -329,6 +330,18 @@ pub fn classify(transcript: &str) -> String {
 
     eprintln!("[classifier] '{transcript}' → {best_intent} ({best_score:.3})");
     best_intent
+}
+
+/// Public helper so other modules can embed arbitrary strings
+/// using the already-loaded fastembed model.
+pub fn embed_strings(inputs: &[&str]) -> Result<Vec<Vec<f32>>, String> {
+    let Some(mutex) = EMBEDDER.get() else {
+        return Err("[classifier] embedder not ready".to_string());
+    };
+    let mut embedder = mutex.lock().unwrap();
+    embedder
+        .embed(inputs.to_vec(), None)
+        .map_err(|e| format!("[classifier] embed failed: {e}"))
 }
 
 fn keyword_fallback(text: &str) -> String {

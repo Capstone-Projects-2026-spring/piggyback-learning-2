@@ -35,8 +35,8 @@ pub async fn dispatch(
         // ── parents ───────────────────────────────────────────────
         "my_kids" => handlers::parents::get_kids(args, &session).await,
         // ── videos ────────────────────────────────────────────────
-        "download_video" => handlers::videos::download(args, &session).await,
-        "video_tags" => handlers::videos::get_tags(args, &session).await,
+        "download_video" => eprintln!("[dispatch] download_video — handled by frontend"),
+        "search" => handlers::videos::search(args, &app).await,
         // ── questions ─────────────────────────────────────────────
         "get_questions" => handlers::questions::get_by_video(args, &session).await,
         "generate_questions" => handlers::questions::generate(args, &session).await,
@@ -50,7 +50,6 @@ pub async fn dispatch(
         "close" => eprintln!("[dispatch] close — args={args:?}"),
         "play" => eprintln!("[dispatch] play — args={args:?}"),
         "stop" => eprintln!("[dispatch] stop"),
-        "search" => eprintln!("[dispatch] search — args={args:?}"),
         "volume" => eprintln!("[dispatch] volume — args={args:?}"),
         "help" => eprintln!("[dispatch] help"),
         "chat" => eprintln!("[dispatch] chat — args={args:?}"),
