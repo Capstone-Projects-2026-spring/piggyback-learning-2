@@ -10,3 +10,5 @@ gen/schemas
 binaries/
 models/
 lib/
+
+.env
