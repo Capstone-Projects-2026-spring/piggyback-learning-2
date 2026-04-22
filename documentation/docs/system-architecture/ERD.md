@@ -7,18 +7,18 @@ sidebar_position: 7
 ```mermaid
 erDiagram
     PARENTS ||--o{ KIDS : "manages"
-    KIDS ||--o{ VIDEO_ASSIGNMENTS : "is assigned"
-    KIDS ||--o{ KID_TAGS : "has interests"
+    TAGS ||--o{ KID_TAGS : "describes"
+    TAGS ||--o{ VIDEO_TAGS : "applied to"
+
+    KIDS ||--o{ KID_TAGS : "interested in"
+    VIDEOS ||--o{ VIDEO_TAGS : "categorized by"
     
+    KIDS ||--o{ VIDEO_ASSIGNMENTS : "is assigned"
     VIDEOS ||--o{ VIDEO_ASSIGNMENTS : "assigned to kids"
     VIDEOS ||--o{ SEGMENTS : "contains"
-    VIDEOS ||--o{ VIDEO_TAGS : "categorized by"
-    VIDEOS ||--o{ FRAMES : "provides context for AI"
-    
+    VIDEOS ||--o{ FRAMES : "has"
+
     SEGMENTS ||--o{ QUESTIONS : "has"
-    
-    TAGS ||--o{ VIDEO_TAGS : "applied to"
-    TAGS ||--o{ KID_TAGS : "describes"
 
     PARENTS {
         int id PK
