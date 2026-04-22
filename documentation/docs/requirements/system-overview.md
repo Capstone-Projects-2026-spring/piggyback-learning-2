@@ -92,8 +92,8 @@ Wayground is a browser extension and web application that generates interactive 
 - Wayground does not include attention detection capabilties or mascot overlays
 - Wayground doesn't have navigation restrictions on videos, which Piggyback Learning has.
 
-### Child Privacy and COPPA Compliance
-Any application collecting personal information from children under 13 in the United States must comply with the Children's Online Privacy Protection Act (COPPA). This includes requirements for verifiable parental consent, clear privacy notices, and limitations on data collection and retention.
+### Child Privacy, COPPA Compliance, GDPR-K Compliance
+Any application collecting personal information from children under 13 in the United States must comply with the Children's Online Privacy Protection Act (COPPA). And any app collecting personal information from children in the EU must comply with General Data Protection Regulation for children (GDPR-K). This includes requirements for parental consent, clear privacy notices, and limitations on data collection and retention.
 
 #### Implications for Piggyback Learning
  The application's voice interaction and attention detection features must be considered in terms of COPPA. No voice data will be stored, and all data collection will be limited to anonomous usage data that are only accessible to linked parent accounts and children accounts, in compliance with COPPA.
