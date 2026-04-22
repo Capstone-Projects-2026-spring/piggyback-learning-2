@@ -76,6 +76,16 @@ async fn signup(State(ctx): State<AppContext>, Json(data): Json<SignupData>) -> 
 
     match data.role.as_str() {
         "parent" => {
+            // handle duplicate username case
+            let existing = parents::Entity::find()
+                .filter(parents::Column::Username.eq(&data.username))
+                .one(&ctx.db)
+                .await?;
+
+            if existing.is_some() {
+                return Err(Error::BadRequest("Username already taken".to_string()));
+            }
+
             let _ = parents::ActiveModel {
                 name: Set(data.name),
                 username: Set(data.username),
@@ -88,6 +98,14 @@ async fn signup(State(ctx): State<AppContext>, Json(data): Json<SignupData>) -> 
             return format::json(serde_json::json!({"success": true}));
         }
         "kid" => {
+            let existing = kids::Entity::find()
+                .filter(kids::Column::Username.eq(&data.username))
+                .one(&ctx.db)
+                .await?;
+
+            if existing.is_some() {
+                return Err(Error::BadRequest("Username already taken".to_string()));
+            }
             if data.parent_id.is_none() {
                 return Err(Error::BadRequest(
                     "Kid doesn't have a parent id".to_string(),

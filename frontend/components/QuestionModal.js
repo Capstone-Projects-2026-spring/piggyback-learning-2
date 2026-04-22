@@ -12,6 +12,7 @@ export default function QuestionModal({
   recordingState,
   statusMessage,
   analysisResult,
+  isFollowup,
 }) {
   const { send, username } = useSocket();
   const { parentUsername } = useContext(AuthContext);
@@ -111,11 +112,13 @@ export default function QuestionModal({
       ? Math.round(analysisResult.similarity_score * 100)
       : null;
 
+  const headerDisplay = isFollowup ? "Follow-up!" : "Question Time!";
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-2xl shadow-lg max-w-md w-full text-center">
         <h2 className="text-2xl font-bold mb-4 text-purple-700">
-          Question Time!
+          {headerDisplay}
         </h2>
         <p className="text-lg mb-6 text-gray-800">{question}</p>
 

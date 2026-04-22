@@ -90,7 +90,7 @@ export default function ResultsPage() {
                   <div
                     key={idx}
                     className={`p-3 rounded-xl flex flex-col md:flex-row md:items-center md:justify-between ${
-                      ans.is_correct ? "bg-green-100" : "bg-red-100"
+                      ans.is_correct ? "bg-sky-100" : "bg-red-100"
                     }`}
                   >
                     <div>

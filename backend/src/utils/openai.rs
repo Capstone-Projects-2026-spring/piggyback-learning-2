@@ -42,10 +42,19 @@ pub struct QuestionsResponse {
 }
 
 #[derive(Deserialize, ToSchema)]
+struct OpenAIFollowUp {
+    q: String,
+    a: String,
+}
+
+#[derive(Deserialize, ToSchema)]
 struct OpenAIQuestionItem {
     q: String,
     a: String,
     rank: Option<i32>,
+    followup_enabled: Option<bool>,
+    followup_for_correct_answer: Option<OpenAIFollowUp>,
+    followup_for_wrong_answer: Option<OpenAIFollowUp>,
 }
 
 #[derive(Deserialize)]
@@ -65,49 +74,63 @@ pub struct OpenAIResponse {
     best_question: String,
 }
 
-fn build_prompt(transcript: &str, duration: i32, start: i32, end: i32) -> String {
+fn build_prompt(transcript: &str, duration: i32, start: i32, end: i32, existing_questions: &[String]) -> String {
+    let repeat_warning = if existing_questions.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "PREVIOUSLY ASKED QUESTIONS (do not repeat or closely resemble these):\n{}\n\n",
+            existing_questions.iter().map(|q| format!("- \"{}\"", q)).collect::<Vec<_>>().join("\n")
+        )
+    };
+    
     format!(
         r#"You are an early childhood educator designing comprehension questions for children ages 6–8.
 
-COMPLETE TRANSCRIPT:
-==========================================
-{}
-==========================================
+        COMPLETE TRANSCRIPT:
+        ==========================================
+        {}
+        ==========================================
 
-TASK:
-Frames from {}s–{}s ({} seconds)
+        {}
 
-Provide ONE question for EACH:
-- Character
-- Setting
-- Feeling
-- Action
-- Causal Relationship
-- Outcome
-- Prediction
+        TASK:
+        Frames from {}s–{}s ({} seconds)
 
-IMPORTANT:
-- Every answer must be a SINGLE WORD only
-- Do NOT include spaces
-- Do NOT include punctuation
-- Example:
-  BAD: "in the park"
-  GOOD: "park"
+        Provide ONE question for EACH:
+        - Character
+        - Setting
+        - Feeling
+        - Action
+        - Causal Relationship
+        - Outcome
+        - Prediction
 
-Return JSON:
-{{
-"questions": {{
-    "character": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
-    "setting": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
-    "feeling": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
-    "action": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
-    "causal": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
-    "outcome": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }},
-    "prediction": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER" }}
-}},
-"best_question": "..."
-}}"#,
-        transcript, start, end, duration
+        IMPORTANT:
+        - Every answer must be a SINGLE WORD only
+        - Do NOT include spaces
+        - Do NOT include punctuation
+        - Example:
+        BAD: "in the park"
+        GOOD: "park"
+        - Each question must  include two follow-up questions:
+        1) If the child answers correctly, ask a slightly more difficult question that goes deeper on the same topic
+        2) If the child answers incorrectly, ask an easier question that guides towards the original answer
+
+        Return JSON:
+        {{
+        "questions": {{
+            "character": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER", "followup_enabled": true, "followup_for_correct_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }}, "followup_for_wrong_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }} }},
+            "setting": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER", "followup_enabled": true, "followup_for_correct_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }}, "followup_for_wrong_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }} }},
+            "feeling": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER", "followup_enabled": true, "followup_for_correct_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }}, "followup_for_wrong_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }} }},
+            "action": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER", "followup_enabled": true, "followup_for_correct_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }}, "followup_for_wrong_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }} }},
+            "causal": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER", "followup_enabled": true, "followup_for_correct_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }}, "followup_for_wrong_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }} }},
+            "outcome": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER", "followup_enabled": true, "followup_for_correct_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }}, "followup_for_wrong_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }} }},
+            "prediction": {{ "q": "...", "a": "ONE_WORD_ONLY", "rank": "ANY_ONE_DIGIT_NUMBER", "followup_enabled": true, "followup_for_correct_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }}, "followup_for_wrong_answer": {{ "q": "...", "a": "ONE_WORD_ONLY" }} }}
+        }},
+        "best_question": "..."
+        }}"#,
+        transcript, repeat_warning, start, end, duration
     )
 }
 
@@ -205,6 +228,30 @@ pub async fn generate_and_store_questions(
     start: i32,
     end: i32,
 ) -> Result<QuestionsResponse, String> {
+
+    // get existing questions so we can ask OpenAI to avoid repeat questions
+    let existing_segment_ids: Vec<i32> = Segments::find()
+        .filter(SegmentColumn::VideoId.eq(&video_id))
+        .all(db)
+        .await
+        .map_err(|e| format!("DB error: {}", e))?
+        .iter()
+        .map(|s| s.id)
+        .collect();
+
+    let existing_questions: Vec<String> = if existing_segment_ids.is_empty() {
+        vec![]
+    } else {
+        Questions::find()
+            .filter(QuestionColumn::SegmentId.is_in(existing_segment_ids))
+            .all(db)
+            .await
+            .map_err(|e| format!("DB error: {}", e))?
+            .iter()
+            .map(|q| q.question.clone())
+            .collect()
+    };
+    
     if let Some(segment) = Segments::find()
         .filter(SegmentColumn::VideoId.eq(&video_id))
         .filter(SegmentColumn::StartSeconds.eq(start))
@@ -255,7 +302,7 @@ pub async fn generate_and_store_questions(
     let transcript = build_transcript(&frames);
     let sampled = sample_frames(&frames, 5);
 
-    let prompt = build_prompt(&transcript, end - start, start, end);
+    let prompt = build_prompt(&transcript, end - start, start, end, &existing_questions);
     let image_paths: Vec<String> = sampled.iter().map(|f| f.file_path.clone()).collect();
 
     let parsed = call_openai(client, prompt, image_paths).await?;
@@ -289,6 +336,11 @@ pub async fn generate_and_store_questions(
             question: Set(item.q.clone()),
             answer: Set(item.a.clone()),
             rank: Set(item.rank),
+            followup_enabled: Set(item.followup_enabled),
+            followup_correct_question: Set(item.followup_for_correct_answer.as_ref().map(|f| f.q.clone())),
+            followup_correct_answer: Set(item.followup_for_correct_answer.as_ref().map(|f| f.a.clone())),
+            followup_wrong_question: Set(item.followup_for_wrong_answer.as_ref().map(|f| f.q.clone())),
+            followup_wrong_answer: Set(item.followup_for_wrong_answer.as_ref().map(|f| f.a.clone())),
             ..Default::default()
         })
         .collect();

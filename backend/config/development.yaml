@@ -34,6 +34,7 @@ server:
         - "Content-Type"
       allow_methods:
         - POST
+        - PATCH
         - GET
         - OPTIONS
 

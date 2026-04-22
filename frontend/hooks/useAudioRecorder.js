@@ -123,11 +123,12 @@ export function useAudioRecorder({ onStateChange, onStatusChange, onResult }) {
         onStatusChange("Analyzing your answer…");
 
         try {
-          const expectedAnswer = segment.questions.filter(
-            (x) =>
-              x.question === segment.best_question ||
-              x.question.includes(segment.best_question),
-          )[0]?.answer;
+          const expectedAnswer = extraFields.expected_answer_override
+            ?? segment.questions.filter(
+                (x) =>
+                  x.question === segment.best_question ||
+                  x.question.includes(segment.best_question),
+              )[0]?.answer;
 
           const formData = new FormData();
           formData.append("audio", wavBlob, "audio_file.wav");

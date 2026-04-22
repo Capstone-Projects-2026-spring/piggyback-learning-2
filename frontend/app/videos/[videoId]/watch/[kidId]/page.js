@@ -36,24 +36,26 @@ function WatchVideoPageInner() {
   const video_id = params.videoId;
 
   const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [isFollowup, setIsFollowup] = useState(false);
+  const [followupType, setFollowupType] = useState(null); // "correct" or "wrong"
   const [segmentIndex, setSegmentIndex] = useState(0);
   const [recordingState, setRecordingState] = useState("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [lookingAway, setLookingAway] = useState(false);
   const [piggyMode, setPiggyMode] = useState("watch");
-const [piggyText, setPiggyText] = useState("Let’s watch carefully 👀");
-const pauseMessages = [
-  "Let’s go — what happened? ▶️",
-  "Why did we stop? Let’s keep watching 👀",
-  "Come on, we were doing so good 😄",
-];
+  const [piggyText, setPiggyText] = useState("Let’s watch carefully 👀");
+  const pauseMessages = [
+    "Let’s go — what happened? ▶️",
+    "Why did we stop? Let’s keep watching 👀",
+    "Come on, we were doing so good 😄",
+  ];
 
   const playerRef = useRef(null);
   const segmentIndexRef = useRef(0);
   const currentQuestionRef = useRef(null);
   const sixSecondShownRef = useRef(false);
-const threeSecondShownRef = useRef(false);
+  const threeSecondShownRef = useRef(false);
 
   useEffect(() => {
     if (role === "parent") router.push("/");
@@ -76,7 +78,7 @@ const threeSecondShownRef = useRef(false);
     if (currentQuestion) {
       setLookingAway(false);
     }
-  }, [currentQuestion]);
+  }, [currentQuestion?.question]);
 
   const { segmentsRef } = useSegments(video_id);
 
@@ -118,13 +120,15 @@ const threeSecondShownRef = useRef(false);
 
   }, [segmentsRef]);
 
-  const handleResult = useCallback(
+  const handleFollowupResult = useCallback(
     (result) => {
       if (!result) {
         advanceAndPlay();
         return;
       }
+
       setAnalysisResult(result);
+
       if (result.is_correct) {
         setRecordingState("correct");
         setStatusMessage("Correct! Well done 🎉");
@@ -133,19 +137,72 @@ const threeSecondShownRef = useRef(false);
         setRecordingState("wrong");
         setStatusMessage("Not quite — let's rewatch!");
         setTimeout(() => {
+          setIsFollowup(false);
+          setFollowupType(null);
           setCurrentQuestion(null);
           setAnalysisResult(null);
           setTimeout(() => replaySegment(), 100);
         }, 2000);
       }
     },
-    [advanceAndPlay, replaySegment],
+    [advanceAndPlay, replaySegment]
+  );
+
+  const handleResult = useCallback(
+    (result) => {
+      if (!result) {
+        advanceAndPlay();
+        return;
+      }
+
+      console.log("Question object:", currentQuestionRef.current);
+
+      const q = currentQuestionRef.current;
+      setAnalysisResult(result);
+
+      if (result.is_correct) {
+        setRecordingState("correct");
+        if (q?.followup_enabled && q?.followup_for_correct_answer) {
+          setStatusMessage("Correct! Let's try a quick follow-up.");
+          setTimeout(() => {
+            setAnalysisResult(null);
+            setRecordingState("idle");
+            setStatusMessage("");
+            setFollowupType("correct");
+            setIsFollowup(true);
+          }, 2000);
+        } else {
+          setStatusMessage("Correct! Well done 🎉");
+          setTimeout(() => advanceAndPlay(), 2000);
+        }
+      } else {
+        setRecordingState("wrong");
+        if (q?.followup_enabled && q?.followup_for_wrong_answer) {
+          setStatusMessage("Not quite — try answering this instead!");
+          setTimeout(() => {
+            setAnalysisResult(null);
+            setRecordingState("idle");
+            setStatusMessage("");
+            setFollowupType("wrong");
+            setIsFollowup(true);
+          }, 2000);
+        } else {
+          setStatusMessage("Not quite — let's rewatch!");
+          setTimeout(() => {
+            setCurrentQuestion(null);
+            setAnalysisResult(null);
+            setTimeout(() => replaySegment(), 100);
+          }, 2000);
+        }
+      }
+    },
+    [advanceAndPlay, replaySegment]
   );
 
   const recorder = useAudioRecorder({
     onStateChange: setRecordingState,
     onStatusChange: setStatusMessage,
-    onResult: handleResult,
+    onResult: isFollowup ? handleFollowupResult : handleResult,
   });
 
   usePlaybackPoller({
@@ -183,7 +240,7 @@ const threeSecondShownRef = useRef(false);
 
       // 2. Fallback safely to best_question (or a default string) so the app NEVER hangs
       setCurrentQuestion(
-        match?.question || segment.best_question || "What did you just see?"
+        match || { question: segment.best_question || "What did you just see?" }
       );
     },
   });
@@ -220,13 +277,24 @@ const threeSecondShownRef = useRef(false);
     const segment = segmentsRef.current[segmentIndexRef.current];
     if (!segment) return;
     setPiggyMode("hidden");
-    recorder.start(segment, {
+
+    const q = currentQuestionRef.current;
+    const questionToAsk = isFollowup
+      ? (followupType === "correct"
+          ? q?.followup_for_correct_answer
+          : q?.followup_for_wrong_answer)
+      : segment;
+
+    recorder.start(questionToAsk, {
       kid_id: params.kidId,
       video_id,
       segment_id: segment.id,
+      ...(isFollowup && {
+        expected_answer_override: questionToAsk?.answer,
+      }),
     });
     return () => recorder.cancel();
-  }, [currentQuestion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentQuestion, isFollowup]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCloseQuestion = useCallback(() => {
     recorder.cancel();
@@ -235,6 +303,12 @@ const threeSecondShownRef = useRef(false);
     setAnalysisResult(null);
     advanceAndPlay();
   }, [recorder, advanceAndPlay]);
+
+  const displayQuestion = isFollowup
+    ? (followupType === "correct"
+        ? currentQuestion?.followup_for_correct_answer?.question
+        : currentQuestion?.followup_for_wrong_answer?.question)
+    : currentQuestion?.question;
 
   if (!video_id) {
     return <p>Loading…</p>;
@@ -278,18 +352,19 @@ const threeSecondShownRef = useRef(false);
         />
         <div className="absolute inset-0 flex items-end justify-end pr-24 pb-20 pointer-events-none">
     <PiggyCompanion
-      mode={currentQuestion ? "hidden" : piggyMode}
-      text={currentQuestion ? "" : piggyText}
+      mode={displayQuestion ? "hidden" : piggyMode}
+      text={displayQuestion ? "" : piggyText}
     />
   </div>
       </div>
 
       <QuestionModal
-        question={currentQuestion}
+        question={displayQuestion}
         onClose={handleCloseQuestion}
         recordingState={recordingState}
         statusMessage={statusMessage}
         analysisResult={analysisResult}
+        isFollowup={isFollowup}
       />
 
       <LookAtScreenModal visible={lookingAway} />
