@@ -29,36 +29,6 @@ _As a parent I want to create a children's account attached to mine, so that I c
 5. Parent sets time intervals for the quiz and starts question generation (OpenAI).
 6. Parent reviews the questions and assigns the video to their kid.
 
-```mermaid
-sequenceDiagram
-    actor Parent
-    participant WebApp as Frontend (Next.js)
-    participant API as Backend (Rust/Axum)
-    participant AI as AI Service (OpenAI)
-    participant DB as SQLite (SeaORM)
-    
-    Parent->>WebApp: Signup Kid with kid details (username/pass)
-    WebApp->>API:  POST /api/auth/signup
-    API->>DB: Save Kid Record to Database
-    DB-->>WebApp: Success
-
-    Parent->>WebApp: Search And Select YouTube Video
-    WebApp->>API: Get and Download Video with GET /api/videos/download/{id}
-    API->>API: yt-dlp Download and FFmpeg Frames
-    API->>DB: Store Video Metadata
-    
-    Parent->>WebApp: Request AI Questions
-    WebApp->>API: GET /api/openai/{video_id}?start=x&end=y
-    API->>AI: Generate Questions from Rranscripts and Rrames
-    AI-->>API: Return Questions in Json
-    API-->>WebApp: Display Questions for Review
-
-    Parent->>WebApp: Review and Click 'Assign'
-    WebApp->>API: POST /api/kids/{id}/videos_assigned
-    API->>DB: Create VideoAssignment
-    DB-->>Parent: Video Assigned to Kid
-```
-
 ### Use case 2 - Detect if my child is paying attention to the video
 _As a parent I want to detect if my child is paying attention to the video, so that I can keep them on track._
 
@@ -67,34 +37,6 @@ _As a parent I want to detect if my child is paying attention to the video, so t
 3. If the kid's eyes wander for a few seconds, the system will consider the kid distracted
 4. The application automatically pauses the video and displays a prompt for the kid to focus.
 5. The application sends a notification to the Parent.
-
-```mermaid
-sequenceDiagram
-    actor Kid
-    participant WebApp as Frontend (Next.js)
-    participant Eye as Eye Detection (Client Side)
-    participant API as Backend (Rust/Axum)
-    participant WS as WebSocket
-    actor Parent
-
-    Kid->>WebApp: Starts Watching Video
-      rect rgb(240, 240, 240)
-      loop Monitor Locally
-          Eye->>Kid: Tracks Position of the Kids Eyes with Camera
-      end
-    end
-
-    Note over Eye: Eye is Diverted for a few seconds
-    Eye->>WebApp: Event: Child Distracted
-    
-    WebApp->>WebApp: Pause Video Player
-    WebApp->>WebApp: Popup Appears on Kids Screen Telling Them to Focus
-    
-
-    API->>WS: Alerts the Parent with a notification
-    WS-->>Parent: Parent Receives the Alert that their Child is Distracted
-
-```
 
 ### Use case 3 - Answering a Quiz Question with voice recognition
 _As a child I want to be able to answer questions based on the video, using my voice._
@@ -106,34 +48,6 @@ _As a child I want to be able to answer questions based on the video, using my v
 5. If correct, the Mascot gives feedback and the video resumes.
 6. If incorrect, the system will perform a fallback (replays the video segment or question layering).
 
-
-```mermaid
-sequenceDiagram
-    actor Kid
-    participant WebApp as Frontend (Next.js) 
-    participant API as Backend (Rust/Axum)
-    participant Vosk as Speech To Text (Vosk)
-    participant DB as SQLite (SeaORM)
-
-    WebApp->>WebApp: Video reaches Quiz Timestamp (Pauses Video)
-    WebApp->>WebApp: Mascot TTS: Reads Question
-    Kid->>WebApp: Speaks Answer
-    
-    WebApp->>API: POST /api/answers/analyze
-    API->>Vosk: Process and Transcribe Audio Locally
-    Vosk-->>API: Transcribed Text
-    API->>API: Check if Answers are Correct, and Detect Mood
-    
-    alt is_correct: true
-        API->>DB: Update VideoAssignment Answers.
-        API-->>WebApp: { is_correct: true }
-        WebApp->>WebApp: Mascot: Feedback and Resume the Video
-    else is_correct: false
-        API-->>WebApp: { is_correct: false }
-        WebApp->>WebApp: Replay Video Segment or Start Question Layering
-    end
-```
-
 ### Use case 4 - View Quiz Results for Kids
 _As a parent I want to view how well my kids did on the quizzes._
 1. Parent navigates to the dashboard and request data on Kid's quizzes.
@@ -141,21 +55,6 @@ _As a parent I want to view how well my kids did on the quizzes._
 3. The history of answers from the Database.
 4. The Parent sees child answers, quiz results, quiz answers, and detected mood.
 
-```mermaid
-sequenceDiagram
-    actor Parent
-    participant WebApp as Frontend (Next.js)
-    participant API as Backend (Rust/Axum)
-    participant DB as SQLite (SeaORM)
-
-    Parent->>WebApp: Open 'User Data Dashboard'
-    WebApp->>API: GET /api/answers/{kid_id}/{video_id}
-    API->>DB:  Request Quiz Data
-    DB-->>API: Return Answer
-    
-    API-->>WebApp: List of Quiz Performance Data
-    WebApp-->>Parent: Display the Child's Quiz Performance and Mood 
-```
 ### Use case 5 - Add tags to Kids Accounts
 _As a parent, I want to add tags related to my kid's interests to their accounts so that I can see reccomended videos relevant to what my kid likes._
 1. Parent goes to the 'Kid Dashboard' of their kid.
@@ -163,24 +62,9 @@ _As a parent, I want to add tags related to my kid's interests to their accounts
 3. Parent adds tags to their kids.
 4. Parent clicks the 'Recommended' tab.
 5. The application runs a search to find videos with matching tags.
-```mermaid
-sequenceDiagram
-    actor Parent
-    participant WebApp as Frontend (Next.js)
-    participant API as Backend (Rust/Axum)
-    participant DB as SQLite (SeaORM)
 
-    Parent->>WebApp: Select Tags for Kids Account
-    WebApp->>API: POST /api/kids/{id}/tags
-    API->>DB: Insert Tags into Kid's Account in Database
-    DB-->>WebApp: Success
 
-    Parent->>WebApp: Click 'Recommended' Tab
-    WebApp->>API: GET /api/kids/{id}/recommendations
-    API->>DB: Looks for Videos matching Tags
-    DB-->>API: List of Recommended Videos
-    API-->>WebApp: Displays Videos
-```    
+### See Sequence Diagrams Tab for sequence diagrams representing all of the use cases
 
 <!--
 ## Below is old use cases
