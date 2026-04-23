@@ -6,8 +6,9 @@ import QuestionsModal from "./QuestionsModal.jsx";
 
 export default function VideoPanel({ onClose }) {
   const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [statuses, setStatuses] = useState({});
   const [processing, setProcessing] = useState({});
@@ -19,6 +20,22 @@ export default function VideoPanel({ onClose }) {
     currentVideoIdRef.current = videos[currentIndex]?.video_id ?? null;
   }, [currentIndex, videos]);
 
+  // Search status — show loading immediately when voice command fires
+  useEffect(() => {
+    let unlisten;
+    listen("peppa://search-status", ({ payload }) => {
+      const data = typeof payload === "string" ? JSON.parse(payload) : payload;
+      if (data.status === "searching") {
+        setLoading(true);
+        setSearchQuery(data.query);
+        setVideos([]);
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, []);
+
   // Search results
   useEffect(() => {
     let unlisten;
@@ -26,6 +43,7 @@ export default function VideoPanel({ onClose }) {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       setVideos(data.results ?? []);
       setQuery(data.query ?? "");
+      setSearchQuery("");
       setCurrentIndex(0);
       setLoading(false);
     }).then((fn) => {
@@ -100,9 +118,6 @@ export default function VideoPanel({ onClose }) {
   const goTo = (i) =>
     setCurrentIndex(Math.max(0, Math.min(i, videos.length - 1)));
 
-  const currentVideo = videos[currentIndex];
-  const currentVideoId = currentVideo?.video_id;
-
   return (
     <>
       <div className="fixed inset-0 z-40 flex flex-col bg-gradient-to-b from-pink-50 to-white">
@@ -110,14 +125,17 @@ export default function VideoPanel({ onClose }) {
         <div className="flex items-center justify-between px-5 pt-8 pb-4">
           <div>
             <h2 className="text-lg font-bold text-gray-800">
-              {query ? `"${query}"` : "Videos"}
+              {searchQuery
+                ? `Searching "${searchQuery}"…`
+                : query
+                  ? `"${query}"`
+                  : "Videos"}
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
               Say{" "}
-              <span className="text-pink-400 font-medium">"download this"</span>{" "}
-              to save ·{" "}
-              <span className="text-pink-400 font-medium">"search for …"</span>{" "}
-              to search
+              <span className="text-pink-400 font-medium">"download this"</span>
+              {" · "}
+              <span className="text-pink-400 font-medium">"search for …"</span>
             </p>
           </div>
           <button
@@ -143,9 +161,23 @@ export default function VideoPanel({ onClose }) {
         {/* Content */}
         <div className="flex-1 flex flex-col justify-center overflow-hidden">
           {loading ? (
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 rounded-full border-2 border-pink-200 border-t-pink-400 animate-spin" />
-              <p className="text-xs text-gray-400">Searching…</p>
+            <div className="flex flex-col items-center gap-4 px-8">
+              <div className="w-10 h-10 rounded-full border-2 border-pink-200 border-t-pink-400 animate-spin" />
+              {searchQuery ? (
+                <>
+                  <p className="text-sm font-medium text-gray-500 text-center">
+                    Searching for
+                  </p>
+                  <p className="text-lg font-bold text-pink-400 text-center">
+                    "{searchQuery}"
+                  </p>
+                  <p className="text-xs text-gray-400 text-center">
+                    This may take a few seconds…
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-gray-400">Searching…</p>
+              )}
             </div>
           ) : videos.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-8">
@@ -345,10 +377,8 @@ function VideoCard({
             <p className="text-xs text-gray-400">{video.uploader}</p>
           </div>
 
-          {/* Download status badge */}
           {status && !processingInfo && <StatusBadge status={status} />}
 
-          {/* Processing pipeline */}
           {stageConfig && (
             <div
               className={`flex flex-col gap-2 rounded-xl px-3 py-2.5 border ${stageConfig.bg}`}
@@ -361,7 +391,6 @@ function VideoCard({
                   {stageConfig.label}
                 </span>
               </div>
-              {/* Progress bar for question generation */}
               {stage === "generating_questions" && progress?.total > 0 && (
                 <div className="flex flex-col gap-1">
                   <div className="h-1 w-full rounded-full bg-amber-100">
@@ -380,12 +409,10 @@ function VideoCard({
             </div>
           )}
 
-          {/* Pipeline steps — shown while processing */}
           {(status === "done" || status === "already_exists") && (
             <PipelineSteps stage={stage} hasQuestions={hasQuestions} />
           )}
 
-          {/* View questions button */}
           {hasQuestions && (
             <button
               onClick={onViewQuestions}
@@ -445,7 +472,13 @@ function PipelineSteps({ stage, hasQuestions }) {
               )}
             </div>
             <span
-              className={`text-xs ${done ? "text-green-600" : active ? "text-amber-500 font-medium" : "text-gray-300"}`}
+              className={`text-xs ${
+                done
+                  ? "text-green-600"
+                  : active
+                    ? "text-amber-500 font-medium"
+                    : "text-gray-300"
+              }`}
             >
               {step.label}
             </span>

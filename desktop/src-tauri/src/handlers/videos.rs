@@ -5,6 +5,8 @@ use crate::utils::download::download_video;
 use tokio::process::Command;
 
 pub async fn search(args: &[String]) {
+    use tokio::process::Command;
+
     let query = args
         .iter()
         .map(|s| s.as_str())
@@ -24,12 +26,22 @@ pub async fn search(args: &[String]) {
 
     eprintln!("[handler:videos] search — query={query}");
 
+    emit(
+        "peppa://search-status",
+        serde_json::json!({ "status": "searching", "query": query }),
+    );
+
     tokio::spawn(async move {
+        // Request more results upfront so we have enough after filtering
         let output = Command::new("yt-dlp")
-            .arg("--dump-json")
+            .arg("--flat-playlist")
+            .arg("--no-cache-dir")
+            .arg("--extractor-args")
+            .arg("youtube:skip=dash,hls,translated_subs")
+            .arg("--print")
+            .arg("%(id)s\t%(title)s\t%(duration)s\t%(live_status)s")
             .arg("--no-warnings")
-            .arg("--no-playlist")
-            .arg(format!("ytsearch10:{query}"))
+            .arg(format!("ytsearch50:{query}"))
             .output()
             .await;
 
@@ -38,18 +50,37 @@ pub async fn search(args: &[String]) {
                 let results: Vec<serde_json::Value> = String::from_utf8_lossy(&out.stdout)
                     .lines()
                     .filter(|l| !l.is_empty())
-                    .filter_map(|line| serde_json::from_str(line).ok())
-                    .map(|json: serde_json::Value| {
-                        let video_id = json["id"].as_str().unwrap_or("").to_string();
+                    .filter_map(|line| {
+                        let parts: Vec<&str> = line.splitn(4, '\t').collect();
+                        if parts.len() < 4 {
+                            return None;
+                        }
+
+                        let video_id = parts[0];
+                        let title = parts[1];
+                        let duration_str = parts[2];
+                        let live_status = parts[3].trim();
+
+                        // Parse as f64 first then convert — yt-dlp returns floats like "161.0"
+                        let duration: i64 = duration_str.parse::<f64>().unwrap_or(0.0) as i64;
+
+                        // Keep only normal videos: live_status must be "NA" (not a live stream)
+                        // and duration must be between 1 and 300 seconds
+                        if live_status != "NA" || duration == 0 || duration > 300 {
+                            return None;
+                        }
+
                         let thumbnail = format!("https://i.ytimg.com/vi/{video_id}/hqdefault.jpg");
-                        serde_json::json!({
+
+                        Some(serde_json::json!({
                             "video_id":  video_id,
-                            "title":     json["title"].as_str().unwrap_or(""),
+                            "title":     title,
                             "thumbnail": thumbnail,
-                            "duration":  json["duration"].as_i64().unwrap_or(0),
-                            "uploader":  json["uploader"].as_str().unwrap_or(""),
-                        })
+                            "duration":  duration,
+                            "uploader":  "",
+                        }))
                     })
+                    .take(10) // take first 10 after filtering
                     .collect();
 
                 eprintln!("[handler:videos] search → {} results", results.len());
