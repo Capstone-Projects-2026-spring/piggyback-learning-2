@@ -163,11 +163,14 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
     (
         "assign_video",
         &[
-            "assign video",
-            "assign this video",
-            "add this video",
-            "add video for kid",
-            "give this video to",
+            "assign it to Emma",
+            "assign this to Jake",
+            "give it to Emma",
+            "give this to Jake",
+            "assign to Emma",
+            "this one is for Jake",
+            "assign this video to Emma",
+            "give this video to Jake",
         ],
     ),
     (

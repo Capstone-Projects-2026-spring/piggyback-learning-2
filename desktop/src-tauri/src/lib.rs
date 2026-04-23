@@ -48,6 +48,8 @@ pub fn run() {
             let session = session::new_session();
             let onboarding = onboarding::new_onboarding();
 
+            crate::handlers::videos::init_session(session.clone());
+
             let needs_onboarding =
                 tauri::async_runtime::block_on(async { !db::init::has_parent_account().await });
 

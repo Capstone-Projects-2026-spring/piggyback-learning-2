@@ -2,6 +2,15 @@ use crate::db::init::get_db;
 use crate::handlers::frames::extract_frames;
 use crate::utils::app_handle::emit;
 use crate::utils::download::download_video;
+use crate::utils::voice::session::SharedSession;
+
+use std::sync::OnceLock;
+
+static SESSION: OnceLock<SharedSession> = OnceLock::new();
+
+pub fn init_session(session: SharedSession) {
+    SESSION.set(session).ok();
+}
 
 pub async fn search(args: &[String]) {
     use tokio::process::Command;
@@ -105,6 +114,15 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
         match download_video(&video_id).await {
             Ok(None) => {
                 eprintln!("[handler:videos] already downloaded — {video_id}");
+
+                // Track as current video in session so "assign it to X" knows what to assign
+                if let Some(session) = SESSION.get() {
+                    if let Ok(mut s) = session.lock() {
+                        s.current_video = Some(video_id.clone());
+                        eprintln!("[handler:videos] session.current_video = {}", video_id);
+                    }
+                }
+
                 emit(
                     "peppa://video-status",
                     serde_json::json!({
@@ -125,6 +143,14 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                         }),
                     );
                     return;
+                }
+
+                // Track as current video in session so "assign it to X" knows what to assign
+                if let Some(session) = SESSION.get() {
+                    if let Ok(mut s) = session.lock() {
+                        s.current_video = Some(id.clone());
+                        eprintln!("[handler:videos] session.current_video = {}", id);
+                    }
                 }
 
                 emit(

@@ -8,7 +8,6 @@ use crate::utils::voice::{
 
 use serde::Serialize;
 use tauri::AppHandle;
-use tokio::process::Command;
 
 pub async fn get_tags(args: &[String], session: &SharedSession) {
     let kid_id = match resolve_kid_id(args, session).await {
@@ -80,8 +79,83 @@ pub async fn get_video_assignments(args: &[String], _session: &SharedSession) {
     println!("[handler:kids] get_video_assignments — args={args:?}");
 }
 
-pub async fn assign_video(args: &[String], _session: &SharedSession) {
-    println!("[handler:kids] assign_video — args={args:?}");
+pub async fn assign_video(args: &[String], session: &SharedSession) {
+    // Must be a parent
+    let video_id = {
+        let s = session.lock().unwrap();
+        // Temporary disabled for dev purposes
+        // if s.role.as_deref() != Some("parent") {
+        //     eprintln!("[handler:kids] assign_video — parents only");
+        //     return;
+        // }
+        match s.current_video.clone() {
+            Some(v) => v,
+            None => {
+                eprintln!("[handler:kids] assign_video — no current_video in session");
+                emit(
+                    "peppa://assign-error",
+                    serde_json::json!({ "message": "No video is currently active." }),
+                );
+                return;
+            }
+        }
+    };
+
+    let kid_id = match resolve_kid_id(args, session).await {
+        Some(id) => id,
+        None => {
+            eprintln!("[handler:kids] assign_video — could not resolve kid from transcript");
+            emit(
+                "peppa://assign-error",
+                serde_json::json!({ "message": "Which kid did you mean?" }),
+            );
+            return;
+        }
+    };
+
+    let pool = get_db();
+
+    // Fetch kid name for the confirmation message
+    let kid_name: String = sqlx::query_as::<_, (String,)>("SELECT name FROM users WHERE id = ?")
+        .bind(kid_id)
+        .fetch_optional(pool)
+        .await
+        .unwrap_or_default()
+        .map(|(n,)| n)
+        .unwrap_or_else(|| "Unknown".to_string());
+
+    match sqlx::query("INSERT OR IGNORE INTO video_assignments (kid_id, video_id) VALUES (?, ?)")
+        .bind(kid_id)
+        .bind(&video_id)
+        .execute(pool)
+        .await
+    {
+        Ok(result) if result.rows_affected() == 0 => {
+            eprintln!("[handler:kids] assign_video — already assigned");
+            emit(
+                "peppa://video-assigned",
+                serde_json::json!({
+                    "video_id": video_id,
+                    "kid_id": kid_id,
+                    "kid_name": kid_name,
+                    "already_assigned": true,
+                }),
+            );
+        }
+        Ok(_) => {
+            eprintln!("[handler:kids] assign_video — assigned {video_id} to kid_id={kid_id}");
+            emit(
+                "peppa://video-assigned",
+                serde_json::json!({
+                    "video_id": video_id,
+                    "kid_id": kid_id,
+                    "kid_name": kid_name,
+                    "already_assigned": false,
+                }),
+            );
+        }
+        Err(e) => eprintln!("[handler:kids] assign_video failed: {e}"),
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]
