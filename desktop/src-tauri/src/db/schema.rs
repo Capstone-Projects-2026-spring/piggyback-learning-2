@@ -75,11 +75,10 @@ CREATE TABLE IF NOT EXISTS frames (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     video_id            TEXT    NOT NULL REFERENCES videos(id),
     frame_number        INTEGER NOT NULL,
-    timestamp_seconds   INTEGER NOT NULL UNIQUE,
+    timestamp_seconds   INTEGER NOT NULL,
     timestamp_formatted TEXT    NOT NULL,
     filename            TEXT    NOT NULL,
     file_path           TEXT    NOT NULL,
-    subtitle_text       TEXT,
     is_keyframe         INTEGER NOT NULL DEFAULT 0
 );
 
