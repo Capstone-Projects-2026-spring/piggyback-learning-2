@@ -9,7 +9,7 @@ static OPENAI_CLIENT: OnceLock<OpenAIClient<OpenAIConfig>> = OnceLock::new();
 
 pub fn get_openai_client() -> &'static OpenAIClient<OpenAIConfig> {
     OPENAI_CLIENT.get_or_init(|| {
-        let api_key = std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY must be set.");
+        let api_key = env!("OPENAI_API_KEY");
         let config = OpenAIConfig::new().with_api_key(api_key);
         OpenAIClient::with_config(config)
     })
