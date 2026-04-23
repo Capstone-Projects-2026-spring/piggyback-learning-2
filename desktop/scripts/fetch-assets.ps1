@@ -38,6 +38,12 @@ Download-If-Missing `
     -Url   "https://github.com/onnx/models/raw/main/validated/vision/body_analysis/emotion_ferplus/model/emotion-ferplus-8.onnx" `
     -Label "emotion ONNX"
 
+# ── Ultraface ONNX ────────────────────────────────────────────────────────────
+Download-If-Missing `
+    -Path  "$ModelDir\ultraface.onnx" `
+    -Url   "https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/raw/master/models/onnx/version-RFB-320.onnx" `
+    -Label "ultraface ONNX (~1MB)"
+
 # ── yt-dlp ────────────────────────────────────────────────────────────────────
 Download-If-Missing `
     -Path  "$BinDir\yt-dlp-$Triple.exe" `

@@ -60,6 +60,12 @@ download_if_missing \
     "https://github.com/onnx/models/raw/main/validated/vision/body_analysis/emotion_ferplus/model/emotion-ferplus-8.onnx" \
     "emotion ONNX"
 
+# ── Ultraface ONNX ────────────────────────────────────────────────────────────
+download_if_missing \
+    "$MODEL_DIR/ultraface.onnx" \
+    "https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/raw/master/models/onnx/version-RFB-320.onnx" \
+    "ultraface ONNX (~1MB)"
+
 # ── yt-dlp ────────────────────────────────────────────────────────────────────
 YTDLP_BIN="$BIN_DIR/yt-dlp-$TRIPLE$BIN_EXT"
 download_if_missing "$YTDLP_BIN" "$YTDLP_URL" "yt-dlp ($TRIPLE)"
