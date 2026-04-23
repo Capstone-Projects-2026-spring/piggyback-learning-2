@@ -16,12 +16,16 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             handlers::videos::download_video_command,
+            handlers::questions::save_questions,
         ])
         .setup(|app| {
             let res = app
                 .path()
                 .resource_dir()
                 .expect("[Peppa] resource dir must exist");
+
+            // Store global app handle first
+            utils::app_handle::init_app_handle(app.handle().clone());
 
             init_whisper(res.join("models/ggml-base.en.bin"));
 

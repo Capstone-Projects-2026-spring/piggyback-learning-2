@@ -36,10 +36,9 @@ pub async fn dispatch(
         "my_kids" => handlers::parents::get_kids(args, &session).await,
         // ── videos ────────────────────────────────────────────────
         "download_video" => eprintln!("[dispatch] download_video — handled by frontend"),
-        "search" => handlers::videos::search(args, &app).await,
+        "search" => handlers::videos::search(args).await,
         // ── questions ─────────────────────────────────────────────
         "get_questions" => handlers::questions::get_by_video(args, &session).await,
-        "generate_questions" => handlers::questions::generate(args, &session).await,
         // ── tags ──────────────────────────────────────────────────
         "all_tags" => handlers::tags::get_all(args, &session).await,
         "create_tag" => handlers::tags::create(args, &session).await,
