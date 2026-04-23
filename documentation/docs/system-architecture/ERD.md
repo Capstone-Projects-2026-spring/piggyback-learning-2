@@ -119,7 +119,7 @@ erDiagram
     }
 ```
 ## ERD Diagram Explanation
-1. Parent <-> Kids : A parent account may add multiple kids attached to their account and manage them but start with no kids. A Kid account may only be attached to one parent account.
+1. Parent <-> Kids : A parent account may add multiple kids attached to their account and manage them but start with no kids. A Kid account may only be attached to one parent account. This allows parent accounts to ,manage kid accounts.
 2. Kids <-> Kid_Tags : Parents can attach multiple tags to the Kid account, relating to what the kid is interested in. 
 3. Tags <-> Kid_Tags : Kid Tags link a Kid account to the main tag which describes the tag definition. This is used in the reccomendation algorithm. The algorithm connects what the Kid is interested in, to the video with what they are interested in.
 4. Tags <-> Video_Tags : Video tags link the main tag to the Videos entity. A video may have multiple tags on it, but each tag on the video is linked to a main tag. Main tag describes what the tag is. This is also used in the reccomendation algorithm.
