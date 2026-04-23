@@ -26,7 +26,7 @@ sequenceDiagram
     
     Parent->>WebApp: Request AI Questions
     WebApp->>API: GET /api/openai/{video_id}?start=x&end=y
-    API->>AI: Generate Questions from Rranscripts and Rrames
+    API->>AI: Generate Questions from Transcripts and Frames
     AI-->>API: Return Questions in Json
     API-->>WebApp: Display Questions for Review
 
