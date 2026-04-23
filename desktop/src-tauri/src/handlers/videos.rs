@@ -2,7 +2,6 @@ use crate::db::init::get_db;
 use crate::handlers::frames::extract_frames;
 use crate::utils::app_handle::emit;
 use crate::utils::download::download_video;
-use tokio::process::Command;
 
 pub async fn search(args: &[String]) {
     use tokio::process::Command;

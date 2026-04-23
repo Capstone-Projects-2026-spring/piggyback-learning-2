@@ -1,10 +1,14 @@
 use crate::db::init::get_db;
 use crate::handlers::tags::get_or_create_tag;
+use crate::utils::app_handle::emit;
 use crate::utils::voice::{
     onboarding::{self, OnboardingFlow, SharedOnboarding},
     session::SharedSession,
 };
+
+use serde::Serialize;
 use tauri::AppHandle;
+use tokio::process::Command;
 
 pub async fn get_tags(args: &[String], session: &SharedSession) {
     let kid_id = match resolve_kid_id(args, session).await {
@@ -80,8 +84,130 @@ pub async fn assign_video(args: &[String], _session: &SharedSession) {
     println!("[handler:kids] assign_video — args={args:?}");
 }
 
-pub async fn get_recommendations(args: &[String], _session: &SharedSession) {
-    println!("[handler:kids] get_recommendations — args={args:?}");
+#[derive(Debug, Serialize, Clone)]
+pub struct RecommendedVideo {
+    pub id: String,
+    pub title: Option<String>,
+    pub thumbnail_url: Option<String>,
+    pub duration_seconds: Option<i32>,
+    pub score: i64,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct RecommendationsPayload {
+    pub kid_name: String,
+    pub tags: Vec<String>,
+    pub recommendations: Vec<RecommendedVideo>,
+}
+
+pub async fn get_recommendations(args: &[String], session: &SharedSession) {
+    // Temporarily disabled for dev purposes
+    // // Parent-only guard
+    // {
+    //     let s = session.lock().unwrap();
+    //     if s.role.as_deref() != Some("parent") {
+    //         eprintln!(
+    //             "[handler:kids] get_recommendations — only parents can request recommendations"
+    //         );
+    //         return;
+    //     }
+    // }
+
+    // Resolve kid by name mentioned in the transcript ("show recommendations for Emma")
+    let kid_id = match resolve_kid_id(args, session).await {
+        Some(id) => id,
+        None => {
+            eprintln!("[handler:kids] get_recommendations — could not resolve kid from transcript");
+            emit(
+                "peppa://recommendations-error",
+                serde_json::json!({ "message": "Which kid did you mean?" }),
+            );
+            return;
+        }
+    };
+
+    let pool = get_db();
+
+    // Fetch the kid's name for the payload
+    let kid_name: String = sqlx::query_as::<_, (String,)>("SELECT name FROM users WHERE id = ?")
+        .bind(kid_id)
+        .fetch_optional(pool)
+        .await
+        .unwrap_or_default()
+        .map(|(n,)| n)
+        .unwrap_or_else(|| "Unknown".to_string());
+
+    // Fetch kid's tags
+    let tags: Vec<String> = sqlx::query_as::<_, (String,)>(
+        "SELECT t.name FROM kid_tags kt JOIN tags t ON t.id = kt.tag_id WHERE kt.kid_id = ? ORDER BY t.name",
+    )
+    .bind(kid_id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .map(|(n,)| n)
+    .collect();
+
+    // Fetch top local videos by tag-match score, excluding already-assigned ones
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            v.id,
+            v.title,
+            v.thumbnail_url,
+            v.duration_seconds,
+            COUNT(vt.tag_id) AS score
+        FROM video_tags vt
+        JOIN videos v ON v.id = vt.video_id
+        WHERE vt.tag_id IN (
+            SELECT tag_id FROM kid_tags WHERE kid_id = ?
+        )
+        AND v.id NOT IN (
+            SELECT video_id FROM video_assignments WHERE kid_id = ?
+        )
+        GROUP BY v.id, v.title, v.thumbnail_url, v.duration_seconds
+        ORDER BY score DESC
+        LIMIT 20
+        "#,
+    )
+    .bind(kid_id)
+    .bind(kid_id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    let recommendations: Vec<RecommendedVideo> = rows
+        .into_iter()
+        .map(|r| RecommendedVideo {
+            id: sqlx::Row::get(&r, "id"),
+            title: sqlx::Row::try_get(&r, "title").ok(),
+            thumbnail_url: sqlx::Row::try_get(&r, "thumbnail_url").ok(),
+            duration_seconds: sqlx::Row::try_get(&r, "duration_seconds").ok(),
+            score: sqlx::Row::get(&r, "score"),
+        })
+        .collect();
+
+    eprintln!(
+        "[handler:kids] recommendations for '{kid_name}' (id={kid_id}) — {} local results, {} tags",
+        recommendations.len(),
+        tags.len()
+    );
+
+    emit(
+        "peppa://recommendations",
+        &RecommendationsPayload {
+            kid_name,
+            tags: tags.clone(),
+            recommendations,
+        },
+    );
+
+    // Top up to 10 via YouTube using the kid's tags as the search query
+    if !tags.is_empty() {
+        let search_args: Vec<String> = tags;
+        crate::handlers::videos::search(&search_args).await;
+    }
 }
 
 pub async fn start_kid_enrollment(

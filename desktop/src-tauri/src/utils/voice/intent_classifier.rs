@@ -173,14 +173,14 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
     (
         "recommendations",
         &[
-            "recommend something",
-            "suggest a video",
-            "what should I watch",
-            "what can I watch",
-            "give me recommendations",
-            "suggest something",
-            "what's good to watch",
-            "find me something to watch",
+            "show me recommendations for Emma",
+            "what should Emma watch",
+            "get recommendations for Jake",
+            "recommend something for my daughter",
+            "suggest videos for my son",
+            "what videos would be good for Emma",
+            "find something for Jake to watch",
+            "recommendations for my kid",
         ],
     ),
     (

@@ -15,7 +15,7 @@ pub fn get_app_handle() -> &'static AppHandle {
         .expect("[app_handle] not initialised — call init_app_handle() first")
 }
 
-pub fn emit(event: &str, payload: serde_json::Value) {
+pub fn emit<T: serde::Serialize + Clone>(event: &str, payload: T) {
     if let Some(handle) = APP_HANDLE.get() {
         if let Err(e) = handle.emit(event, payload) {
             eprintln!("[app_handle] emit error on '{event}': {e}");
@@ -24,4 +24,3 @@ pub fn emit(event: &str, payload: serde_json::Value) {
         eprintln!("[app_handle] tried to emit '{event}' before init");
     }
 }
-
