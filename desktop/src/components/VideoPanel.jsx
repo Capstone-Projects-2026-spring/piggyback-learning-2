@@ -4,28 +4,53 @@ import { listen } from "@tauri-apps/api/event";
 import { commandBus } from "../lib/stt/commandBus.js";
 import QuestionsModal from "./QuestionsModal.jsx";
 
+function normalizeRec(v) {
+  return {
+    video_id: v.id,
+    title: v.title ?? "Untitled",
+    thumbnail:
+      v.thumbnail_url ?? `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`,
+    duration: v.duration_seconds ?? null,
+    uploader:
+      v.score > 0
+        ? `${v.score} tag match${v.score !== 1 ? "es" : ""}`
+        : "YouTube",
+    isYoutube: !v.score || v.score === 0,
+  };
+}
+
 export default function VideoPanel({ onClose }) {
+  const [mode, setMode] = useState("search"); // "search" | "recommendations"
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [kidName, setKidName] = useState(null);
+  const [recTags, setRecTags] = useState([]);
+  const [ytLoading, setYtLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [statuses, setStatuses] = useState({});
   const [processing, setProcessing] = useState({});
   const [questions, setQuestions] = useState({});
   const [selectedVideoId, setSelectedVideoId] = useState(null);
+
   const currentVideoIdRef = useRef(null);
+  const modeRef = useRef("search");
 
   useEffect(() => {
     currentVideoIdRef.current = videos[currentIndex]?.video_id ?? null;
   }, [currentIndex, videos]);
 
-  // Search status — show loading immediately when voice command fires
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
+  // Search status — show spinner immediately
   useEffect(() => {
     let unlisten;
     listen("peppa://search-status", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
-      if (data.status === "searching") {
+      if (data.status === "searching" && modeRef.current === "search") {
         setLoading(true);
         setSearchQuery(data.query);
         setVideos([]);
@@ -36,16 +61,52 @@ export default function VideoPanel({ onClose }) {
     return () => unlisten?.();
   }, []);
 
-  // Search results
+  // Search results — in recommendations mode, append; in search mode, replace
   useEffect(() => {
     let unlisten;
     listen("peppa://search-results", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
-      setVideos(data.results ?? []);
-      setQuery(data.query ?? "");
-      setSearchQuery("");
+
+      if (modeRef.current === "recommendations") {
+        // Append YouTube top-up results, dedupe, cap at 10
+        setVideos((current) => {
+          const existingIds = new Set(current.map((v) => v.video_id));
+          const incoming = (data.results ?? []).filter(
+            (v) => !existingIds.has(v.video_id),
+          );
+          return [...current, ...incoming].slice(0, 10);
+        });
+        setYtLoading(false);
+      } else {
+        setVideos(data.results ?? []);
+        setQuery(data.query ?? "");
+        setSearchQuery("");
+        setCurrentIndex(0);
+        setLoading(false);
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, []);
+
+  // Recommendations
+  useEffect(() => {
+    let unlisten;
+    listen("peppa://recommendations", ({ payload }) => {
+      const data = typeof payload === "string" ? JSON.parse(payload) : payload;
+      const { kid_name, tags, recommendations } = data;
+
+      setMode("recommendations");
+      modeRef.current = "recommendations";
+      setKidName(kid_name);
+      setRecTags(tags ?? []);
       setCurrentIndex(0);
       setLoading(false);
+      setYtLoading(true); // yt-dlp search already fired on Rust side
+
+      const localNormalized = (recommendations ?? []).map(normalizeRec);
+      setVideos(localNormalized);
     }).then((fn) => {
       unlisten = fn;
     });
@@ -57,21 +118,22 @@ export default function VideoPanel({ onClose }) {
     let unlisten;
     listen("peppa://video-status", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
-      const { video_id, status } = data;
-      setStatuses((s) => ({ ...s, [video_id]: status }));
+      setStatuses((s) => ({ ...s, [data.video_id]: data.status }));
     }).then((fn) => {
       unlisten = fn;
     });
     return () => unlisten?.();
   }, []);
 
-  // Processing stage updates
+  // Processing stages
   useEffect(() => {
     let unlisten;
     listen("peppa://processing-status", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
-      const { video_id, stage, progress } = data;
-      setProcessing((p) => ({ ...p, [video_id]: { stage, progress } }));
+      setProcessing((p) => ({
+        ...p,
+        [data.video_id]: { stage: data.stage, progress: data.progress },
+      }));
     }).then((fn) => {
       unlisten = fn;
     });
@@ -83,11 +145,10 @@ export default function VideoPanel({ onClose }) {
     let unlisten;
     listen("peppa://questions-ready", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
-      const { video_id, segments } = data;
-      setQuestions((q) => ({ ...q, [video_id]: segments }));
+      setQuestions((q) => ({ ...q, [data.video_id]: data.segments }));
       setProcessing((p) => {
         const next = { ...p };
-        delete next[video_id];
+        delete next[data.video_id];
         return next;
       });
     }).then((fn) => {
@@ -96,15 +157,14 @@ export default function VideoPanel({ onClose }) {
     return () => unlisten?.();
   }, []);
 
-  // Voice: download intent
+  // Voice: download current card
   useEffect(() => {
     const off = commandBus.on("download_video", async () => {
       const videoId = currentVideoIdRef.current;
       if (!videoId) return;
-      setStatuses((s) => {
-        if (s[videoId] === "downloading") return s;
-        return { ...s, [videoId]: "downloading" };
-      });
+      setStatuses((s) =>
+        s[videoId] === "downloading" ? s : { ...s, [videoId]: "downloading" },
+      );
       try {
         await invoke("download_video_command", { videoId });
       } catch (e) {
@@ -118,44 +178,68 @@ export default function VideoPanel({ onClose }) {
   const goTo = (i) =>
     setCurrentIndex(Math.max(0, Math.min(i, videos.length - 1)));
 
+  const headerTitle =
+    mode === "recommendations"
+      ? `For ${kidName ?? "…"}`
+      : searchQuery
+        ? `Searching "${searchQuery}"…`
+        : query
+          ? `"${query}"`
+          : "Videos";
+
   return (
     <>
       <div className="fixed inset-0 z-40 flex flex-col bg-gradient-to-b from-pink-50 to-white">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-8 pb-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-800">
-              {searchQuery
-                ? `Searching "${searchQuery}"…`
-                : query
-                  ? `"${query}"`
-                  : "Videos"}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold text-gray-800 truncate">
+              {headerTitle}
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              Say{" "}
-              <span className="text-pink-400 font-medium">"download this"</span>
-              {" · "}
-              <span className="text-pink-400 font-medium">"search for …"</span>
+              {mode === "recommendations" && recTags.length > 0 ? (
+                recTags.join(", ")
+              ) : (
+                <>
+                  Say{" "}
+                  <span className="text-pink-400 font-medium">
+                    "download this"
+                  </span>
+                  {" · "}
+                  <span className="text-pink-400 font-medium">
+                    "search for …"
+                  </span>
+                </>
+              )}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+
+          <div className="flex items-center gap-2 ml-3">
+            {ytLoading && (
+              <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+                <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                YouTube…
+              </div>
+            )}
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -176,22 +260,35 @@ export default function VideoPanel({ onClose }) {
                   </p>
                 </>
               ) : (
-                <p className="text-xs text-gray-400">Searching…</p>
+                <p className="text-xs text-gray-400">Loading…</p>
               )}
             </div>
-          ) : videos.length === 0 ? (
+          ) : videos.length === 0 && !ytLoading ? (
             <div className="flex flex-col items-center gap-3 px-8">
-              <p className="text-sm text-gray-400 text-center">
-                Say{" "}
-                <span className="text-pink-400 font-medium">
-                  "search for spiderman"
-                </span>{" "}
-                to find videos
-              </p>
+              {mode === "recommendations" ? (
+                <>
+                  <p className="text-2xl">🎯</p>
+                  <p className="text-sm text-gray-400 text-center">
+                    No videos found for{" "}
+                    <span className="text-pink-400 font-medium">{kidName}</span>{" "}
+                    yet.
+                  </p>
+                  <p className="text-xs text-gray-300 text-center italic">
+                    Try adding more interests first
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 text-center">
+                  Say{" "}
+                  <span className="text-pink-400 font-medium">
+                    "search for spiderman"
+                  </span>{" "}
+                  to find videos
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-5">
-              {/* Sliding cards */}
               <div className="overflow-hidden">
                 <div
                   className="flex transition-transform duration-300 ease-in-out"
@@ -204,6 +301,7 @@ export default function VideoPanel({ onClose }) {
                       status={statuses[video.video_id]}
                       processingInfo={processing[video.video_id]}
                       hasQuestions={!!questions[video.video_id]}
+                      isRecommendation={mode === "recommendations"}
                       onViewQuestions={() => setSelectedVideoId(video.video_id)}
                     />
                   ))}
@@ -244,6 +342,9 @@ export default function VideoPanel({ onClose }) {
                       }`}
                     />
                   ))}
+                  {ytLoading && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-200 animate-pulse" />
+                  )}
                 </div>
 
                 <button
@@ -269,13 +370,13 @@ export default function VideoPanel({ onClose }) {
 
               <p className="text-center text-xs text-gray-400">
                 {currentIndex + 1} of {videos.length}
+                {ytLoading ? " · finding more…" : ""}
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Questions modal */}
       {selectedVideoId && questions[selectedVideoId] && (
         <QuestionsModal
           videoId={selectedVideoId}
@@ -287,7 +388,7 @@ export default function VideoPanel({ onClose }) {
   );
 }
 
-// ── Stage labels and colors ───────────────────────────────────────────────────
+// ── Stage config ──────────────────────────────────────────────────────────────
 
 const STAGE_CONFIG = {
   tagging: {
@@ -315,6 +416,7 @@ function VideoCard({
   status,
   processingInfo,
   hasQuestions,
+  isRecommendation,
   onViewQuestions,
 }) {
   const duration = video.duration
@@ -328,7 +430,6 @@ function VideoCard({
   return (
     <div className="min-w-full px-5">
       <div className="rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-sm">
-        {/* Thumbnail */}
         <div className="relative">
           <img
             src={video.thumbnail}
@@ -338,6 +439,11 @@ function VideoCard({
           {duration && (
             <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
               {duration}
+            </span>
+          )}
+          {video.isYoutube && (
+            <span className="absolute top-2 left-2 bg-red-600/90 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+              YouTube
             </span>
           )}
           {status === "downloading" && (
@@ -368,7 +474,6 @@ function VideoCard({
             )}
         </div>
 
-        {/* Info */}
         <div className="p-4 flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">
@@ -421,6 +526,12 @@ function VideoCard({
               View Questions ✨
             </button>
           )}
+
+          {isRecommendation && !status && (
+            <p className="text-xs text-gray-300 text-center italic">
+              Say "download this" to save
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -433,7 +544,6 @@ function PipelineSteps({ stage, hasQuestions }) {
     { key: "extracting_frames", label: "Frames extracted" },
     { key: "generating_questions", label: "Questions generated" },
   ];
-
   const stageOrder = ["tagging", "extracting_frames", "generating_questions"];
   const currentIdx = stage ? stageOrder.indexOf(stage) : -1;
 

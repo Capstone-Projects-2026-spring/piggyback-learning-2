@@ -12,7 +12,6 @@ export default function App() {
   useEffect(() => {
     const offEnrollment = commandBus.onEnrollment((data) => {
       console.log("[App] enrollment event:", data.stage, "flow:", data.flow);
-
       if (data.flow === "parent") {
         if (data.stage === "done") {
           setMode("ready");
@@ -20,7 +19,6 @@ export default function App() {
           setMode("enrolling");
         }
       }
-
       if (data.flow === "kid") {
         if (data.stage === "kid_done") {
           setTimeout(() => setKidEnrolling(false), 3000);
@@ -31,10 +29,8 @@ export default function App() {
     });
 
     const offVideos = commandBus.on("my_videos", () => setShowVideos(true));
-    const offSearch = commandBus.on("search", () => {
-      setShowVideos(true);
-      // Panel will auto-populate when peppa://search-results arrives
-    });
+    const offSearch = commandBus.on("search", () => setShowVideos(true));
+    const offRecs = commandBus.on("recommendations", () => setShowVideos(true));
 
     const fallback = setTimeout(() => {
       setMode((m) => (m === "loading" ? "ready" : m));
@@ -44,6 +40,7 @@ export default function App() {
       offEnrollment();
       offVideos();
       offSearch();
+      offRecs();
       clearTimeout(fallback);
     };
   }, []);
@@ -63,9 +60,7 @@ export default function App() {
   return (
     <>
       <PeppaOrb />
-
       {showVideos && <VideoPanel onClose={() => setShowVideos(false)} />}
-
       {kidEnrolling && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm">
           <EnrollmentOverlay flow="kid" onDone={() => setKidEnrolling(false)} />
