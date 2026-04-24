@@ -7,6 +7,7 @@ sidebar_position: 3
 ## General Requirements For Users
 1. Desktop or laptop
 2. Internet access
+3. Open AI API key
 
 
 ## Project Requirments
