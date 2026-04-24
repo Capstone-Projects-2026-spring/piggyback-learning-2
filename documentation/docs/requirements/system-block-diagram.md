@@ -62,15 +62,16 @@ graph TD
 
     Quiz --- AI
     Vosk --- AI
+
     linkStyle 3 stroke:#37474f,stroke-width:3px;
     linkStyle 4 stroke:#37474f,stroke-width:3px;
-    linkStyle 5 stroke:#e0f2f1,stroke-width:3px;
+    linkStyle 5 stroke:#800080,stroke-width:3px;
     linkStyle 6 stroke:#37474f,stroke-width:3px;
     linkStyle 7 stroke:#00897b,stroke-width:3px;
-    linkStyle 8 stroke:#e0f2f1,stroke-width:3px;
+    linkStyle 8 stroke:#800080,stroke-width:3px;
     linkStyle 9 stroke:#37474f,stroke-width:3px;
     linkStyle 10 stroke:#00897b,stroke-width:3px;
-    linkStyle 11 stroke:#e0f2f1,stroke-width:3px;
+    linkStyle 11 stroke:#800080,stroke-width:3px;
     linkStyle 12 stroke:#37474fstroke-width:3px;
     linkStyle 13 stroke:#00897b,stroke-width:3px;
     linkStyle 14 stroke:#00897b,stroke-width:3px; 
