@@ -18,11 +18,11 @@ sidebar_position: 3
 4. Styling: UI styling must be implemented using Tailwind CSS.
 5. Communication: Video processing must be implemented using WebSockets.
 
-### Media & AI Requirements
+### Media and AI Requirements
 1. Video Processing: The system must use yt-dlp for YouTube ingestion and FFmpeg for frame extraction and video manipulation.
-2. Generative AI: Question generation and answer validation must utilize OpenAI.
-3. Speech-to-Text (STT): Child response audio transcription must be performed using the Vosk library (locally). This is to ensure privacy to comply with COPPA and GDPR-K laws.
-4. Hardware Access: The frontend must have authorization to access the user's camera (for eye tracker) and microphone (for quiz responses).
+2. AI: Question generation and answer validation must use OpenAI.
+3. Speech-to-Text (STT): Child response audio transcription must use the Vosk library (locally). This is to ensure privacy to comply with COPPA and GDPR-K laws.
+4. Hardware Access: The frontend be authorized to access the user's camera (for eye tracker) and microphone (for quiz responses).
 
 ### Platform and Hardware
 1. Browser Support: The application must function properly on modern browsers, including but not limited to Chrome, Edge, and Safari.
@@ -34,5 +34,5 @@ Since the main users are young children, the app must be developed with very hig
 1. COPPA Compliance: The app must comply with the Children's Online Privacy Protection Act (COPPA) for users in the US. Specifically:
  - No raw voice audio shall be stored permanently on servers.
 - Eye-tracking data processing must be local.
-2. GDPR-K: The app must comly to GDPR-K (General Data Protection Regulation for children) for users in the EU, requiring consent from the parent for data processing.
-3. Data Security: All user data inside the database must be encrypted.
+2. GDPR-K: The app must comly to GDPR-K (General Data Protection Regulation for children) for users in the EU. Consent is required from the parent for data processing.
+3. Data Security: All user data in the database must be encrypted.
