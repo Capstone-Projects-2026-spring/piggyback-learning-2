@@ -1,3 +1,6 @@
+
+# System Block Diagram
+
 Note, colored lines are just for readability purposes. They don't have any other meaning
 ```mermaid
 graph TD
