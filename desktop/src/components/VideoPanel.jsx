@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { commandBus } from "../lib/stt/commandBus.js";
 import QuestionsModal from "./QuestionsModal.jsx";
+import WatchVideoPanel from "./WatchVideoPanel.jsx";
 
 function normalizeRec(v) {
   return {
@@ -19,10 +20,29 @@ function normalizeRec(v) {
   };
 }
 
-export default function VideoPanel({ onClose }) {
-  const [mode, setMode] = useState("search"); // "search" | "recommendations"
-  const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(true);
+function normalizeAssigned(v) {
+  return {
+    video_id: v.id,
+    title: v.title ?? "Untitled",
+    thumbnail:
+      v.thumbnail_url ?? `https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`,
+    duration: v.duration_seconds ?? null,
+    uploader: "",
+    isYoutube: false,
+    isAssigned: true,
+  };
+}
+
+export default function VideoPanel({ onClose, role, initialMyVideos }) {
+  const [mode, setMode] = useState(() =>
+    initialMyVideos ? "my_videos" : "search",
+  );
+  const [videos, setVideos] = useState(() =>
+    initialMyVideos
+      ? (initialMyVideos.videos ?? []).map(normalizeAssigned)
+      : [],
+  );
+  const [loading, setLoading] = useState(() => !initialMyVideos);
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [kidName, setKidName] = useState(null);
@@ -33,19 +53,22 @@ export default function VideoPanel({ onClose }) {
   const [processing, setProcessing] = useState({});
   const [questions, setQuestions] = useState({});
   const [selectedVideoId, setSelectedVideoId] = useState(null);
+  const [watchingVideoId, setWatchingVideoId] = useState(null);
 
   const currentVideoIdRef = useRef(null);
   const modeRef = useRef("search");
+  const currentIndexRef = useRef(0);
 
   useEffect(() => {
     currentVideoIdRef.current = videos[currentIndex]?.video_id ?? null;
+    currentIndexRef.current = currentIndex;
   }, [currentIndex, videos]);
 
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
 
-  // Search status — show spinner immediately
+  // Search status
   useEffect(() => {
     let unlisten;
     listen("peppa://search-status", ({ payload }) => {
@@ -61,14 +84,12 @@ export default function VideoPanel({ onClose }) {
     return () => unlisten?.();
   }, []);
 
-  // Search results — in recommendations mode, append; in search mode, replace
+  // Search results
   useEffect(() => {
     let unlisten;
     listen("peppa://search-results", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
-
       if (modeRef.current === "recommendations") {
-        // Append YouTube top-up results, dedupe, cap at 10
         setVideos((current) => {
           const existingIds = new Set(current.map((v) => v.video_id));
           const incoming = (data.results ?? []).filter(
@@ -96,17 +117,14 @@ export default function VideoPanel({ onClose }) {
     listen("peppa://recommendations", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       const { kid_name, tags, recommendations } = data;
-
       setMode("recommendations");
       modeRef.current = "recommendations";
       setKidName(kid_name);
       setRecTags(tags ?? []);
       setCurrentIndex(0);
       setLoading(false);
-      setYtLoading(true); // yt-dlp search already fired on Rust side
-
-      const localNormalized = (recommendations ?? []).map(normalizeRec);
-      setVideos(localNormalized);
+      setYtLoading(true);
+      setVideos((recommendations ?? []).map(normalizeRec));
     }).then((fn) => {
       unlisten = fn;
     });
@@ -157,9 +175,21 @@ export default function VideoPanel({ onClose }) {
     return () => unlisten?.();
   }, []);
 
-  // Voice: download current card
+  useEffect(() => {
+    let unlisten;
+    listen("peppa://watch-video", () => {
+      const videoId = currentVideoIdRef.current;
+      if (videoId) setWatchingVideoId(videoId);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, []);
+
+  // Voice: download current card (parent only)
   useEffect(() => {
     const off = commandBus.on("download_video", async () => {
+      if (role === "kid") return;
       const videoId = currentVideoIdRef.current;
       if (!videoId) return;
       setStatuses((s) =>
@@ -173,19 +203,28 @@ export default function VideoPanel({ onClose }) {
       }
     });
     return off;
-  }, []);
+  }, [role]);
 
   const goTo = (i) =>
     setCurrentIndex(Math.max(0, Math.min(i, videos.length - 1)));
 
   const headerTitle =
-    mode === "recommendations"
-      ? `For ${kidName ?? "…"}`
-      : searchQuery
-        ? `Searching "${searchQuery}"…`
-        : query
-          ? `"${query}"`
-          : "Videos";
+    mode === "my_videos"
+      ? "My Videos"
+      : mode === "recommendations"
+        ? `For ${kidName ?? "…"}`
+        : searchQuery
+          ? `Searching "${searchQuery}"…`
+          : query
+            ? `"${query}"`
+            : "Videos";
+
+  const headerSub =
+    mode === "my_videos"
+      ? `Say "watch this" to start`
+      : mode === "recommendations" && recTags.length > 0
+        ? recTags.join(", ")
+        : null;
 
   return (
     <>
@@ -197,9 +236,7 @@ export default function VideoPanel({ onClose }) {
               {headerTitle}
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {mode === "recommendations" && recTags.length > 0 ? (
-                recTags.join(", ")
-              ) : (
+              {headerSub ?? (
                 <>
                   Say{" "}
                   <span className="text-pink-400 font-medium">
@@ -265,7 +302,17 @@ export default function VideoPanel({ onClose }) {
             </div>
           ) : videos.length === 0 && !ytLoading ? (
             <div className="flex flex-col items-center gap-3 px-8">
-              {mode === "recommendations" ? (
+              {mode === "my_videos" ? (
+                <>
+                  <p className="text-2xl">🎬</p>
+                  <p className="text-sm text-gray-400 text-center">
+                    No videos assigned yet.
+                  </p>
+                  <p className="text-xs text-gray-300 text-center italic">
+                    Ask a parent to assign some videos for you
+                  </p>
+                </>
+              ) : mode === "recommendations" ? (
                 <>
                   <p className="text-2xl">🎯</p>
                   <p className="text-sm text-gray-400 text-center">
@@ -294,7 +341,7 @@ export default function VideoPanel({ onClose }) {
                   className="flex transition-transform duration-300 ease-in-out"
                   style={{ transform: `translateX(-${currentIndex * 100}%)` }}
                 >
-                  {videos.map((video) => (
+                  {videos.map((video, i) => (
                     <VideoCard
                       key={video.video_id}
                       video={video}
@@ -302,7 +349,9 @@ export default function VideoPanel({ onClose }) {
                       processingInfo={processing[video.video_id]}
                       hasQuestions={!!questions[video.video_id]}
                       isRecommendation={mode === "recommendations"}
+                      isAssigned={mode === "my_videos"}
                       onViewQuestions={() => setSelectedVideoId(video.video_id)}
+                      onWatch={() => setWatchingVideoId(video.video_id)}
                     />
                   ))}
                 </div>
@@ -384,6 +433,13 @@ export default function VideoPanel({ onClose }) {
           onClose={() => setSelectedVideoId(null)}
         />
       )}
+
+      {watchingVideoId && (
+        <WatchVideoPanel
+          videoId={watchingVideoId}
+          onClose={() => setWatchingVideoId(null)}
+        />
+      )}
     </>
   );
 }
@@ -417,7 +473,9 @@ function VideoCard({
   processingInfo,
   hasQuestions,
   isRecommendation,
+  isAssigned,
   onViewQuestions,
+  onWatch,
 }) {
   const duration = video.duration
     ? `${Math.floor(video.duration / 60)}:${String(video.duration % 60).padStart(2, "0")}`
@@ -430,6 +488,7 @@ function VideoCard({
   return (
     <div className="min-w-full px-5">
       <div className="rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-sm">
+        {/* Thumbnail */}
         <div className="relative">
           <img
             src={video.thumbnail}
@@ -472,6 +531,23 @@ function VideoCard({
                 </div>
               </div>
             )}
+          {/* Watch button overlay for assigned videos */}
+          {isAssigned && (
+            <button
+              onClick={onWatch}
+              className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/40 transition-colors group"
+            >
+              <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+                <svg
+                  className="w-6 h-6 text-pink-500 ml-1"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+            </button>
+          )}
         </div>
 
         <div className="p-4 flex flex-col gap-3">
@@ -479,12 +555,17 @@ function VideoCard({
             <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">
               {video.title}
             </p>
-            <p className="text-xs text-gray-400">{video.uploader}</p>
+            {video.uploader && (
+              <p className="text-xs text-gray-400">{video.uploader}</p>
+            )}
           </div>
 
-          {status && !processingInfo && <StatusBadge status={status} />}
+          {/* Parent view: status + pipeline */}
+          {!isAssigned && status && !processingInfo && (
+            <StatusBadge status={status} />
+          )}
 
-          {stageConfig && (
+          {!isAssigned && stageConfig && (
             <div
               className={`flex flex-col gap-2 rounded-xl px-3 py-2.5 border ${stageConfig.bg}`}
             >
@@ -514,11 +595,13 @@ function VideoCard({
             </div>
           )}
 
-          {(status === "done" || status === "already_exists") && (
-            <PipelineSteps stage={stage} hasQuestions={hasQuestions} />
-          )}
+          {!isAssigned &&
+            (status === "done" || status === "already_exists") && (
+              <PipelineSteps stage={stage} hasQuestions={hasQuestions} />
+            )}
 
-          {hasQuestions && (
+          {/* Parent: view questions button */}
+          {!isAssigned && hasQuestions && (
             <button
               onClick={onViewQuestions}
               className="w-full py-2 rounded-xl bg-pink-50 border border-pink-200 text-pink-500 text-xs font-medium hover:bg-pink-100 transition-colors"
@@ -527,7 +610,17 @@ function VideoCard({
             </button>
           )}
 
-          {isRecommendation && !status && (
+          {/* Kid: watch button */}
+          {isAssigned && (
+            <button
+              onClick={onWatch}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-400 to-violet-400 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              ▶ Watch & Learn
+            </button>
+          )}
+
+          {isRecommendation && !status && !isAssigned && (
             <p className="text-xs text-gray-300 text-center italic">
               Say "download this" to save
             </p>
