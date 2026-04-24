@@ -2,6 +2,7 @@ use super::command_resolver::ResolvedCommand;
 use super::onboarding::SharedOnboarding;
 use super::session::SharedSession;
 use crate::handlers;
+use crate::utils::app_handle::emit;
 use tauri::AppHandle;
 
 pub async fn dispatch(
@@ -37,6 +38,9 @@ pub async fn dispatch(
         // ── videos ────────────────────────────────────────────────
         "download_video" => eprintln!("[dispatch] download_video — handled by frontend"),
         "search" => handlers::videos::search(args).await,
+        "watch_video" => {
+            emit("peppa://watch-video", serde_json::json!({}));
+        }
         // ── questions ─────────────────────────────────────────────
         "get_questions" => handlers::questions::get_by_video(args, &session).await,
         // ── tags ──────────────────────────────────────────────────

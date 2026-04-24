@@ -174,6 +174,19 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
         ],
     ),
     (
+        "watch_video",
+        &[
+            "watch this",
+            "watch the first one",
+            "play this video",
+            "play the second one",
+            "I want to watch this",
+            "let's watch this",
+            "play this one",
+            "watch the next one",
+        ],
+    ),
+    (
         "recommendations",
         &[
             "show me recommendations for Emma",
