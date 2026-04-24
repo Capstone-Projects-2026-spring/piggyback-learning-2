@@ -17,6 +17,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             handlers::videos::download_video_command,
             handlers::questions::save_questions,
+            handlers::questions::get_segments,
+            utils::gaze::gaze_start,
+            utils::gaze::gaze_stop,
+            utils::gaze::gaze_pause,
+            utils::gaze::gaze_resume,
         ])
         .setup(|app| {
             let res = app
@@ -34,6 +39,14 @@ pub fn run() {
                 speaker::init_speaker(&spk_path);
             } else {
                 eprintln!("[Peppa] wespeaker.onnx not found, speaker ID disabled");
+            }
+
+            let gaze_path = res.join("models/ultraface.onnx");
+            if gaze_path.exists() {
+                crate::utils::gaze::init_gaze(&gaze_path);
+                eprintln!("[app] ultraface model loaded");
+            } else {
+                eprintln!("[app] ultraface.onnx not found, gaze tracking disabled");
             }
 
             intent_classifier::init_classifier();

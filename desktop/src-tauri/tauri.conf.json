@@ -35,7 +35,8 @@
     "resources": [
       "models/ggml-base.en.bin",
       "models/wespeaker.onnx",
-      "models/emotion-ferplus-8.onnx"
+      "models/emotion-ferplus-8.onnx",
+      "models/ultraface.onnx"
     ]
   }
 }

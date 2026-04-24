@@ -40,3 +40,5 @@ fastembed = "5.13.3"
 rustfft = "6"
 async-openai = { version = "0.34.0", features = ["byot", "chat-completion"] }
 base64 = "0.22.1"
+nokhwa = { version = "0.10", features = ["input-native"] }
+image = "0.25"
