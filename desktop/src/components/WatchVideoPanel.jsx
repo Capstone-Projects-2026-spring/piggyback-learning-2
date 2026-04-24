@@ -1,10 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useSegments } from "../hooks/useSegments.js";
 import { useAudioRecorder } from "../hooks/useAudioRecorder.js";
-import { usePlaybackPoller } from "../hooks/usePlaybackPoller.js";
 import { useGazeTracker } from "../hooks/useGazeTracker.js";
-import { useLocalVideo } from "../hooks/useLocalVideo.js";
-import { invoke } from "@tauri-apps/api/core";
 
 const pauseMessages = [
   "Let's go — what happened? ▶️",
@@ -16,45 +15,52 @@ export default function WatchVideoPanel({ videoId, onClose }) {
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isFollowup, setIsFollowup] = useState(false);
   const [followupType, setFollowupType] = useState(null);
-  const [segmentIndex, setSegmentIndex] = useState(0);
   const [recordingState, setRecordingState] = useState("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [lookingAway, setLookingAway] = useState(false);
-  const [piggyMode, setPiggyMode] = useState("watch");
-  const [piggyText, setPiggyText] = useState("Let's watch carefully 👀");
+  const [piggyMode, setPiggyMode] = useState("loading");
+  const [piggyText, setPiggyText] = useState("Loading video…");
+  const [launched, setLaunched] = useState(false);
 
-  const playerRef = useRef(null);
-  const segmentIndexRef = useRef(0);
   const currentQuestionRef = useRef(null);
+  const segmentIndexRef = useRef(0);
   const sixSecondShownRef = useRef(false);
   const threeSecondShownRef = useRef(false);
 
-  const { segmentsRef, videoPath } = useSegments(videoId);
-  const { blobUrl, loading: videoLoading } = useLocalVideo(videoPath);
+  const { segments, segmentsRef, videoPath } = useSegments(videoId);
 
+  // Launch mpv once we have segments + path
+  useEffect(() => {
+    if (!videoPath || segments.length === 0 || launched) return;
+    setLaunched(true);
+
+    const segmentInfos = segments.map((s) => ({
+      id: s.id,
+      start_seconds: s.start_seconds,
+      end_seconds: s.end_seconds,
+    }));
+
+    invoke("launch_video", { path: videoPath, segments: segmentInfos })
+      .then(() => {
+        eprintln("[WatchVideoPanel] mpv launched");
+        setPiggyMode("watch");
+        setPiggyText("Let's watch carefully 👀");
+      })
+      .catch((e) => {
+        console.error("[WatchVideoPanel] launch failed:", e);
+        setPiggyText("Failed to launch video");
+      });
+  }, [videoPath, segments, launched]);
+
+  // Gaze tracking
   useEffect(() => {
     invoke("gaze_start").catch(() => {});
     return () => {
       invoke("gaze_stop").catch(() => {});
+      invoke("mpv_quit").catch(() => {});
     };
   }, []);
-
-  useEffect(() => {
-    if (!blobUrl || !playerRef.current) return;
-    playerRef.current.load();
-    playerRef.current.play().catch((e) => {
-      console.error("[WatchVideoPanel] autoplay failed:", e);
-    });
-  }, [blobUrl]);
-
-  useEffect(() => {
-    segmentIndexRef.current = segmentIndex;
-    sixSecondShownRef.current = false;
-    threeSecondShownRef.current = false;
-    setPiggyMode("watch");
-    setPiggyText("Let's watch carefully 👀");
-  }, [segmentIndex]);
 
   useEffect(() => {
     currentQuestionRef.current = currentQuestion;
@@ -64,25 +70,99 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     if (currentQuestion) setLookingAway(false);
   }, [currentQuestion?.question]);
 
+  // mpv position tick — drive piggy countdown
+  useEffect(() => {
+    let unlisten;
+    listen("peppa://mpv-tick", ({ payload }) => {
+      const data = typeof payload === "string" ? JSON.parse(payload) : payload;
+      const pos = data.position;
+      const segs = segmentsRef.current;
+      const idx = segmentIndexRef.current;
+      if (!segs[idx] || currentQuestionRef.current) return;
+
+      const end = segs[idx].end_seconds;
+      const timeLeft = end - pos;
+
+      if (timeLeft <= 6 && timeLeft > 3 && !sixSecondShownRef.current) {
+        sixSecondShownRef.current = true;
+        setPiggyMode("talk");
+        setPiggyText("Pay attention — a question is coming 👀");
+      }
+      if (timeLeft <= 3 && timeLeft > 0 && !threeSecondShownRef.current) {
+        threeSecondShownRef.current = true;
+        setPiggyMode("talk");
+        setPiggyText("Get ready to answer! 🎤");
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, [segmentsRef]);
+
+  // Segment end — show question
+  useEffect(() => {
+    let unlisten;
+    listen("peppa://segment-end", ({ payload }) => {
+      const data = typeof payload === "string" ? JSON.parse(payload) : payload;
+      const segs = segmentsRef.current;
+      const idx = segmentIndexRef.current;
+      const segment = segs[idx];
+      if (!segment) return;
+
+      sixSecondShownRef.current = false;
+      threeSecondShownRef.current = false;
+
+      const match = segment.questions?.find(
+        (x) =>
+          x.question === segment.best_question ||
+          x.qtype === segment.best_question ||
+          x.question?.includes(segment.best_question) ||
+          (segment.best_question && segment.best_question.includes(x.question)),
+      );
+      setCurrentQuestion(
+        match || {
+          question: segment.best_question || "What did you just see?",
+        },
+      );
+      setPiggyMode("hidden");
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => unlisten?.();
+  }, [segmentsRef]);
+
   const advanceAndPlay = useCallback(() => {
+    const segs = segmentsRef.current;
+    const nextIdx = segmentIndexRef.current + 1;
+    segmentIndexRef.current = nextIdx;
+
     setCurrentQuestion(null);
     setAnalysisResult(null);
     setRecordingState("idle");
     setStatusMessage("");
-    setSegmentIndex((prev) => prev + 1);
+    sixSecondShownRef.current = false;
+    threeSecondShownRef.current = false;
+
+    if (nextIdx >= segs.length) {
+      invoke("mpv_quit").catch(() => {});
+      onClose();
+      return;
+    }
+
     setPiggyMode("talk");
     setPiggyText("Nice! Let's keep watching 🎬");
     setTimeout(() => {
       setPiggyMode("watch");
       setPiggyText("Let's watch carefully 👀");
     }, 2000);
-    playerRef.current?.play();
-  }, []);
+
+    invoke("mpv_play").catch(console.error); // restore + release already inside mpv_play
+  }, [segmentsRef, onClose]);
 
   const replaySegment = useCallback(() => {
     const segs = segmentsRef.current;
     const idx = segmentIndexRef.current;
-    if (!playerRef.current || idx >= segs.length) return;
+    if (!segs[idx]) return;
 
     sixSecondShownRef.current = false;
     threeSecondShownRef.current = false;
@@ -94,8 +174,10 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       setPiggyText("Let's watch carefully 👀");
     }, 2000);
 
-    playerRef.current.currentTime = segs[idx].start_seconds ?? 0;
-    playerRef.current.play();
+    invoke("mpv_seek", { seconds: segs[idx].start_seconds }).catch(
+      console.error,
+    );
+    invoke("mpv_play").catch(console.error);
   }, [segmentsRef]);
 
   const handleFollowupResult = useCallback(
@@ -178,59 +260,27 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     onResult: isFollowup ? handleFollowupResult : handleResult,
   });
 
-  usePlaybackPoller({
-    playerRef,
-    segmentsRef,
-    segmentIndexRef,
-    currentQuestionRef,
-    onTick: (currentTime, segment) => {
-      if (!segment || currentQuestionRef.current) return;
-      const end = segment.end_seconds ?? 0;
-      const timeLeft = end - currentTime;
-
-      if (timeLeft <= 6 && timeLeft > 3 && !sixSecondShownRef.current) {
-        sixSecondShownRef.current = true;
-        setPiggyMode("talk");
-        setPiggyText("Pay attention — a question is coming 👀");
-      }
-      if (timeLeft <= 3 && timeLeft > 0 && !threeSecondShownRef.current) {
-        threeSecondShownRef.current = true;
-        setPiggyMode("talk");
-        setPiggyText("Get ready to answer! 🎤");
-      }
-    },
-    onSegmentEnd: (segment) => {
-      const match = segment.questions?.find(
-        (x) =>
-          x.question === segment.best_question ||
-          x.qtype === segment.best_question ||
-          x.question?.includes(segment.best_question) ||
-          (segment.best_question && segment.best_question.includes(x.question)),
-      );
-      setCurrentQuestion(
-        match || {
-          question: segment.best_question || "What did you just see?",
-        },
-      );
-    },
-  });
-
   useGazeTracker({
     enabled: true,
     paused: !!currentQuestion,
     onLookAway: () => {
-      playerRef.current?.pause();
+      invoke("mpv_pause").catch(() => {});
+      invoke("mpv_minimize").catch(() => {}); // ← add
       setLookingAway(true);
     },
     onReturn: () => {
       setLookingAway(false);
-      playerRef.current?.play();
+      if (!currentQuestionRef.current) {
+        invoke("mpv_play").catch(() => {}); // already calls restore() + release_tauri_front()
+      }
     },
   });
 
+  // Start recording when question appears
   useEffect(() => {
     if (!currentQuestion) return;
-    const segment = segmentsRef.current[segmentIndexRef.current];
+    const segs = segmentsRef.current;
+    const segment = segs[segmentIndexRef.current];
     if (!segment) return;
 
     const questionToAsk = isFollowup
@@ -270,22 +320,19 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       : currentQuestion?.followup_wrong_question
     : currentQuestion?.question;
 
-  if (!blobUrl || videoLoading) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
-        <p className="text-white/40 text-xs">Loading video…</p>
-      </div>
-    );
-  }
-
+  // Transparent fullscreen overlay — mpv renders behind this
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
-      {/* Top bar */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/70 to-transparent">
+    <div className="fixed inset-0 z-50 pointer-events-none">
+      {/* Only interactive elements get pointer-events back */}
+
+      {/* Close button — always visible */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 pointer-events-auto">
         <button
-          onClick={onClose}
-          className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition-colors"
+          onClick={() => {
+            invoke("mpv_quit").catch(() => {});
+            onClose();
+          }}
+          className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 transition-colors"
         >
           <svg
             className="w-4 h-4"
@@ -304,14 +351,14 @@ export default function WatchVideoPanel({ videoId, onClose }) {
 
         {recordingState !== "idle" && (
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border backdrop-blur-sm ${
               recordingState === "recording"
                 ? "bg-red-500/20 text-red-300 border-red-500/30"
                 : recordingState === "correct"
                   ? "bg-green-500/20 text-green-300 border-green-500/30"
                   : recordingState === "wrong"
                     ? "bg-red-500/20 text-red-300 border-red-500/30"
-                    : "bg-white/10 text-white/60 border-white/10"
+                    : "bg-black/30 text-white/60 border-white/10"
             }`}
           >
             {recordingState === "recording" && (
@@ -324,54 +371,37 @@ export default function WatchVideoPanel({ videoId, onClose }) {
         <div className="w-8" />
       </div>
 
-      {/* Video */}
-      <video
-        ref={playerRef}
-        src={blobUrl}
-        className="w-full h-full object-contain"
-        onPause={() => {
-          if (currentQuestionRef.current || lookingAway) return;
-          setPiggyMode("talk");
-          setPiggyText(
-            pauseMessages[Math.floor(Math.random() * pauseMessages.length)],
-          );
-        }}
-        onPlay={() => {
-          setPiggyMode("watch");
-          setPiggyText("Let's watch carefully 👀");
-        }}
-        onEnded={onClose}
-        onError={(e) => {
-          console.error(
-            "[video] error:",
-            e.target.error?.code,
-            e.target.error?.message,
-          );
-        }}
-      />
-
+      {/* Piggy */}
       {!displayQuestion && !lookingAway && (
         <PiggyCompanion mode={piggyMode} text={piggyText} />
       )}
 
-      {lookingAway && !currentQuestion && <LookAtScreenModal />}
+      {/* Look away — needs pointer-events to block interaction */}
+      {lookingAway && !currentQuestion && (
+        <div className="pointer-events-auto">
+          <LookAtScreenModal />
+        </div>
+      )}
 
+      {/* Question overlay */}
       {displayQuestion && (
-        <QuestionOverlay
-          question={displayQuestion}
-          recordingState={recordingState}
-          statusMessage={statusMessage}
-          analysisResult={analysisResult}
-          isFollowup={isFollowup}
-          onClose={handleCloseQuestion}
-        />
+        <div className="pointer-events-auto">
+          <QuestionOverlay
+            question={displayQuestion}
+            recordingState={recordingState}
+            statusMessage={statusMessage}
+            analysisResult={analysisResult}
+            isFollowup={isFollowup}
+            onClose={handleCloseQuestion}
+          />
+        </div>
       )}
     </div>
   );
 }
 
 function PiggyCompanion({ mode, text }) {
-  if (mode === "hidden") return null;
+  if (mode === "hidden" || mode === "loading") return null;
   return (
     <div className="absolute bottom-6 right-6 flex flex-col items-end gap-2 pointer-events-none z-10">
       {mode === "talk" && text && (
