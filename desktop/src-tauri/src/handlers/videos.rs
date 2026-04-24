@@ -2,14 +2,31 @@ use crate::db::init::get_db;
 use crate::handlers::frames::extract_frames;
 use crate::utils::app_handle::emit;
 use crate::utils::download::download_video;
+use crate::utils::mpv;
 use crate::utils::voice::session::SharedSession;
-
 use std::sync::OnceLock;
 
 static SESSION: OnceLock<SharedSession> = OnceLock::new();
 
 pub fn init_session(session: SharedSession) {
     SESSION.set(session).ok();
+}
+
+pub fn bring_tauri_to_front() {
+    if let Some(window) =
+        tauri::Manager::get_webview_window(crate::utils::app_handle::get_app_handle(), "main")
+    {
+        let _ = window.set_always_on_top(true);
+        let _ = window.set_focus();
+    }
+}
+
+fn release_tauri_front() {
+    if let Some(window) =
+        tauri::Manager::get_webview_window(crate::utils::app_handle::get_app_handle(), "main")
+    {
+        let _ = window.set_always_on_top(false);
+    }
 }
 
 pub async fn search(args: &[String]) {
@@ -40,7 +57,6 @@ pub async fn search(args: &[String]) {
     );
 
     tokio::spawn(async move {
-        // Request more results upfront so we have enough after filtering
         let output = Command::new("yt-dlp")
             .arg("--flat-playlist")
             .arg("--no-cache-dir")
@@ -63,32 +79,24 @@ pub async fn search(args: &[String]) {
                         if parts.len() < 4 {
                             return None;
                         }
-
                         let video_id = parts[0];
                         let title = parts[1];
                         let duration_str = parts[2];
                         let live_status = parts[3].trim();
-
-                        // Parse as f64 first then convert — yt-dlp returns floats like "161.0"
                         let duration: i64 = duration_str.parse::<f64>().unwrap_or(0.0) as i64;
-
-                        // Keep only normal videos: live_status must be "NA" (not a live stream)
-                        // and duration must be between 1 and 300 seconds
                         if live_status != "NA" || duration == 0 || duration > 300 {
                             return None;
                         }
-
                         let thumbnail = format!("https://i.ytimg.com/vi/{video_id}/hqdefault.jpg");
-
                         Some(serde_json::json!({
-                            "video_id":  video_id,
-                            "title":     title,
+                            "video_id": video_id,
+                            "title":    title,
                             "thumbnail": thumbnail,
-                            "duration":  duration,
-                            "uploader":  "",
+                            "duration": duration,
+                            "uploader": "",
                         }))
                     })
-                    .take(10) // take first 10 after filtering
+                    .take(10)
                     .collect();
 
                 eprintln!("[handler:videos] search → {} results", results.len());
@@ -111,24 +119,20 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
     eprintln!("[handler:videos] download_video_command — video_id={video_id}");
 
     tokio::spawn(async move {
+        // Set current_video immediately before the match
+        if let Some(session) = SESSION.get() {
+            if let Ok(mut s) = session.lock() {
+                s.current_video = Some(video_id.clone());
+                eprintln!("[handler:videos] session.current_video = {video_id}");
+            }
+        }
+
         match download_video(&video_id).await {
             Ok(None) => {
                 eprintln!("[handler:videos] already downloaded — {video_id}");
-
-                // Track as current video in session so "assign it to X" knows what to assign
-                if let Some(session) = SESSION.get() {
-                    if let Ok(mut s) = session.lock() {
-                        s.current_video = Some(video_id.clone());
-                        eprintln!("[handler:videos] session.current_video = {}", video_id);
-                    }
-                }
-
                 emit(
                     "peppa://video-status",
-                    serde_json::json!({
-                        "video_id": video_id,
-                        "status": "already_exists"
-                    }),
+                    serde_json::json!({ "video_id": video_id, "status": "already_exists" }),
                 );
             }
             Ok(Some((id, title, thumbnail, duration, video_path, transcript_path))) => {
@@ -136,21 +140,9 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                     eprintln!("[handler:videos] upsert failed: {e}");
                     emit(
                         "peppa://video-status",
-                        serde_json::json!({
-                            "video_id": id,
-                            "status": "error",
-                            "msg": e
-                        }),
+                        serde_json::json!({ "video_id": id, "status": "error", "msg": e }),
                     );
                     return;
-                }
-
-                // Track as current video in session so "assign it to X" knows what to assign
-                if let Some(session) = SESSION.get() {
-                    if let Ok(mut s) = session.lock() {
-                        s.current_video = Some(id.clone());
-                        eprintln!("[handler:videos] session.current_video = {}", id);
-                    }
                 }
 
                 emit(
@@ -166,17 +158,13 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                     }),
                 );
 
-                // Auto-tag from transcript in background
                 if !transcript_path.is_empty() {
                     let id_clone = id.clone();
                     let transcript_clone = transcript_path.clone();
                     tokio::spawn(async move {
                         emit(
                             "peppa://processing-status",
-                            serde_json::json!({
-                                "video_id": id_clone,
-                                "stage": "tagging"
-                            }),
+                            serde_json::json!({ "video_id": id_clone, "stage": "tagging" }),
                         );
                         if let Err(e) = generate_and_assign_tags(&id_clone, &transcript_clone).await
                         {
@@ -185,7 +173,6 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                     });
                 }
 
-                // Frame extraction in background
                 let id_clone = id.clone();
                 tokio::spawn(async move {
                     if let Err(e) = extract_frames(&id_clone).await {
@@ -197,11 +184,7 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                 eprintln!("[handler:videos] download failed: {e}");
                 emit(
                     "peppa://video-status",
-                    serde_json::json!({
-                        "video_id": video_id,
-                        "status": "error",
-                        "msg": e
-                    }),
+                    serde_json::json!({ "video_id": video_id, "status": "error", "msg": e }),
                 );
             }
         }
@@ -210,26 +193,72 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-pub async fn read_video_chunk(path: String, offset: u64, length: usize) -> Result<Vec<u8>, String> {
-    use std::io::{Read, Seek, SeekFrom};
-    let mut file = std::fs::File::open(&path).map_err(|e| format!("[video] open failed: {e}"))?;
-    file.seek(SeekFrom::Start(offset))
-        .map_err(|e| format!("[video] seek failed: {e}"))?;
-    let mut buf = vec![0u8; length];
-    let n = file
-        .read(&mut buf)
-        .map_err(|e| format!("[video] read failed: {e}"))?;
-    buf.truncate(n);
-    Ok(buf)
+#[derive(serde::Deserialize)]
+pub struct SegmentInfo {
+    pub start_seconds: f64,
+    pub end_seconds: f64,
+    pub id: i64,
 }
 
 #[tauri::command]
-pub async fn get_video_file_size(path: String) -> Result<u64, String> {
-    std::fs::metadata(&path)
-        .map(|m| m.len())
-        .map_err(|e| format!("[video] metadata failed: {e}"))
+pub async fn launch_video(path: String, segments: Vec<SegmentInfo>) -> Result<(), String> {
+    eprintln!("[handler:videos] launch_video — {path}");
+
+    tokio::task::spawn_blocking(move || {
+        mpv::launch_mpv(&path)?;
+
+        if !mpv::wait_for_socket() {
+            return Err("[mpv] socket never appeared".to_string());
+        }
+
+        mpv::play()?;
+
+        let seg_tuples: Vec<(f64, f64, i64)> = segments
+            .iter()
+            .map(|s| (s.start_seconds, s.end_seconds, s.id))
+            .collect();
+        mpv::start_position_poller(seg_tuples);
+
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn mpv_play() -> Result<(), String> {
+    eprintln!("[mpv_play] restoring + releasing front");
+    mpv::restore()?;
+    release_tauri_front();
+    mpv::play()
+}
+
+#[tauri::command]
+pub async fn mpv_pause() -> Result<(), String> {
+    mpv::pause()
+}
+
+#[tauri::command]
+pub async fn mpv_seek(seconds: f64) -> Result<(), String> {
+    mpv::restore()?;
+    release_tauri_front();
+    mpv::seek(seconds)
+}
+
+#[tauri::command]
+pub async fn mpv_minimize() -> Result<(), String> {
+    mpv::minimize()?;
+    bring_tauri_to_front();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn mpv_quit() {
+    mpv::quit();
+    release_tauri_front();
+}
+
+// ── Private helpers ───────────────────────────────────────────────────────────
 
 async fn upsert_video(
     id: &str,
