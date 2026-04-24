@@ -56,5 +56,49 @@ Download-If-Missing `
     -Url   "https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-win32-x64" `
     -Label "ffmpeg ($Triple)"
 
+# ── mpv ───────────────────────────────────────────────────────────────────────
+$MpvBin = "$BinDir\mpv-$Triple.exe"
+if (Test-Path $MpvBin) {
+    Write-Host "mpv already present, skipping"
+} else {
+    $mpvPath = $null
+
+    # Check if already installed
+    try {
+        $mpvPath = (Get-Command mpv -ErrorAction Stop).Source
+        Write-Host "mpv found at $mpvPath"
+    } catch {
+        Write-Host "Installing mpv..."
+
+        # Try winget first (built into Windows 11)
+        if (Get-Command winget -ErrorAction SilentlyContinue) {
+            winget install --id=mpv.net -e --silent
+            try { $mpvPath = (Get-Command mpv -ErrorAction Stop).Source } catch {}
+        }
+
+        # Try scoop as fallback
+        if (-not $mpvPath -and (Get-Command scoop -ErrorAction SilentlyContinue)) {
+            scoop install mpv
+            try { $mpvPath = (Get-Command mpv -ErrorAction Stop).Source } catch {}
+        }
+
+        # Try choco as fallback
+        if (-not $mpvPath -and (Get-Command choco -ErrorAction SilentlyContinue)) {
+            choco install mpv -y
+            try { $mpvPath = (Get-Command mpv -ErrorAction Stop).Source } catch {}
+        }
+
+        if (-not $mpvPath) {
+            Write-Host "ERROR: Could not install mpv automatically."
+            Write-Host "Install manually: winget install mpv  OR  scoop install mpv"
+            Write-Host "Then re-run this script."
+            exit 1
+        }
+    }
+
+    Copy-Item $mpvPath $MpvBin
+    Write-Host "  -> $MpvBin (copied from $mpvPath)"
+}
+
 Write-Host ""
 Write-Host "All assets ready."

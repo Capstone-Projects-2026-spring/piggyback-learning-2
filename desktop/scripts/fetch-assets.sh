@@ -76,5 +76,53 @@ FFMPEG_BIN="$BIN_DIR/ffmpeg-$TRIPLE$BIN_EXT"
 download_if_missing "$FFMPEG_BIN" "$FFMPEG_URL" "ffmpeg ($TRIPLE)"
 chmod +x "$FFMPEG_BIN"
 
+# ── mpv ───────────────────────────────────────────────────────────────────────
+MPV_BIN="$BIN_DIR/mpv-$TRIPLE$BIN_EXT"
+if [ -f "$MPV_BIN" ]; then
+    echo "mpv already present, skipping"
+else
+    # Install via system package manager if not already installed
+    if ! command -v mpv &>/dev/null; then
+        echo "Installing mpv..."
+        case "$(uname -s)" in
+            Linux*)
+                if command -v pacman &>/dev/null; then
+                    sudo pacman -S --noconfirm mpv
+                elif command -v apt-get &>/dev/null; then
+                    sudo apt-get install -y mpv
+                elif command -v dnf &>/dev/null; then
+                    sudo dnf install -y mpv
+                elif command -v zypper &>/dev/null; then
+                    sudo zypper install -y mpv
+                elif command -v flatpak &>/dev/null; then
+                    flatpak install -y flathub io.mpv.Mpv
+                else
+                    echo "ERROR: Could not detect package manager. Install mpv manually."
+                    exit 1
+                fi
+                ;;
+            Darwin*)
+                if command -v brew &>/dev/null; then
+                    brew install mpv
+                else
+                    echo "ERROR: Homebrew not found. Install it first: https://brew.sh"
+                    exit 1
+                fi
+                ;;
+        esac
+    fi
+
+    # Copy the installed binary to our binaries dir
+    MPV_PATH=$(command -v mpv)
+    if [ -n "$MPV_PATH" ]; then
+        cp "$MPV_PATH" "$MPV_BIN"
+        chmod +x "$MPV_BIN"
+        echo "  -> $MPV_BIN (copied from $MPV_PATH)"
+    else
+        echo "ERROR: mpv installation failed or binary not found in PATH"
+        exit 1
+    fi
+fi
+
 echo ""
 echo "All assets ready."
