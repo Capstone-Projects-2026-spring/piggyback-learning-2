@@ -4,3 +4,4 @@ pub mod download;
 pub mod gaze;
 pub mod openai;
 pub mod voice;
+pub mod yt_server;

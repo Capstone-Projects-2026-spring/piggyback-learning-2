@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export function useSegments(videoId) {
   const [segments, setSegments] = useState([]);
+  const [videoPath, setVideoPath] = useState(null);
   const segmentsRef = useRef([]);
 
   useEffect(() => {
@@ -13,16 +14,21 @@ export function useSegments(videoId) {
     if (!videoId) return;
     invoke("get_segments", { videoId })
       .then((data) => {
+        const segs = data ?? [];
         console.log(
           "[useSegments] loaded",
-          data?.length,
+          segs.length,
           "segments for",
           videoId,
         );
-        setSegments(data ?? []);
+        setSegments(segs);
+        // All segments share the same path — grab from first
+        if (segs.length > 0 && segs[0].local_video_path) {
+          setVideoPath(segs[0].local_video_path);
+        }
       })
       .catch((e) => console.error("[useSegments] failed:", e));
   }, [videoId]);
 
-  return { segments, segmentsRef };
+  return { segments, segmentsRef, videoPath };
 }

@@ -16,6 +16,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             handlers::videos::download_video_command,
+            handlers::videos::read_video_chunk,
+            handlers::videos::get_video_file_size,
             handlers::questions::save_questions,
             handlers::questions::get_segments,
             utils::gaze::gaze_start,
@@ -62,6 +64,7 @@ pub fn run() {
             let onboarding = onboarding::new_onboarding();
 
             crate::handlers::videos::init_session(session.clone());
+            crate::utils::yt_server::start_youtube_server();
 
             let needs_onboarding =
                 tauri::async_runtime::block_on(async { !db::init::has_parent_account().await });

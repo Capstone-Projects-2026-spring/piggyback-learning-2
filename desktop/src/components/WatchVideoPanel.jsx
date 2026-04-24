@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import YouTube from "react-youtube";
 import { useSegments } from "../hooks/useSegments.js";
 import { useAudioRecorder } from "../hooks/useAudioRecorder.js";
 import { usePlaybackPoller } from "../hooks/usePlaybackPoller.js";
 import { useGazeTracker } from "../hooks/useGazeTracker.js";
+import { useLocalVideo } from "../hooks/useLocalVideo.js";
+import { invoke } from "@tauri-apps/api/core";
 
 const pauseMessages = [
   "Let's go — what happened? ▶️",
@@ -13,8 +13,6 @@ const pauseMessages = [
 ];
 
 export default function WatchVideoPanel({ videoId, onClose }) {
-  const origin = window.location.origin;
-
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isFollowup, setIsFollowup] = useState(false);
   const [followupType, setFollowupType] = useState(null);
@@ -32,7 +30,23 @@ export default function WatchVideoPanel({ videoId, onClose }) {
   const sixSecondShownRef = useRef(false);
   const threeSecondShownRef = useRef(false);
 
-  const { segmentsRef } = useSegments(videoId);
+  const { segmentsRef, videoPath } = useSegments(videoId);
+  const { blobUrl, loading: videoLoading } = useLocalVideo(videoPath);
+
+  useEffect(() => {
+    invoke("gaze_start").catch(() => {});
+    return () => {
+      invoke("gaze_stop").catch(() => {});
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!blobUrl || !playerRef.current) return;
+    playerRef.current.load();
+    playerRef.current.play().catch((e) => {
+      console.error("[WatchVideoPanel] autoplay failed:", e);
+    });
+  }, [blobUrl]);
 
   useEffect(() => {
     segmentIndexRef.current = segmentIndex;
@@ -50,13 +64,6 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     if (currentQuestion) setLookingAway(false);
   }, [currentQuestion?.question]);
 
-  useEffect(() => {
-    invoke("gaze_start").catch(() => {});
-    return () => {
-      invoke("gaze_stop").catch(() => {});
-    };
-  }, []);
-
   const advanceAndPlay = useCallback(() => {
     setCurrentQuestion(null);
     setAnalysisResult(null);
@@ -69,7 +76,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       setPiggyMode("watch");
       setPiggyText("Let's watch carefully 👀");
     }, 2000);
-    playerRef.current?.playVideo();
+    playerRef.current?.play();
   }, []);
 
   const replaySegment = useCallback(() => {
@@ -87,8 +94,8 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       setPiggyText("Let's watch carefully 👀");
     }, 2000);
 
-    playerRef.current.seekTo(segs[idx].start_seconds ?? 0, true);
-    playerRef.current.playVideo();
+    playerRef.current.currentTime = segs[idx].start_seconds ?? 0;
+    playerRef.current.play();
   }, [segmentsRef]);
 
   const handleFollowupResult = useCallback(
@@ -212,16 +219,15 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     enabled: true,
     paused: !!currentQuestion,
     onLookAway: () => {
-      playerRef.current?.pauseVideo();
+      playerRef.current?.pause();
       setLookingAway(true);
     },
     onReturn: () => {
       setLookingAway(false);
-      playerRef.current?.playVideo();
+      playerRef.current?.play();
     },
   });
 
-  // Start recording when question appears
   useEffect(() => {
     if (!currentQuestion) return;
     const segment = segmentsRef.current[segmentIndexRef.current];
@@ -241,7 +247,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       : segment;
 
     recorder.start(questionToAsk, {
-      kid_id: 0, // TODO: read from session once answers.rs is implemented
+      kid_id: 0,
       video_id: videoId,
       segment_id: segment.id,
       ...(isFollowup && { expected_answer_override: questionToAsk?.answer }),
@@ -263,6 +269,15 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       ? currentQuestion?.followup_correct_question
       : currentQuestion?.followup_wrong_question
     : currentQuestion?.question;
+
+  if (!blobUrl || videoLoading) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white/60 animate-spin" />
+        <p className="text-white/40 text-xs">Loading video…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
@@ -309,55 +324,38 @@ export default function WatchVideoPanel({ videoId, onClose }) {
         <div className="w-8" />
       </div>
 
-      {/* YouTube player */}
-      <div className="flex-1 flex items-center justify-center bg-black">
-        <YouTube
-          videoId={videoId}
-          onReady={(e) => {
-            playerRef.current = e.target;
-          }}
-          onStateChange={(e) => {
-            if (currentQuestionRef.current) return;
-            // 1 = playing, 2 = paused
-            if (e.data === 2 && !lookingAway) {
-              setPiggyMode("talk");
-              setPiggyText(
-                pauseMessages[Math.floor(Math.random() * pauseMessages.length)],
-              );
-            }
-            if (e.data === 1) {
-              setPiggyMode("watch");
-              setPiggyText("Let's watch carefully 👀");
-            }
-          }}
-          opts={{
-            width: "100%",
-            height: "100%",
-            playerVars: {
-              autoplay: 1,
-              controls: 1, // hide native controls so kids can't skip
-              disablekb: 1, // disable keyboard shortcuts
-              modestbranding: 1,
-              rel: 0, // no related videos at end
-              iv_load_policy: 3, // hide annotations
-              origin,
-            },
-          }}
-          className="w-full h-full"
-          iframeClassName="w-full h-full"
-          style={{ width: "100%", height: "100%" }}
-        />
-      </div>
+      {/* Video */}
+      <video
+        ref={playerRef}
+        src={blobUrl}
+        className="w-full h-full object-contain"
+        onPause={() => {
+          if (currentQuestionRef.current || lookingAway) return;
+          setPiggyMode("talk");
+          setPiggyText(
+            pauseMessages[Math.floor(Math.random() * pauseMessages.length)],
+          );
+        }}
+        onPlay={() => {
+          setPiggyMode("watch");
+          setPiggyText("Let's watch carefully 👀");
+        }}
+        onEnded={onClose}
+        onError={(e) => {
+          console.error(
+            "[video] error:",
+            e.target.error?.code,
+            e.target.error?.message,
+          );
+        }}
+      />
 
-      {/* Piggy companion */}
       {!displayQuestion && !lookingAway && (
         <PiggyCompanion mode={piggyMode} text={piggyText} />
       )}
 
-      {/* Look away modal */}
       {lookingAway && !currentQuestion && <LookAtScreenModal />}
 
-      {/* Question overlay */}
       {displayQuestion && (
         <QuestionOverlay
           question={displayQuestion}
@@ -371,8 +369,6 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     </div>
   );
 }
-
-// ── Piggy Companion ───────────────────────────────────────────────────────────
 
 function PiggyCompanion({ mode, text }) {
   if (mode === "hidden") return null;
@@ -392,8 +388,6 @@ function PiggyCompanion({ mode, text }) {
   );
 }
 
-// ── Look Away Modal ───────────────────────────────────────────────────────────
-
 function LookAtScreenModal() {
   return (
     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 z-20">
@@ -407,8 +401,6 @@ function LookAtScreenModal() {
     </div>
   );
 }
-
-// ── Question Overlay ──────────────────────────────────────────────────────────
 
 function QuestionOverlay({
   question,
@@ -447,21 +439,18 @@ function QuestionOverlay({
               {statusMessage}
             </div>
           )}
-
           {recordingState === "recording" && (
             <div className="flex items-center gap-2 text-red-500 text-sm">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               {statusMessage}
             </div>
           )}
-
           {recordingState === "analyzing" && (
             <div className="flex items-center gap-2 text-violet-500 text-sm">
               <div className="w-4 h-4 border-2 border-violet-300 border-t-violet-500 rounded-full animate-spin" />
               {statusMessage}
             </div>
           )}
-
           {(recordingState === "correct" || recordingState === "wrong") && (
             <div
               className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium ${

@@ -389,6 +389,7 @@ pub struct QuestionRow {
 pub struct SegmentWithQuestions {
     pub id: i64,
     pub video_id: String,
+    pub local_video_path: Option<String>,
     pub start_seconds: i32,
     pub end_seconds: i32,
     pub best_question: Option<String>,
@@ -398,6 +399,16 @@ pub struct SegmentWithQuestions {
 #[tauri::command]
 pub async fn get_segments(video_id: String) -> Result<Vec<SegmentWithQuestions>, String> {
     let pool = get_db();
+
+    // Fetch video path once
+    let local_video_path: Option<String> =
+        sqlx::query_as::<_, (Option<String>,)>("SELECT local_video_path FROM videos WHERE id = ?")
+            .bind(&video_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| format!("[questions] video path fetch failed: {e}"))?
+            .and_then(|(p,)| p.map(|v| Some(v)))
+            .flatten();
 
     let segs = sqlx::query(
         "SELECT id, video_id, start_seconds, end_seconds, best_question
@@ -454,6 +465,7 @@ pub async fn get_segments(video_id: String) -> Result<Vec<SegmentWithQuestions>,
         result.push(SegmentWithQuestions {
             id: seg_id,
             video_id: video_id.clone(),
+            local_video_path: local_video_path.clone(),
             start_seconds: start,
             end_seconds: end,
             best_question: best,

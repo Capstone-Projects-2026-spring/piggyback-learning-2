@@ -210,6 +210,27 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub async fn read_video_chunk(path: String, offset: u64, length: usize) -> Result<Vec<u8>, String> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut file = std::fs::File::open(&path).map_err(|e| format!("[video] open failed: {e}"))?;
+    file.seek(SeekFrom::Start(offset))
+        .map_err(|e| format!("[video] seek failed: {e}"))?;
+    let mut buf = vec![0u8; length];
+    let n = file
+        .read(&mut buf)
+        .map_err(|e| format!("[video] read failed: {e}"))?;
+    buf.truncate(n);
+    Ok(buf)
+}
+
+#[tauri::command]
+pub async fn get_video_file_size(path: String) -> Result<u64, String> {
+    std::fs::metadata(&path)
+        .map(|m| m.len())
+        .map_err(|e| format!("[video] metadata failed: {e}"))
+}
+
 async fn upsert_video(
     id: &str,
     title: &str,
