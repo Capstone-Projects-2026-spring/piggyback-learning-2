@@ -370,3 +370,100 @@ pub async fn save_questions(updates: Vec<SegmentUpdate>) -> Result<(), String> {
     eprintln!("[questions] saved {} segments", updates.len());
     Ok(())
 }
+
+#[derive(serde::Serialize, Clone)]
+pub struct QuestionRow {
+    pub id: i64,
+    pub segment_id: i64,
+    pub qtype: String,
+    pub question: String,
+    pub answer: String,
+    pub rank: Option<i32>,
+    pub followup_correct_question: Option<String>,
+    pub followup_correct_answer: Option<String>,
+    pub followup_wrong_question: Option<String>,
+    pub followup_wrong_answer: Option<String>,
+}
+
+#[derive(serde::Serialize, Clone)]
+pub struct SegmentWithQuestions {
+    pub id: i64,
+    pub video_id: String,
+    pub start_seconds: i32,
+    pub end_seconds: i32,
+    pub best_question: Option<String>,
+    pub questions: Vec<QuestionRow>,
+}
+
+#[tauri::command]
+pub async fn get_segments(video_id: String) -> Result<Vec<SegmentWithQuestions>, String> {
+    let pool = get_db();
+
+    let segs = sqlx::query(
+        "SELECT id, video_id, start_seconds, end_seconds, best_question
+         FROM segments WHERE video_id = ? ORDER BY start_seconds ASC",
+    )
+    .bind(&video_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("[questions] get_segments failed: {e}"))?;
+
+    let mut result = Vec::new();
+
+    for seg in segs {
+        let seg_id: i64 = sqlx::Row::get(&seg, "id");
+        let start: i32 = sqlx::Row::get(&seg, "start_seconds");
+        let end: i32 = sqlx::Row::get(&seg, "end_seconds");
+        let best: Option<String> = sqlx::Row::try_get(&seg, "best_question").ok().flatten();
+
+        let q_rows = sqlx::query(
+            "SELECT id, segment_id, qtype, question, answer, rank,
+                    followup_correct_question, followup_correct_answer,
+                    followup_wrong_question, followup_wrong_answer
+             FROM questions WHERE segment_id = ? ORDER BY rank ASC",
+        )
+        .bind(seg_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| format!("[questions] fetch questions failed: {e}"))?;
+
+        let questions: Vec<QuestionRow> = q_rows
+            .into_iter()
+            .map(|r| QuestionRow {
+                id: sqlx::Row::get(&r, "id"),
+                segment_id: sqlx::Row::get(&r, "segment_id"),
+                qtype: sqlx::Row::get(&r, "qtype"),
+                question: sqlx::Row::get(&r, "question"),
+                answer: sqlx::Row::get(&r, "answer"),
+                rank: sqlx::Row::try_get(&r, "rank").ok(),
+                followup_correct_question: sqlx::Row::try_get(&r, "followup_correct_question")
+                    .ok()
+                    .flatten(),
+                followup_correct_answer: sqlx::Row::try_get(&r, "followup_correct_answer")
+                    .ok()
+                    .flatten(),
+                followup_wrong_question: sqlx::Row::try_get(&r, "followup_wrong_question")
+                    .ok()
+                    .flatten(),
+                followup_wrong_answer: sqlx::Row::try_get(&r, "followup_wrong_answer")
+                    .ok()
+                    .flatten(),
+            })
+            .collect();
+
+        result.push(SegmentWithQuestions {
+            id: seg_id,
+            video_id: video_id.clone(),
+            start_seconds: start,
+            end_seconds: end,
+            best_question: best,
+            questions,
+        });
+    }
+
+    eprintln!(
+        "[questions] get_segments → {} segments for {video_id}",
+        result.len()
+    );
+    Ok(result)
+}
