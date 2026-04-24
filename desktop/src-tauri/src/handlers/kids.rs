@@ -75,8 +75,57 @@ pub async fn add_tags(args: &[String], session: &SharedSession) {
     }
 }
 
-pub async fn get_video_assignments(args: &[String], _session: &SharedSession) {
-    println!("[handler:kids] get_video_assignments — args={args:?}");
+#[derive(Debug, serde::Serialize, Clone)]
+pub struct AssignedVideo {
+    pub id: String,
+    pub title: Option<String>,
+    pub thumbnail_url: Option<String>,
+    pub duration_seconds: Option<i32>,
+}
+
+pub async fn get_video_assignments(args: &[String], session: &SharedSession) {
+    let kid_id = {
+        let s = session.lock().unwrap();
+        match (s.role.as_deref(), s.user_id) {
+            (Some("kid"), Some(id)) => id as i64,
+            _ => {
+                eprintln!("[handler:kids] get_video_assignments — kid only");
+                return;
+            }
+        }
+    };
+
+    let pool = crate::db::init::get_db();
+
+    let rows = sqlx::query(
+        r#"
+        SELECT v.id, v.title, v.thumbnail_url, v.duration_seconds
+        FROM video_assignments va
+        JOIN videos v ON v.id = va.video_id
+        WHERE va.kid_id = ?
+        "#,
+    )
+    .bind(kid_id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    let videos: Vec<AssignedVideo> = rows
+        .into_iter()
+        .map(|r| AssignedVideo {
+            id: sqlx::Row::get(&r, "id"),
+            title: sqlx::Row::try_get(&r, "title").ok(),
+            thumbnail_url: sqlx::Row::try_get(&r, "thumbnail_url").ok(),
+            duration_seconds: sqlx::Row::try_get(&r, "duration_seconds").ok(),
+        })
+        .collect();
+
+    eprintln!(
+        "[handler:kids] get_video_assignments — kid_id={kid_id}, {} videos",
+        videos.len()
+    );
+
+    crate::utils::app_handle::emit("peppa://my-videos", serde_json::json!({ "videos": videos }));
 }
 
 pub async fn assign_video(args: &[String], session: &SharedSession) {
