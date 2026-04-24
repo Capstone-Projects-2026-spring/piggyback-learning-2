@@ -6,98 +6,117 @@ sidebar_position: 1
 # Design
 
 ## Components
-### Database
-### Entity Relationship Diagram:
-
-```mermaid
-erDiagram
-    USERS {
-        INTEGER id PK
-        VARCHAR email
-        VARCHAR username
-        VARCHAR password_hash
-        INTEGER role_id FK
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
-        TIMESTAMP last_login
-    }
-
-    USER_PROFILES {
-        INTEGER id PK
-        INTEGER user_id FK
-        VARCHAR first_name
-        VARCHAR last_name
-        TIMESTAMP date_of_birth
-    }
-
-    ROLES {
-        INTEGER id PK
-        VARCHAR role_type
-    }
-
-    VIDEOS {
-        INTEGER id PK
-        VARCHAR url
-        VARCHAR title
-        INTEGER duration_in_seconds
-    }
-
-    WATCH_HISTORIES {
-        INTEGER id PK
-        INTEGER user_id FK
-        INTEGER video_id FK
-        TIMESTAMP watched_on
-    }
-
-    ROLES ||--o{ USERS : has
-    USERS ||--|| USER_PROFILES : has
-    USERS ||--o{ WATCH_HISTORIES : watches
-    VIDEOS ||--o{ WATCH_HISTORIES : watched_in
+### Database Schema
 ```
-
-
-Initial database schema:
-```
-CREATE TABLE roles (
-    id INTEGER PRIMARY KEY,
-    role_type VARCHAR(30) NOT NULL UNIQUE
-);
-
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    username VARCHAR(60) NOT NULL UNIQUE,
+CREATE TABLE parents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role_id INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP,
-    FOREIGN KEY (role_id) REFERENCES roles(id)
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
-CREATE TABLE user_profiles (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER NOT NULL UNIQUE,
-    first_name VARCHAR(60),
-    last_name VARCHAR(100),
-    date_of_birth TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+CREATE TABLE kids (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_id INTEGER NOT NULL,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    FOREIGN KEY (parent_id) REFERENCES parents(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE videos (
-    id INTEGER PRIMARY KEY,
-    url VARCHAR(2048) NOT NULL,
-    title VARCHAR(300) NOT NULL,
-    duration_in_seconds INTEGER NOT NULL
+    id VARCHAR(255) PRIMARY KEY, -- YouTube ID
+    title VARCHAR(255),
+    thumbnail_url VARCHAR(2048),
+    duration_seconds INTEGER,
+    local_video_path VARCHAR(2048),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
-CREATE TABLE watch_histories (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    video_id INTEGER NOT NULL,
-    watched_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+CREATE TABLE segments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id VARCHAR(255) NOT NULL,
+    start_seconds INTEGER NOT NULL,
+    end_seconds INTEGER NOT NULL,
+    best_question TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE frames (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id VARCHAR(255) NOT NULL,
+    frame_number INTEGER NOT NULL,
+    timestamp_seconds INTEGER NOT NULL UNIQUE,
+    timestamp_formatted VARCHAR(50) NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(2048) NOT NULL,
+    subtitle_text TEXT,
+    is_keyframe BOOLEAN NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    segment_id INTEGER NOT NULL,
+    qtype VARCHAR(50) NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    rank INTEGER,
+    followup_enabled BOOLEAN DEFAULT 0,
+    followup_correct_question TEXT,
+    followup_correct_answer TEXT,
+    followup_wrong_question TEXT,
+    followup_wrong_answer TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    FOREIGN KEY (segment_id) REFERENCES segments(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE TABLE video_assignments (
+    kid_id INTEGER NOT NULL,
+    video_id VARCHAR(255) NOT NULL,
+    answers JSON, -- Stores array of child responses
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    PRIMARY KEY (kid_id, video_id),
+    FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE video_tags (
+    video_id VARCHAR(255) NOT NULL,
+    tag_id INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    PRIMARY KEY (video_id, tag_id),
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE kid_tags (
+    kid_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    PRIMARY KEY (kid_id, tag_id),
+    FOREIGN KEY (kid_id) REFERENCES kids(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 ```
 
