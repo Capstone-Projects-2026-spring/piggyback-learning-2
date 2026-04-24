@@ -7,9 +7,12 @@ const WAKE_PHRASES: &[&str] = &[
     "hi pepper",
     "hello peppa",
     "hello pepper",
+    "hello people",
     "peppa",
     "pepper",
+    "people",
     "hey papa",
+    "hey people",
     "hey pappa",
     "a peppa",
     "a pepper",
@@ -23,7 +26,9 @@ const WAKE_PHRASES: &[&str] = &[
     "hepa",
 ];
 
-const WAKE_TOKENS: &[&str] = &["peppa", "pepper", "pepa", "peper", "hepa", "paper", "papa"];
+const WAKE_TOKENS: &[&str] = &[
+    "peppa", "pepper", "pepa", "peper", "hepa", "paper", "papa", "people",
+];
 
 #[derive(Debug, Serialize)]
 pub struct WakeWordResult {
