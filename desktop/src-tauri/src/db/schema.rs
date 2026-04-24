@@ -67,8 +67,7 @@ CREATE TABLE IF NOT EXISTS answers (
     transcript       TEXT    NOT NULL,
     is_correct       INTEGER NOT NULL,
     similarity_score REAL    NOT NULL,
-    mood             TEXT,
-    energy           REAL
+    mood             TEXT
 );
 
 CREATE TABLE IF NOT EXISTS frames (
