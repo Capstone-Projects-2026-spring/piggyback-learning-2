@@ -42,4 +42,3 @@ async-openai = { version = "0.34.0", features = ["byot", "chat-completion"] }
 base64 = "0.22.1"
 nokhwa = { version = "0.10", features = ["input-native"] }
 image = "0.25"
-tiny_http = "0.12"
