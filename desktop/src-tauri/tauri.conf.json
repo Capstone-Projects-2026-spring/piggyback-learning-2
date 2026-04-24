@@ -31,7 +31,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/yt-dlp", "binaries/ffmpeg"],
+    "externalBin": ["binaries/yt-dlp", "binaries/ffmpeg", "binaries/mpv"],
     "resources": [
       "models/ggml-base.en.bin",
       "models/wespeaker.onnx",
