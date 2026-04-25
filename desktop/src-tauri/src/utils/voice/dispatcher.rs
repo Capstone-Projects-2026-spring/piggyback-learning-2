@@ -39,7 +39,7 @@ pub async fn dispatch(
         "download_video" => eprintln!("[dispatch] download_video — handled by frontend"),
         "search" => handlers::videos::search(args).await,
         "watch_video" => {
-            emit("peppa://watch-video", serde_json::json!({}));
+            emit("orb://watch-video", serde_json::json!({}));
         }
         // ── questions ─────────────────────────────────────────────
         "get_questions" => handlers::questions::get_by_video(args, &session).await,

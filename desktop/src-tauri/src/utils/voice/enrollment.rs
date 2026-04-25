@@ -21,7 +21,7 @@ pub struct EnrollmentEvent {
 }
 
 pub fn emit_enrollment(app: &AppHandle, event: EnrollmentEvent) {
-    if let Err(e) = app.emit("peppa://enrollment", event) {
+    if let Err(e) = app.emit("orb://enrollment", event) {
         eprintln!("[enrollment] emit error: {e}");
     }
 }

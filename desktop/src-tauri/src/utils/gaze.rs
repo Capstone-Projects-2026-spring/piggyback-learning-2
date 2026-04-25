@@ -187,7 +187,7 @@ fn gaze_loop() {
             if is_away {
                 is_away = false;
                 crate::utils::app_handle::emit(
-                    "peppa://gaze-status",
+                    "orb://gaze-status",
                     serde_json::json!({ "status": "present" }),
                 );
             }
@@ -244,7 +244,7 @@ fn gaze_loop() {
                 is_away = true;
                 eprintln!("[gaze] look away detected");
                 crate::utils::app_handle::emit(
-                    "peppa://gaze-status",
+                    "orb://gaze-status",
                     serde_json::json!({ "status": "away" }),
                 );
             }
@@ -256,7 +256,7 @@ fn gaze_loop() {
                 is_away = false;
                 eprintln!("[gaze] return detected");
                 crate::utils::app_handle::emit(
-                    "peppa://gaze-status",
+                    "orb://gaze-status",
                     serde_json::json!({ "status": "present" }),
                 );
             }

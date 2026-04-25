@@ -125,7 +125,7 @@ pub async fn get_video_assignments(args: &[String], session: &SharedSession) {
         videos.len()
     );
 
-    crate::utils::app_handle::emit("peppa://my-videos", serde_json::json!({ "videos": videos }));
+    crate::utils::app_handle::emit("orb://my-videos", serde_json::json!({ "videos": videos }));
 }
 
 pub async fn assign_video(args: &[String], session: &SharedSession) {
@@ -142,7 +142,7 @@ pub async fn assign_video(args: &[String], session: &SharedSession) {
             None => {
                 eprintln!("[handler:kids] assign_video — no current_video in session");
                 emit(
-                    "peppa://assign-error",
+                    "orb://assign-error",
                     serde_json::json!({ "message": "No video is currently active." }),
                 );
                 return;
@@ -155,7 +155,7 @@ pub async fn assign_video(args: &[String], session: &SharedSession) {
         None => {
             eprintln!("[handler:kids] assign_video — could not resolve kid from transcript");
             emit(
-                "peppa://assign-error",
+                "orb://assign-error",
                 serde_json::json!({ "message": "Which kid did you mean?" }),
             );
             return;
@@ -182,7 +182,7 @@ pub async fn assign_video(args: &[String], session: &SharedSession) {
         Ok(result) if result.rows_affected() == 0 => {
             eprintln!("[handler:kids] assign_video — already assigned");
             emit(
-                "peppa://video-assigned",
+                "orb://video-assigned",
                 serde_json::json!({
                     "video_id": video_id,
                     "kid_id": kid_id,
@@ -194,7 +194,7 @@ pub async fn assign_video(args: &[String], session: &SharedSession) {
         Ok(_) => {
             eprintln!("[handler:kids] assign_video — assigned {video_id} to kid_id={kid_id}");
             emit(
-                "peppa://video-assigned",
+                "orb://video-assigned",
                 serde_json::json!({
                     "video_id": video_id,
                     "kid_id": kid_id,
@@ -242,7 +242,7 @@ pub async fn get_recommendations(args: &[String], session: &SharedSession) {
         None => {
             eprintln!("[handler:kids] get_recommendations — could not resolve kid from transcript");
             emit(
-                "peppa://recommendations-error",
+                "orb://recommendations-error",
                 serde_json::json!({ "message": "Which kid did you mean?" }),
             );
             return;
@@ -318,7 +318,7 @@ pub async fn get_recommendations(args: &[String], session: &SharedSession) {
     );
 
     emit(
-        "peppa://recommendations",
+        "orb://recommendations",
         &RecommendationsPayload {
             kid_name,
             tags: tags.clone(),
@@ -368,7 +368,7 @@ async fn assign_tag_to_kid(kid_id: i64, tag_id: i64) -> Result<(), String> {
 /// Priority:
 ///   1. Name mentioned in transcript matches a kid in DB
 ///   2. Only one kid exists → use them
-///   3. Multiple kids, no name → log and return None (Peppa should prompt)
+///   3. Multiple kids, no name → log and return None (orb should prompt)
 async fn resolve_kid_id(args: &[String], session: &SharedSession) -> Option<i64> {
     let pool = get_db();
 

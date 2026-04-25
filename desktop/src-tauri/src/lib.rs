@@ -35,7 +35,7 @@ pub fn run() {
             let res = app
                 .path()
                 .resource_dir()
-                .expect("[Peppa] resource dir must exist");
+                .expect("[orb] resource dir must exist");
 
             utils::app_handle::init_app_handle(app.handle().clone());
             init_whisper(res.join("models/ggml-base.en.bin"));
@@ -44,7 +44,7 @@ pub fn run() {
             if spk_path.exists() {
                 speaker::init_speaker(&spk_path);
             } else {
-                eprintln!("[Peppa] wespeaker.onnx not found, speaker ID disabled");
+                eprintln!("[orb] wespeaker.onnx not found, speaker ID disabled");
             }
 
             let gaze_path = res.join("models/ultraface.onnx");
@@ -98,11 +98,11 @@ pub fn run() {
             }
 
             let handle = capture::start(app.handle().clone(), session, onboarding)
-                .unwrap_or_else(|e| panic!("[Peppa] audio capture failed: {e}"));
+                .unwrap_or_else(|e| panic!("[orb] audio capture failed: {e}"));
             Box::leak(Box::new(handle));
 
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("[Peppa] fatal error during startup")
+        .expect("[orb] fatal error during startup")
 }

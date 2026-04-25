@@ -319,7 +319,7 @@ pub struct VoiceEvent {
 }
 
 fn emit(app: &AppHandle, event: VoiceEvent) {
-    if let Err(e) = app.emit("peppa://voice-result", event) {
+    if let Err(e) = app.emit("orb://voice-result", event) {
         eprintln!("[capture] emit error: {e}");
     }
 }

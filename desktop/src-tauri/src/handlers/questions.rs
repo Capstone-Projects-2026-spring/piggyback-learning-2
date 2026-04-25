@@ -26,7 +26,7 @@ pub async fn generate_questions_for_video(video_id: &str) -> Result<(), String> 
     }
 
     emit(
-        "peppa://processing-status",
+        "orb://processing-status",
         serde_json::json!({
             "video_id": video_id,
             "stage": "generating_questions",
@@ -48,7 +48,7 @@ pub async fn generate_questions_for_video(video_id: &str) -> Result<(), String> 
         eprintln!("[questions] generating for {video_id} [{start}s → {end}s]");
 
         emit(
-            "peppa://processing-status",
+            "orb://processing-status",
             serde_json::json!({
                 "video_id": video_id,
                 "stage": "generating_questions",
@@ -75,7 +75,7 @@ pub async fn generate_questions_for_video(video_id: &str) -> Result<(), String> 
     }
 
     emit(
-        "peppa://questions-ready",
+        "orb://questions-ready",
         serde_json::json!({
             "video_id": video_id,
             "segments": all_responses,

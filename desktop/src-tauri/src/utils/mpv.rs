@@ -26,9 +26,9 @@ impl MpvState {
         Self {
             process: None,
             #[cfg(unix)]
-            socket_path: "/tmp/peppa-mpv.sock".to_string(),
+            socket_path: "/tmp/orb-mpv.sock".to_string(),
             #[cfg(windows)]
-            pipe_name: r"\\.\pipe\peppa-mpv".to_string(),
+            pipe_name: r"\\.\pipe\orb-mpv".to_string(),
         }
     }
 }
@@ -208,7 +208,7 @@ pub fn is_running() -> bool {
 // ── Polling loop ──────────────────────────────────────────────────────────────
 
 /// Starts a background thread that polls mpv playback position
-/// and emits peppa://mpv-tick every 250ms so the frontend can
+/// and emits orb://mpv-tick every 250ms so the frontend can
 /// drive segment-end logic without needing a YouTube player object
 pub fn start_position_poller(segments: Vec<(f64, f64, i64)>) {
     // segments: Vec<(start_seconds, end_seconds, segment_id)>
@@ -224,7 +224,7 @@ pub fn start_position_poller(segments: Vec<(f64, f64, i64)>) {
 
             // Emit current position for piggy countdown
             crate::utils::app_handle::emit(
-                "peppa://mpv-tick",
+                "orb://mpv-tick",
                 serde_json::json!({ "position": pos }),
             );
 
@@ -237,7 +237,7 @@ pub fn start_position_poller(segments: Vec<(f64, f64, i64)>) {
                     let _ = minimize();
                     crate::handlers::videos::bring_tauri_to_front();
                     crate::utils::app_handle::emit(
-                        "peppa://segment-end",
+                        "orb://segment-end",
                         serde_json::json!({ "segment_id": seg_id, "position": pos }),
                     );
                     break;

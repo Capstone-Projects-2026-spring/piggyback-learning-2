@@ -1,20 +1,17 @@
 use crate::{
     db::init::get_db,
-    utils::{
-        matching::compute_similarity,
-        mood::detect_mood_from_frame,
-    },
-    utils::voice::session::SharedSession,  
+    utils::voice::session::SharedSession,
+    utils::{matching::compute_similarity, mood::detect_mood_from_frame},
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Answer {
-    pub transcript:       String,
-    pub is_correct:       bool,
+    pub transcript: String,
+    pub is_correct: bool,
     pub similarity_score: f32,
-    pub mood:             String,
-    pub segment_id:       i32,
+    pub mood: String,
+    pub segment_id: i32,
 }
 
 // ── Tauri commands ────────────────────────────────────────────────────────────
@@ -44,7 +41,7 @@ pub fn clear_answer_context(session: tauri::State<SharedSession>) {
 #[tauri::command]
 pub async fn get_answers(kid_id: i32, video_id: String) -> Result<Vec<Answer>, String> {
     let answers = fetch_answers(kid_id, &video_id).await?;
-    crate::utils::app_handle::emit("peppa://answers", serde_json::json!(answers));
+    crate::utils::app_handle::emit("orb://answers", serde_json::json!(answers));
     Ok(answers)
 }
 
@@ -54,15 +51,20 @@ pub async fn get_answers_for_session(args: &[String], session: &SharedSession) {
         let s = session.lock().unwrap();
         let kid_id = match s.user_id {
             Some(id) => id,
-            None => { eprintln!("[answers] no user in session"); return; }
+            None => {
+                eprintln!("[answers] no user in session");
+                return;
+            }
         };
-        let video_id = args.first().cloned()
+        let video_id = args
+            .first()
+            .cloned()
             .or_else(|| s.current_video.clone())
             .unwrap_or_default();
         (kid_id, video_id)
     };
     match fetch_answers(kid_id, &video_id).await {
-        Ok(answers) => crate::utils::app_handle::emit("peppa://answers", serde_json::json!(answers)),
+        Ok(answers) => crate::utils::app_handle::emit("orb://answers", serde_json::json!(answers)),
         Err(e) => eprintln!("[answers] fetch failed: {e}"),
     }
 }
@@ -76,19 +78,31 @@ pub async fn analyze_answer(_args: &[String], session: &SharedSession) {
         let s = session.lock().unwrap();
         let kid_id = match s.user_id {
             Some(id) => id,
-            None => { eprintln!("[answers] no user in session"); return; }
+            None => {
+                eprintln!("[answers] no user in session");
+                return;
+            }
         };
         let video_id = match &s.current_video {
             Some(v) => v.clone(),
-            None => { eprintln!("[answers] no current_video in session"); return; }
+            None => {
+                eprintln!("[answers] no current_video in session");
+                return;
+            }
         };
         let segment_id = match s.current_segment {
             Some(id) => id,
-            None => { eprintln!("[answers] no current_segment in session"); return; }
+            None => {
+                eprintln!("[answers] no current_segment in session");
+                return;
+            }
         };
         let transcript = match &s.last_transcript {
             Some(t) => t.clone(),
-            None => { eprintln!("[answers] no transcript in session"); return; }
+            None => {
+                eprintln!("[answers] no transcript in session");
+                return;
+            }
         };
         let expected = s.expected_answer.clone().unwrap_or_default();
         (kid_id, video_id, segment_id, transcript, expected)
@@ -103,14 +117,20 @@ pub async fn analyze_answer(_args: &[String], session: &SharedSession) {
 
     let mood = capture_face_frame_for_mood().await;
 
-    let answer = Answer { transcript, is_correct, similarity_score, mood, segment_id };
+    let answer = Answer {
+        transcript,
+        is_correct,
+        similarity_score,
+        mood,
+        segment_id,
+    };
 
     if let Err(e) = persist_answer(kid_id, &video_id, &answer).await {
         eprintln!("[answers] persist failed: {e}");
     }
 
     crate::utils::app_handle::emit(
-        "peppa://answer-result",
+        "orb://answer-result",
         serde_json::json!({
             "is_correct":       answer.is_correct,
             "similarity_score": answer.similarity_score,
@@ -168,14 +188,19 @@ async fn fetch_answers(kid_id: i32, video_id: &str) -> Result<Vec<Answer>, Strin
     .await
     .map_err(|e| format!("fetch_answers: {e}"))?;
 
-    Ok(rows.iter().map(|r| {
-        use sqlx::Row;
-        Answer {
-            transcript:       r.get("transcript"),
-            is_correct:       r.get::<i32, _>("is_correct") != 0,
-            similarity_score: r.get::<f64, _>("similarity_score") as f32,
-            mood:             r.get::<Option<String>, _>("mood").unwrap_or_else(|| "neutral".into()),
-            segment_id:       r.get("segment_id"),
-        }
-    }).collect())
+    Ok(rows
+        .iter()
+        .map(|r| {
+            use sqlx::Row;
+            Answer {
+                transcript: r.get("transcript"),
+                is_correct: r.get::<i32, _>("is_correct") != 0,
+                similarity_score: r.get::<f64, _>("similarity_score") as f32,
+                mood: r
+                    .get::<Option<String>, _>("mood")
+                    .unwrap_or_else(|| "neutral".into()),
+                segment_id: r.get("segment_id"),
+            }
+        })
+        .collect())
 }

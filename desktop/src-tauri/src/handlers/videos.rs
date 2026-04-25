@@ -52,7 +52,7 @@ pub async fn search(args: &[String]) {
     eprintln!("[handler:videos] search — query={query}");
 
     emit(
-        "peppa://search-status",
+        "orb://search-status",
         serde_json::json!({ "status": "searching", "query": query }),
     );
 
@@ -101,7 +101,7 @@ pub async fn search(args: &[String]) {
 
                 eprintln!("[handler:videos] search → {} results", results.len());
                 emit(
-                    "peppa://search-results",
+                    "orb://search-results",
                     serde_json::json!({ "query": query, "results": results }),
                 );
             }
@@ -131,7 +131,7 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
             Ok(None) => {
                 eprintln!("[handler:videos] already downloaded — {video_id}");
                 emit(
-                    "peppa://video-status",
+                    "orb://video-status",
                     serde_json::json!({ "video_id": video_id, "status": "already_exists" }),
                 );
             }
@@ -139,14 +139,14 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                 if let Err(e) = upsert_video(&id, &title, &thumbnail, duration, &video_path).await {
                     eprintln!("[handler:videos] upsert failed: {e}");
                     emit(
-                        "peppa://video-status",
+                        "orb://video-status",
                         serde_json::json!({ "video_id": id, "status": "error", "msg": e }),
                     );
                     return;
                 }
 
                 emit(
-                    "peppa://video-status",
+                    "orb://video-status",
                     serde_json::json!({
                         "video_id": id,
                         "status": "done",
@@ -163,7 +163,7 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                     let transcript_clone = transcript_path.clone();
                     tokio::spawn(async move {
                         emit(
-                            "peppa://processing-status",
+                            "orb://processing-status",
                             serde_json::json!({ "video_id": id_clone, "stage": "tagging" }),
                         );
                         if let Err(e) = generate_and_assign_tags(&id_clone, &transcript_clone).await
@@ -183,7 +183,7 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
             Err(e) => {
                 eprintln!("[handler:videos] download failed: {e}");
                 emit(
-                    "peppa://video-status",
+                    "orb://video-status",
                     serde_json::json!({ "video_id": video_id, "status": "error", "msg": e }),
                 );
             }

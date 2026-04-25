@@ -34,7 +34,7 @@ pub async fn extract_frames(video_id: &str) -> Result<(), String> {
     }
 
     emit(
-        "peppa://processing-status",
+        "orb://processing-status",
         serde_json::json!({ "video_id": video_id, "stage": "extracting_frames" }),
     );
 
