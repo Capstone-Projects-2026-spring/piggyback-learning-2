@@ -6,10 +6,8 @@ target/
 # will have schema files for capabilities auto-completion
 gen/schemas
 
-.cargo/
+.cargo/config.toml
 .fastembed_cache/
 binaries/
 models/
 lib/
-
-.env

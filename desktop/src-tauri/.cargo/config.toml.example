@@ -1,0 +1,22 @@
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[profile.dev]
+incremental = true
+
+[profile.dev.package."*"]
+opt-level = 3        # compile deps at full optimisation once, cache them
+
+[profile.release]
+codegen-units = 1    # slower release build but you only do this occasionally
+lto = "thin"         # faster than full LTO, still good binary size
+
+[env]
+OPENAI_API_KEY=""
