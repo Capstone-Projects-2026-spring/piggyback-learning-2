@@ -82,18 +82,17 @@ pub fn run() {
                 tauri::async_runtime::block_on(async { !db::init::has_parent_account().await });
 
             if needs_onboarding {
-                let app_handle = app.handle().clone();
                 let onboarding_clone = onboarding.clone();
                 tauri::async_runtime::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                     eprintln!("[app] starting parent onboarding");
-                    onboarding::start(&app_handle, &onboarding_clone, OnboardingFlow::Parent);
+                    onboarding::start(&onboarding_clone, OnboardingFlow::Parent);
                 });
             } else {
                 eprintln!("[app] parent account exists — skipping onboarding");
             }
 
-            let handle = capture::start(app.handle().clone(), session, onboarding)
+            let handle = capture::start(session, onboarding)
                 .unwrap_or_else(|e| panic!("[app] audio capture failed: {e}"));
             Box::leak(Box::new(handle));
 
