@@ -12,15 +12,16 @@ pub fn init_app_handle(handle: AppHandle) {
 pub fn get_app_handle() -> &'static AppHandle {
     APP_HANDLE
         .get()
-        .expect("[app_handle] not initialised — call init_app_handle() first")
+        .expect("[app_handle] not initialised — call init_app_handle() at startup")
 }
 
 pub fn emit<T: serde::Serialize + Clone>(event: &str, payload: T) {
-    if let Some(handle) = APP_HANDLE.get() {
-        if let Err(e) = handle.emit(event, payload) {
-            eprintln!("[app_handle] emit error on '{event}': {e}");
+    match APP_HANDLE.get() {
+        Some(handle) => {
+            if let Err(e) = handle.emit(event, payload) {
+                eprintln!("[app_handle] emit failed on '{event}': {e}");
+            }
         }
-    } else {
-        eprintln!("[app_handle] tried to emit '{event}' before init");
+        None => eprintln!("[app_handle] emit '{event}' called before init"),
     }
 }
