@@ -38,7 +38,7 @@ pub fn run() {
                 .expect("[orb] resource dir must exist");
 
             utils::app_handle::init_app_handle(app.handle().clone());
-            init_whisper(res.join("models/ggml-base.en.bin"));
+            init_whisper(&res.join("models/ggml-base.en.bin"));
 
             let spk_path = res.join("models/wespeaker.onnx");
             if spk_path.exists() {
