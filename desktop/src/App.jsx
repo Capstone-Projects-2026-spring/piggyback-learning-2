@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import PeppaOrb from "./components/PeppaOrb.jsx";
+import Orb from "./components/Orb.jsx";
 import EnrollmentOverlay from "./components/EnrollmentOverlay.jsx";
 import VideoPanel from "./components/VideoPanel.jsx";
 import { commandBus } from "./lib/stt/index.js";
@@ -39,7 +39,7 @@ export default function App() {
 
     // Listen for my-videos BEFORE opening panel — store data first, then open
     let unlistenMyVideos;
-    listen("peppa://my-videos", ({ payload }) => {
+    listen("orb://my-videos", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       setMyVideosData(data); // store it
       setShowVideos(true); // then open panel — data is already in state
@@ -48,7 +48,7 @@ export default function App() {
     });
 
     let unlistenRecs;
-    listen("peppa://recommendations", () => {
+    listen("orb://recommendations", () => {
       setShowVideos(true);
     }).then((fn) => {
       unlistenRecs = fn;
@@ -90,7 +90,7 @@ export default function App() {
 
   return (
     <>
-      <PeppaOrb />
+      <Orb />
       {showVideos && (
         <VideoPanel
           role={role}

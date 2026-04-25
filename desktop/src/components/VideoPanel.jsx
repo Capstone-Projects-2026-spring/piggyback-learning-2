@@ -71,7 +71,7 @@ export default function VideoPanel({ onClose, role, initialMyVideos }) {
   // Search status
   useEffect(() => {
     let unlisten;
-    listen("peppa://search-status", ({ payload }) => {
+    listen("orb://search-status", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       if (data.status === "searching" && modeRef.current === "search") {
         setLoading(true);
@@ -87,7 +87,7 @@ export default function VideoPanel({ onClose, role, initialMyVideos }) {
   // Search results
   useEffect(() => {
     let unlisten;
-    listen("peppa://search-results", ({ payload }) => {
+    listen("orb://search-results", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       if (modeRef.current === "recommendations") {
         setVideos((current) => {
@@ -114,7 +114,7 @@ export default function VideoPanel({ onClose, role, initialMyVideos }) {
   // Recommendations
   useEffect(() => {
     let unlisten;
-    listen("peppa://recommendations", ({ payload }) => {
+    listen("orb://recommendations", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       const { kid_name, tags, recommendations } = data;
       setMode("recommendations");
@@ -134,7 +134,7 @@ export default function VideoPanel({ onClose, role, initialMyVideos }) {
   // Download status
   useEffect(() => {
     let unlisten;
-    listen("peppa://video-status", ({ payload }) => {
+    listen("orb://video-status", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       setStatuses((s) => ({ ...s, [data.video_id]: data.status }));
     }).then((fn) => {
@@ -146,7 +146,7 @@ export default function VideoPanel({ onClose, role, initialMyVideos }) {
   // Processing stages
   useEffect(() => {
     let unlisten;
-    listen("peppa://processing-status", ({ payload }) => {
+    listen("orb://processing-status", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       setProcessing((p) => ({
         ...p,
@@ -161,7 +161,7 @@ export default function VideoPanel({ onClose, role, initialMyVideos }) {
   // Questions ready
   useEffect(() => {
     let unlisten;
-    listen("peppa://questions-ready", ({ payload }) => {
+    listen("orb://questions-ready", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       setQuestions((q) => ({ ...q, [data.video_id]: data.segments }));
       setProcessing((p) => {
@@ -177,7 +177,7 @@ export default function VideoPanel({ onClose, role, initialMyVideos }) {
 
   useEffect(() => {
     let unlisten;
-    listen("peppa://watch-video", () => {
+    listen("orb://watch-video", () => {
       const videoId = currentVideoIdRef.current;
       if (videoId) setWatchingVideoId(videoId);
     }).then((fn) => {

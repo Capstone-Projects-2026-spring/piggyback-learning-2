@@ -43,7 +43,7 @@ class CommandBus {
 
   dispatch({ intent, args, raw }) {
     const event = { intent, args, raw };
-    console.info("[Peppa Bus] command ←", event);
+    console.info("[orb Bus] command ←", event);
     this.#handlers.get(intent)?.forEach((h) => {
       try {
         h(event);
@@ -71,7 +71,7 @@ class CommandBus {
   }
 
   dispatchWake(hasEmbedding) {
-    console.info("[Peppa Bus] wake ← embedding present:", hasEmbedding);
+    console.info("[orb Bus] wake ← embedding present:", hasEmbedding);
     this.#wakeListeners.forEach((h) => {
       try {
         h(hasEmbedding);
@@ -84,7 +84,7 @@ class CommandBus {
   dispatchEnrollment(data) {
     // Always cache — but onEnrollment() only replays parent flow events
     this.#lastEnrollmentEvent = data;
-    console.info("[Peppa Bus] enrollment ←", data);
+    console.info("[orb Bus] enrollment ←", data);
     this.#enrollmentListeners.forEach((h) => {
       try {
         h(data);

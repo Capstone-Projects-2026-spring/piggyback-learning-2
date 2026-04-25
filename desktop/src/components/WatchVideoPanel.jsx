@@ -79,7 +79,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
   // ── mpv tick → piggy countdown ─────────────────────────────────────────────
   useEffect(() => {
     let unlisten;
-    listen("peppa://mpv-tick", ({ payload }) => {
+    listen("orb://mpv-tick", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       const pos = data.position;
       const segs = segmentsRef.current;
@@ -96,14 +96,16 @@ export default function WatchVideoPanel({ videoId, onClose }) {
         setPiggyMode("talk");
         setPiggyText("Get ready to answer! 🎤");
       }
-    }).then((fn) => { unlisten = fn; });
+    }).then((fn) => {
+      unlisten = fn;
+    });
     return () => unlisten?.();
   }, [segmentsRef]);
 
   // ── Segment end → show question ────────────────────────────────────────────
   useEffect(() => {
     let unlisten;
-    listen("peppa://segment-end", ({ payload }) => {
+    listen("orb://segment-end", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       const segs = segmentsRef.current;
       const idx = segmentIndexRef.current;
@@ -127,7 +129,9 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       setIsFollowup(false);
       setFollowupType(null);
       setPiggyMode("hidden");
-    }).then((fn) => { unlisten = fn; });
+    }).then((fn) => {
+      unlisten = fn;
+    });
     return () => unlisten?.();
   }, [segmentsRef]);
 
@@ -140,9 +144,10 @@ export default function WatchVideoPanel({ videoId, onClose }) {
 
     let expectedAnswer;
     if (isFollowup) {
-      expectedAnswer = followupType === "correct"
-        ? currentQuestion.followup_correct_answer
-        : currentQuestion.followup_wrong_answer;
+      expectedAnswer =
+        followupType === "correct"
+          ? currentQuestion.followup_correct_answer
+          : currentQuestion.followup_wrong_answer;
     } else {
       // Find the answer for the best_question
       const match = segment.questions?.find(
@@ -166,13 +171,15 @@ export default function WatchVideoPanel({ videoId, onClose }) {
   // ── Answer result from Rust ────────────────────────────────────────────────
   useEffect(() => {
     let unlisten;
-    listen("peppa://answer-result", ({ payload }) => {
+    listen("orb://answer-result", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
       setRecordingState("analyzing");
       setStatusMessage("Checking your answer…");
       // Small delay so "analyzing" state is visible before result renders
       setTimeout(() => handleResult(data), 600);
-    }).then((fn) => { unlisten = fn; });
+    }).then((fn) => {
+      unlisten = fn;
+    });
     return () => unlisten?.();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -225,69 +232,77 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       setPiggyText("Let's watch carefully 👀");
     }, 2000);
 
-    invoke("mpv_seek", { seconds: segs[idx].start_seconds }).catch(console.error);
+    invoke("mpv_seek", { seconds: segs[idx].start_seconds }).catch(
+      console.error,
+    );
     invoke("mpv_play").catch(console.error);
   }, [segmentsRef]);
 
   // ── Result handler (reads refs so it's safe inside the event listener) ─────
-  const handleResult = useCallback((result) => {
-    if (!result) { advanceAndPlay(); return; }
-
-    const q = currentQuestionRef.current;
-    const followup = isFollowupRef.current;
-    const fType = followupTypeRef.current;
-
-    if (result.is_correct) {
-      setRecordingState("correct");
-
-      if (followup) {
-        // Followup correct → always advance
-        setStatusMessage("Correct! Well done 🎉");
-        setTimeout(() => advanceAndPlay(), 2000);
-      } else if (q?.followup_correct_question) {
-        setStatusMessage("Correct! Here's a bonus question.");
-        setTimeout(() => {
-          setRecordingState("idle");
-          setStatusMessage("");
-          setFollowupType("correct");
-          setIsFollowup(true);
-          // currentQuestion stays the same — followup answer extracted from it
-        }, 2000);
-      } else {
-        setStatusMessage("Correct! Well done 🎉");
-        setTimeout(() => advanceAndPlay(), 2000);
+  const handleResult = useCallback(
+    (result) => {
+      if (!result) {
+        advanceAndPlay();
+        return;
       }
-    } else {
-      setRecordingState("wrong");
 
-      if (followup) {
-        // Followup wrong → replay
-        setStatusMessage("Not quite — let's rewatch!");
-        setTimeout(() => {
-          setCurrentQuestion(null);
-          setIsFollowup(false);
-          setFollowupType(null);
-          setRecordingState("idle");
-          setTimeout(() => replaySegment(), 100);
-        }, 2000);
-      } else if (q?.followup_wrong_question) {
-        setStatusMessage("Not quite — try this instead!");
-        setTimeout(() => {
-          setRecordingState("idle");
-          setStatusMessage("");
-          setFollowupType("wrong");
-          setIsFollowup(true);
-        }, 2000);
+      const q = currentQuestionRef.current;
+      const followup = isFollowupRef.current;
+      const fType = followupTypeRef.current;
+
+      if (result.is_correct) {
+        setRecordingState("correct");
+
+        if (followup) {
+          // Followup correct → always advance
+          setStatusMessage("Correct! Well done 🎉");
+          setTimeout(() => advanceAndPlay(), 2000);
+        } else if (q?.followup_correct_question) {
+          setStatusMessage("Correct! Here's a bonus question.");
+          setTimeout(() => {
+            setRecordingState("idle");
+            setStatusMessage("");
+            setFollowupType("correct");
+            setIsFollowup(true);
+            // currentQuestion stays the same — followup answer extracted from it
+          }, 2000);
+        } else {
+          setStatusMessage("Correct! Well done 🎉");
+          setTimeout(() => advanceAndPlay(), 2000);
+        }
       } else {
-        setStatusMessage("Not quite — let's rewatch!");
-        setTimeout(() => {
-          setCurrentQuestion(null);
-          setRecordingState("idle");
-          setTimeout(() => replaySegment(), 100);
-        }, 2000);
+        setRecordingState("wrong");
+
+        if (followup) {
+          // Followup wrong → replay
+          setStatusMessage("Not quite — let's rewatch!");
+          setTimeout(() => {
+            setCurrentQuestion(null);
+            setIsFollowup(false);
+            setFollowupType(null);
+            setRecordingState("idle");
+            setTimeout(() => replaySegment(), 100);
+          }, 2000);
+        } else if (q?.followup_wrong_question) {
+          setStatusMessage("Not quite — try this instead!");
+          setTimeout(() => {
+            setRecordingState("idle");
+            setStatusMessage("");
+            setFollowupType("wrong");
+            setIsFollowup(true);
+          }, 2000);
+        } else {
+          setStatusMessage("Not quite — let's rewatch!");
+          setTimeout(() => {
+            setCurrentQuestion(null);
+            setRecordingState("idle");
+            setTimeout(() => replaySegment(), 100);
+          }, 2000);
+        }
       }
-    }
-  }, [advanceAndPlay, replaySegment]);
+    },
+    [advanceAndPlay, replaySegment],
+  );
 
   const handleCloseQuestion = useCallback(() => {
     invoke("clear_answer_context").catch(() => {});
@@ -332,23 +347,35 @@ export default function WatchVideoPanel({ videoId, onClose }) {
           }}
           className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-black/60 transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </button>
 
         {recordingState !== "idle" && (
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border backdrop-blur-sm ${
-            recordingState === "listening"
-              ? "bg-violet-500/20 text-violet-300 border-violet-500/30"
-              : recordingState === "recording"
-                ? "bg-red-500/20 text-red-300 border-red-500/30"
-                : recordingState === "correct"
-                  ? "bg-green-500/20 text-green-300 border-green-500/30"
-                  : recordingState === "wrong"
-                    ? "bg-red-500/20 text-red-300 border-red-500/30"
-                    : "bg-black/30 text-white/60 border-white/10"
-          }`}>
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border backdrop-blur-sm ${
+              recordingState === "listening"
+                ? "bg-violet-500/20 text-violet-300 border-violet-500/30"
+                : recordingState === "recording"
+                  ? "bg-red-500/20 text-red-300 border-red-500/30"
+                  : recordingState === "correct"
+                    ? "bg-green-500/20 text-green-300 border-green-500/30"
+                    : recordingState === "wrong"
+                      ? "bg-red-500/20 text-red-300 border-red-500/30"
+                      : "bg-black/30 text-white/60 border-white/10"
+            }`}
+          >
             {recordingState === "listening" && (
               <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
             )}
@@ -393,7 +420,9 @@ function PiggyCompanion({ mode, text }) {
     <div className="absolute bottom-6 right-6 flex flex-col items-end gap-2 pointer-events-none z-10">
       {mode === "talk" && text && (
         <div className="max-w-xs bg-white/90 backdrop-blur-sm rounded-2xl rounded-br-sm px-3 py-2 shadow-lg">
-          <p className="text-xs text-gray-700 font-medium leading-snug">{text}</p>
+          <p className="text-xs text-gray-700 font-medium leading-snug">
+            {text}
+          </p>
         </div>
       )}
       <div className="w-14 h-14 rounded-full bg-pink-100 border-2 border-pink-200 flex items-center justify-center text-2xl shadow-lg">
@@ -407,13 +436,23 @@ function LookAtScreenModal() {
   return (
     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 z-20">
       <div className="text-5xl animate-bounce">👀</div>
-      <p className="text-white text-lg font-semibold">Hey, look at the screen!</p>
-      <p className="text-white/50 text-sm">The video will resume when you're back</p>
+      <p className="text-white text-lg font-semibold">
+        Hey, look at the screen!
+      </p>
+      <p className="text-white/50 text-sm">
+        The video will resume when you're back
+      </p>
     </div>
   );
 }
 
-function QuestionOverlay({ question, recordingState, statusMessage, isFollowup, onClose }) {
+function QuestionOverlay({
+  question,
+  recordingState,
+  statusMessage,
+  isFollowup,
+  onClose,
+}) {
   return (
     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center pb-8 px-5 z-20">
       <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl">
@@ -433,7 +472,9 @@ function QuestionOverlay({ question, recordingState, statusMessage, isFollowup, 
         </div>
 
         <div className="p-5 flex flex-col gap-4">
-          <p className="text-gray-800 font-semibold text-base leading-snug">{question}</p>
+          <p className="text-gray-800 font-semibold text-base leading-snug">
+            {question}
+          </p>
 
           {recordingState === "listening" && (
             <div className="flex items-center gap-2 text-violet-500 text-sm">
@@ -448,11 +489,13 @@ function QuestionOverlay({ question, recordingState, statusMessage, isFollowup, 
             </div>
           )}
           {(recordingState === "correct" || recordingState === "wrong") && (
-            <div className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium ${
-              recordingState === "correct"
-                ? "bg-green-50 border border-green-100 text-green-600"
-                : "bg-red-50 border border-red-100 text-red-500"
-            }`}>
+            <div
+              className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium ${
+                recordingState === "correct"
+                  ? "bg-green-50 border border-green-100 text-green-600"
+                  : "bg-red-50 border border-red-100 text-red-500"
+              }`}
+            >
               <span>{recordingState === "correct" ? "✓" : "✗"}</span>
               {statusMessage}
             </div>

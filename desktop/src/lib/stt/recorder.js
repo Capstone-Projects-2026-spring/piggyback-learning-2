@@ -4,11 +4,11 @@ import { commandBus } from "./commandBus.js";
 let unlistenVoice = null;
 let unlistenEnrollment = null;
 
-export async function startPeppa() {
+export async function startOrb() {
   if (unlistenVoice) return;
 
   // Register enrollment listener first
-  unlistenEnrollment = await listen("peppa://enrollment", (event) => {
+  unlistenEnrollment = await listen("orb://enrollment", (event) => {
     let data = event.payload;
     if (typeof data === "string") {
       try {
@@ -22,7 +22,7 @@ export async function startPeppa() {
     commandBus.dispatchEnrollment(data);
   });
 
-  unlistenVoice = await listen("peppa://voice-result", (event) => {
+  unlistenVoice = await listen("orb://voice-result", (event) => {
     let result = event.payload;
     if (typeof result === "string") {
       try {
@@ -43,7 +43,7 @@ export async function startPeppa() {
   console.info("[recorder] listeners registered");
 }
 
-export function stopPeppa() {
+export function stopOrb() {
   unlistenVoice?.();
   unlistenEnrollment?.();
   unlistenVoice = null;

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { commandBus } from "../lib/stt/commandBus.js";
-import peppaPng from "../assets/peppa.png";
+import orbPng from "../assets/orb.png";
 
 // Stage strings coming from Rust per flow:
 // parent: greet | name_confirmed | prompt | done | error
@@ -108,8 +108,8 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
         className={`flex flex-col items-center justify-center min-h-screen bg-gradient-to-b ${theme.bg} select-none`}
       >
         <img
-          src={peppaPng}
-          alt="Peppa"
+          src={orbPng}
+          alt="orb"
           className="w-36 h-36 object-contain"
           draggable={false}
         />
@@ -124,7 +124,6 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
     <div
       className={`flex flex-col items-center min-h-screen bg-gradient-to-b ${theme.bg} select-none px-6 py-12`}
     >
-      {/* Peppa orb */}
       <div
         className={`rounded-full transition-all duration-500 ${
           stage === "greet" ||
@@ -136,8 +135,8 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
         }`}
       >
         <img
-          src={peppaPng}
-          alt="Peppa"
+          src={orbPng}
+          alt="orb"
           className="w-36 h-36 object-contain"
           draggable={false}
         />

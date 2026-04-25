@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
-import { startPeppa, stopPeppa, commandBus } from "../lib/stt/index.js";
+import { startOrb, stopOrb, commandBus } from "../lib/stt/index.js";
 import SessionBadge from "./SessionBadge.jsx";
-import peppaPng from "../assets/peppa.png";
+import orbPng from "../assets/orb.png";
 
 const STATUS_LABEL = {
   listening: "Listening…",
@@ -33,7 +33,7 @@ const INTENT_RESPONSES = {
   search: "Searching for that.",
 };
 
-export default function PeppaOrb() {
+export default function Orb() {
   const [status, setStatus] = useState("listening");
   const [transcript, setTranscript] = useState("");
   const [lastCommand, setLastCommand] = useState(null);
@@ -53,14 +53,14 @@ export default function PeppaOrb() {
     const init = async () => {
       await new Promise((res) => setTimeout(res, 1500));
       if (stopped) return;
-      await startPeppa().catch((err) =>
-        console.error("[PeppaOrb] startPeppa failed:", err),
+      await startOrb().catch((err) =>
+        console.error("[orb] startorb failed:", err),
       );
     };
     init();
     return () => {
       stopped = true;
-      stopPeppa();
+      stopOrb();
     };
   }, []);
 
@@ -99,13 +99,12 @@ export default function PeppaOrb() {
         <SessionBadge />
       </div>
 
-      {/* Peppa image with status ring */}
       <div
         className={`rounded-full transition-all duration-300 ${RING_CLASS[status]}`}
       >
         <img
-          src={peppaPng}
-          alt="Peppa"
+          src={orbPng}
+          alt="orb"
           className="w-48 h-48 object-contain drop-shadow-md"
           draggable={false}
         />

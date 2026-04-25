@@ -34,7 +34,7 @@ export function useGazeTracker({ onLookAway, onReturn, enabled, paused }) {
     if (!enabled) return;
 
     let unlisten;
-    listen("peppa://gaze-status", ({ payload }) => {
+    listen("orb://gaze-status", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
 
       if (data.status === "away" && !isAwayRef.current && !pausedRef.current) {
