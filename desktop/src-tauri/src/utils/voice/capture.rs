@@ -1,7 +1,6 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, SampleRate, StreamConfig};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter};
 use whisper_rs::{FullParams, SamplingStrategy};
 
 use super::enrollment::{create_user, emit_enrollment, EnrollmentEvent};
@@ -9,14 +8,17 @@ use super::onboarding::{
     average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
 };
 use super::vad::VadChunker;
+use crate::utils::app_handle;
 use crate::utils::voice::{
     audio_processor, command_resolver, dispatcher,
+    intent::Intent,
     onboarding::{self, SharedOnboarding},
     session::{SessionMode, SharedSession},
     speaker,
     state::get_whisper,
     wake_word,
 };
+use command_resolver::ResolvedCommand;
 
 const TARGET_RATE: u32 = 16000;
 
@@ -25,7 +27,6 @@ pub struct CaptureHandle {
 }
 
 pub fn start(
-    app: AppHandle,
     session: SharedSession,
     onboarding: SharedOnboarding,
 ) -> Result<CaptureHandle, String> {
@@ -53,14 +54,12 @@ pub fn start(
 
     let buffer: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
     let buffer_w = buffer.clone();
-    let app_flush = app.clone();
-    let err_fn = |e| eprintln!("[capture] stream error: {e}");
 
     let stream = match supported.sample_format() {
         SampleFormat::F32 => device.build_input_stream(
             &config,
             move |data: &[f32], _| push_samples(data, channels, &buffer_w),
-            err_fn,
+            |e| eprintln!("[capture] stream error: {e}"),
             None,
         ),
         SampleFormat::I16 => device.build_input_stream(
@@ -69,7 +68,7 @@ pub fn start(
                 let f: Vec<f32> = data.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
                 push_samples(&f, channels, &buffer_w);
             },
-            err_fn,
+            |e| eprintln!("[capture] stream error: {e}"),
             None,
         ),
         SampleFormat::U8 => device.build_input_stream(
@@ -78,7 +77,7 @@ pub fn start(
                 let f: Vec<f32> = data.iter().map(|&s| (s as f32 - 128.0) / 128.0).collect();
                 push_samples(&f, channels, &buffer_w);
             },
-            err_fn,
+            |e| eprintln!("[capture] stream error: {e}"),
             None,
         ),
         fmt => return Err(format!("[capture] unsupported sample format: {fmt}")),
@@ -91,15 +90,14 @@ pub fn start(
         native_rate, channels
     );
 
-    std::thread::spawn(move || {
-        run_capture_loop(app_flush, session, onboarding, buffer, native_rate)
-    });
+    std::thread::spawn(move || run_capture_loop(session, onboarding, buffer, native_rate));
 
     Ok(CaptureHandle { _stream: stream })
 }
 
+// ── Capture loop ──────────────────────────────────────────────────────────────
+
 fn run_capture_loop(
-    app: AppHandle,
     session: SharedSession,
     onboarding: SharedOnboarding,
     buffer: Arc<Mutex<Vec<f32>>>,
@@ -142,19 +140,17 @@ fn run_capture_loop(
             continue;
         }
 
-        // Onboarding: highest priority, bypasses everything else
+        // ── Onboarding — highest priority ─────────────────────────────────────
         {
             let o = onboarding.lock().unwrap();
             if o.is_active() {
                 drop(o);
-                handle_onboarding_audio(&app, &onboarding, &session, &chunk, &transcript);
+                handle_onboarding_audio(&onboarding, &session, &chunk, &transcript);
                 continue;
             }
         }
 
-        // Answer mode: bypass wake + classifier, score directly
-        // The session stores the transcript before spawning so analyze_answer
-        // reads a consistent snapshot even if another utterance arrives quickly.
+        // ── Answer mode — bypass wake + classifier ────────────────────────────
         {
             let mut s = session.lock().unwrap();
             if s.mode == SessionMode::Answer {
@@ -166,19 +162,16 @@ fn run_capture_loop(
                     crate::handlers::answers::analyze_answer(&[], &sc).await;
                 });
 
-                emit(
-                    &app,
-                    VoiceEvent {
-                        transcript,
-                        wake_detected: false,
-                        command: None,
-                    },
-                );
+                emit_voice(VoiceEvent {
+                    transcript,
+                    wake_detected: false,
+                    command: None,
+                });
                 continue;
             }
         }
 
-        // Normal pipeline
+        // ── Normal pipeline ───────────────────────────────────────────────────
         if is_noise_transcript(&transcript) {
             eprintln!("[capture] noise transcript — skipping");
             continue;
@@ -187,57 +180,48 @@ fn run_capture_loop(
         let wake = wake_word::detect(&transcript);
 
         if wake.wake_detected {
-            // Speaker identification runs async does not block the audio loop
             if let Some(emb) = speaker::extract_embedding(&chunk) {
                 let sc = session.clone();
                 tauri::async_runtime::spawn(async move {
                     speaker::identify_speaker(&emb, &sc).await;
                 });
             }
-
-            emit(
-                &app,
-                VoiceEvent {
-                    transcript,
-                    wake_detected: true,
-                    command: None,
-                },
-            );
+            emit_voice(VoiceEvent {
+                transcript,
+                wake_detected: true,
+                command: None,
+            });
         } else {
             let resolved = command_resolver::resolve(&transcript);
 
-            if resolved.intent != "chat" && resolved.intent != "wake_only" {
-                let rc = resolved.clone();
-                let sc = session.clone();
-                let oc = onboarding.clone();
-                let ac = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    dispatcher::dispatch(ac, rc, sc, oc).await;
-                });
-                emit(
-                    &app,
-                    VoiceEvent {
-                        transcript,
-                        wake_detected: false,
-                        command: Some(resolved),
-                    },
-                );
-            } else {
-                eprintln!("[capture] no command matched — passive listen");
-                emit(
-                    &app,
-                    VoiceEvent {
+            match resolved.intent {
+                Intent::Unhandled | Intent::WakeOnly => {
+                    eprintln!("[capture] no command matched — passive listen");
+                    emit_voice(VoiceEvent {
                         transcript,
                         wake_detected: false,
                         command: None,
-                    },
-                );
+                    });
+                }
+                _ => {
+                    let rc = resolved.clone();
+                    let sc = session.clone();
+                    let oc = onboarding.clone();
+                    tauri::async_runtime::spawn(async move {
+                        dispatcher::dispatch(rc, sc, oc).await;
+                    });
+                    emit_voice(VoiceEvent {
+                        transcript,
+                        wake_detected: false,
+                        command: Some(resolved),
+                    });
+                }
             }
         }
     }
 }
 
-// Audio helpers
+// ── Audio helpers ─────────────────────────────────────────────────────────────
 
 fn push_samples(data: &[f32], channels: usize, buffer: &Arc<Mutex<Vec<f32>>>) {
     let mono: Vec<f32> = data
@@ -287,8 +271,7 @@ fn is_noise_transcript(transcript: &str) -> bool {
     if t.split_whitespace().count() == 1 && NOISE_TRANSCRIPTS.contains(&t.as_str()) {
         return true;
     }
-    let alpha: String = t.chars().filter(|c| c.is_alphabetic()).collect();
-    alpha.len() < 3
+    t.chars().filter(|c| c.is_alphabetic()).count() < 3
 }
 
 fn transcribe(samples: &[f32]) -> String {
@@ -322,25 +305,22 @@ fn transcribe(samples: &[f32]) -> String {
         .to_lowercase()
 }
 
-// Events
+// ── Events ────────────────────────────────────────────────────────────────────
 
 #[derive(serde::Serialize, Clone)]
 pub struct VoiceEvent {
     pub transcript: String,
     pub wake_detected: bool,
-    pub command: Option<crate::utils::voice::command_resolver::ResolvedCommand>,
+    pub command: Option<ResolvedCommand>,
 }
 
-fn emit(app: &AppHandle, event: VoiceEvent) {
-    if let Err(e) = app.emit("orb://voice-result", event) {
-        eprintln!("[capture] emit error: {e}");
-    }
+fn emit_voice(event: VoiceEvent) {
+    app_handle::emit("orb://voice-result", event);
 }
 
-// Onboarding
+// ── Onboarding ────────────────────────────────────────────────────────────────
 
 fn handle_onboarding_audio(
-    app: &AppHandle,
     onboarding: &SharedOnboarding,
     session: &SharedSession,
     audio: &[f32],
@@ -350,12 +330,12 @@ fn handle_onboarding_audio(
 
     match stage {
         OnboardingStage::WaitingForName => {
-            if !onboarding::try_set_name(app, onboarding, transcript) {
+            if !onboarding::try_set_name(app_handle::get_app_handle(), onboarding, transcript) {
                 eprintln!("[onboarding] name rejected — waiting");
                 return;
             }
             std::thread::sleep(std::time::Duration::from_secs(2));
-            begin_voice_collection(app, onboarding);
+            begin_voice_collection(app_handle::get_app_handle(), onboarding);
         }
 
         OnboardingStage::CollectingVoice { prompt_index } => {
@@ -370,7 +350,7 @@ fn handle_onboarding_audio(
             };
 
             eprintln!("[onboarding] embedding dim={}", embedding.len());
-            let done = record_embedding(app, onboarding, embedding);
+            let done = record_embedding(app_handle::get_app_handle(), onboarding, embedding);
 
             if done {
                 let o = onboarding.lock().unwrap();
@@ -379,14 +359,11 @@ fn handle_onboarding_audio(
                 let avg = average_embeddings(&o.embeddings);
                 drop(o);
 
-                let app_clone = app.clone();
                 let session_clone = session.clone();
 
                 tauri::async_runtime::spawn(async move {
                     match create_user(name.clone(), avg, &role).await {
                         Ok(id) => {
-                            // Only update session for parent — kid enrollment is triggered
-                            // by an already-identified parent, so session stays as-is.
                             if role == "parent" {
                                 session_clone.lock().unwrap().set_user(
                                     id,
@@ -396,13 +373,13 @@ fn handle_onboarding_audio(
                             }
 
                             let (stage, message) = if role == "parent" {
-                                ("done", format!("You're all set, {name}! Say 'Hey Jarvis' whenever you need me!"))
+                                ("done",     format!("You're all set, {name}! Say 'Hey Jarvis' whenever you need me!"))
                             } else {
                                 ("kid_done", format!("You're all set, {name}! Say 'Hey Jarvis' whenever you want to learn something!"))
                             };
 
                             emit_enrollment(
-                                &app_clone,
+                                app_handle::get_app_handle(),
                                 EnrollmentEvent {
                                     stage: stage.to_string(),
                                     message,
@@ -416,7 +393,7 @@ fn handle_onboarding_audio(
                         Err(e) => {
                             eprintln!("[onboarding] create_user failed: {e}");
                             emit_enrollment(
-                                &app_clone,
+                                app_handle::get_app_handle(),
                                 EnrollmentEvent {
                                     stage: "error".to_string(),
                                     message: "Something went wrong. Please restart.".to_string(),
