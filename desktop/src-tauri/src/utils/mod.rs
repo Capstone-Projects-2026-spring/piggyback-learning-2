@@ -2,6 +2,8 @@ pub mod app_handle;
 pub mod crypto;
 pub mod download;
 pub mod gaze;
+pub mod matching;
+pub mod mood;
 pub mod mpv;
 pub mod openai;
 pub mod voice;

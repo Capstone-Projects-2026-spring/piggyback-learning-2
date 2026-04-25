@@ -19,6 +19,28 @@ use std::{
     thread,
     time::Duration,
 };
+use tokio::sync::{oneshot, Mutex as TokioMutex};
+
+// When Some, the gaze loop will capture one frame and send it down this channel
+static SNAPSHOT_TX: OnceLock<TokioMutex<Option<oneshot::Sender<Vec<u8>>>>> = OnceLock::new();
+
+pub fn init_snapshot_channel() {
+    SNAPSHOT_TX.get_or_init(|| TokioMutex::new(None));
+}
+
+/// Request a single JPEG frame from the gaze camera.
+/// Returns None if the gaze loop isn't running or times out.
+pub async fn request_snapshot() -> Option<Vec<u8>> {
+    let (tx, rx) = oneshot::channel();
+    {
+        let slot = SNAPSHOT_TX.get()?;
+        *slot.lock().await = Some(tx);
+    }
+    tokio::time::timeout(std::time::Duration::from_secs(2), rx)
+        .await
+        .ok()?
+        .ok()
+}
 
 // ── Session ───────────────────────────────────────────────────────────────────
 
@@ -187,6 +209,30 @@ fn gaze_loop() {
                 continue;
             }
         };
+
+    // ── Snapshot request fulfillment ──────────────────────────────────
+        if let Some(slot) = SNAPSHOT_TX.get() {
+            // Non-blocking try — don't hold up the gaze loop
+            if let Ok(mut guard) = slot.try_lock() {
+                if guard.is_some() {
+                    let dyn_img = image::DynamicImage::ImageRgb8(
+                        image::RgbImage::from_raw(
+                            frame.resolution().width(),
+                            frame.resolution().height(),
+                            rgb.as_raw().to_vec(),
+                        )
+                        .unwrap(),
+                    );
+                    let mut buf = std::io::Cursor::new(Vec::new());
+                    if dyn_img.write_to(&mut buf, image::ImageFormat::Jpeg).is_ok() {
+                        // take() so we only fulfill once
+                        if let Some(tx) = guard.take() {
+                            let _ = tx.send(buf.into_inner());
+                        }
+                    }
+                }
+            }
+        }
 
         let face_detected = detect_face(rgb.into_raw(), frame.resolution());
 
