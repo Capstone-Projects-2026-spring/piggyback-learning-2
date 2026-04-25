@@ -1,6 +1,7 @@
 mod db;
 mod handlers;
 mod utils;
+
 use tauri::Manager;
 use utils::voice::{
     capture, intent_classifier,
@@ -8,6 +9,28 @@ use utils::voice::{
     session, speaker,
     state::init_whisper,
 };
+
+fn load_models(res: &std::path::Path) {
+    init_whisper(&res.join("models/ggml-base.en.bin"));
+
+    let models: &[(&str, fn(&std::path::Path))] = &[
+        ("models/wespeaker.onnx", |p| speaker::init_speaker(p)),
+        ("models/ultraface.onnx", |p| utils::gaze::init_gaze(p)),
+        ("models/emotion-ferplus-8.onnx", |p| {
+            utils::mood::init_mood(p)
+        }),
+    ];
+
+    for (relative, init_fn) in models {
+        let path = res.join(relative);
+        if path.exists() {
+            init_fn(&path);
+            eprintln!("[app] loaded {relative}");
+        } else {
+            eprintln!("[app] {relative} not found — feature disabled");
+        }
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -20,66 +43,39 @@ pub fn run() {
             handlers::videos::download_video_command,
             handlers::questions::save_questions,
             handlers::questions::get_segments,
-            utils::gaze::gaze_start,
-            utils::gaze::gaze_stop,
-            utils::gaze::gaze_pause,
-            utils::gaze::gaze_resume,
             handlers::videos::launch_video,
             handlers::videos::mpv_play,
             handlers::videos::mpv_pause,
             handlers::videos::mpv_seek,
             handlers::videos::mpv_minimize,
             handlers::videos::mpv_quit,
+            utils::gaze::gaze_start,
+            utils::gaze::gaze_stop,
+            utils::gaze::gaze_pause,
+            utils::gaze::gaze_resume,
         ])
         .setup(|app| {
             let res = app
                 .path()
                 .resource_dir()
-                .expect("[orb] resource dir must exist");
+                .expect("[app] resource dir must exist");
 
             utils::app_handle::init_app_handle(app.handle().clone());
-            init_whisper(&res.join("models/ggml-base.en.bin"));
-
-            let spk_path = res.join("models/wespeaker.onnx");
-            if spk_path.exists() {
-                speaker::init_speaker(&spk_path);
-            } else {
-                eprintln!("[orb] wespeaker.onnx not found, speaker ID disabled");
-            }
-
-            let gaze_path = res.join("models/ultraface.onnx");
-            if gaze_path.exists() {
-                crate::utils::gaze::init_gaze(&gaze_path);
-                eprintln!("[app] ultraface model loaded");
-            } else {
-                eprintln!("[app] ultraface.onnx not found, gaze tracking disabled");
-            }
-
-            crate::utils::gaze::init_snapshot_channel();
-
-            let mood_path = res.join("models/emotion-ferplus-8.onnx");
-            if mood_path.exists() {
-                crate::utils::mood::init_mood(&mood_path);
-                eprintln!("[app] emotion model loaded");
-            } else {
-                eprintln!("[app] emotion-ferplus-8.onnx not found, mood detection disabled");
-            }
-
+            load_models(&res);
+            utils::gaze::init_snapshot_channel();
             intent_classifier::init_classifier();
 
             tauri::async_runtime::block_on(async {
                 match db::init::init_db().await {
-                    Ok(info) => eprintln!("[app] db ready at {}", info.db_path.display()),
-                    Err(e) => eprintln!("[app] db init failed: {e}"),
+                    Ok(db_path) => eprintln!("[app] db ready at {}", db_path.display()),
+                    Err(e) => panic!("[app] db init failed: {e}"),
                 }
             });
 
             let session = session::new_session();
             let onboarding = onboarding::new_onboarding();
 
-            crate::handlers::videos::init_session(session.clone());
-
-            // manage() must come before capture::start() consumes session
+            handlers::videos::init_session(session.clone());
             app.manage(session.clone());
 
             let needs_onboarding =
@@ -90,7 +86,7 @@ pub fn run() {
                 let onboarding_clone = onboarding.clone();
                 tauri::async_runtime::spawn(async move {
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    eprintln!("[app] emitting onboarding start");
+                    eprintln!("[app] starting parent onboarding");
                     onboarding::start(&app_handle, &onboarding_clone, OnboardingFlow::Parent);
                 });
             } else {
@@ -98,11 +94,11 @@ pub fn run() {
             }
 
             let handle = capture::start(app.handle().clone(), session, onboarding)
-                .unwrap_or_else(|e| panic!("[orb] audio capture failed: {e}"));
+                .unwrap_or_else(|e| panic!("[app] audio capture failed: {e}"));
             Box::leak(Box::new(handle));
 
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("[orb] fatal error during startup")
+        .expect("[app] fatal error during startup")
 }
