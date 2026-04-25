@@ -32,7 +32,7 @@ pub async fn dispatch(
         "recommendations" => handlers::kids::get_recommendations(args, &session).await,
         // ── answers ───────────────────────────────────────────────
         "submit_answer" => handlers::answers::analyze_answer(args, &session).await,
-        "my_answers" => handlers::answers::get_answers(args, &session).await,
+        "my_answers" => handlers::answers::get_answers_for_session(args, &session).await,
         // ── parents ───────────────────────────────────────────────
         "my_kids" => handlers::parents::get_kids(args, &session).await,
         // ── videos ────────────────────────────────────────────────
