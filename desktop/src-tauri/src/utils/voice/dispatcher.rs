@@ -15,46 +15,30 @@ pub async fn dispatch(
     eprintln!("[dispatch] intent={} args={args:?}", resolved.intent);
 
     if !session.lock().unwrap().is_identified() {
-        eprintln!(
-            "[dispatch] no user identified — ignoring '{}'",
-            resolved.intent
-        );
+        eprintln!("[dispatch] no user — ignoring '{}'", resolved.intent);
         return;
     }
 
     match resolved.intent.as_str() {
-        // ── kids ──────────────────────────────────────────────────
+        // ── kids ──────────────────────────────────────────────────────────────
         "add_kid" => handlers::kids::start_kid_enrollment(&app, args, &session, &onboarding).await,
         "my_tags" => handlers::kids::get_tags(args, &session).await,
         "add_tag" => handlers::kids::add_tags(args, &session).await,
         "my_videos" => handlers::kids::get_video_assignments(args, &session).await,
         "assign_video" => handlers::kids::assign_video(args, &session).await,
         "recommendations" => handlers::kids::get_recommendations(args, &session).await,
-        // ── answers ───────────────────────────────────────────────
-        "submit_answer" => handlers::answers::analyze_answer(args, &session).await,
+        // ── answers ───────────────────────────────────────────────────────────
         "my_answers" => handlers::answers::get_answers_for_session(args, &session).await,
-        // ── parents ───────────────────────────────────────────────
-        "my_kids" => handlers::parents::get_kids(args, &session).await,
-        // ── videos ────────────────────────────────────────────────
-        "download_video" => eprintln!("[dispatch] download_video — handled by frontend"),
+        // ── videos ────────────────────────────────────────────────────────────
         "search" => handlers::videos::search(args).await,
-        "watch_video" => {
-            emit("orb://watch-video", serde_json::json!({}));
-        }
-        // ── questions ─────────────────────────────────────────────
+        "watch_video" => emit("orb://watch-video", serde_json::json!({})),
+        "download_video" => eprintln!("[dispatch] download_video — handled by frontend"),
+        // ── questions ─────────────────────────────────────────────────────────
         "get_questions" => handlers::questions::get_by_video(args, &session).await,
-        // ── tags ──────────────────────────────────────────────────
+        // ── tags ──────────────────────────────────────────────────────────────
         "all_tags" => handlers::tags::get_all(args, &session).await,
         "create_tag" => handlers::tags::create(args, &session).await,
-        // ── misc ──────────────────────────────────────────────────
-        "open" => eprintln!("[dispatch] open — args={args:?}"),
-        "close" => eprintln!("[dispatch] close — args={args:?}"),
-        "play" => eprintln!("[dispatch] play — args={args:?}"),
-        "stop" => eprintln!("[dispatch] stop"),
-        "volume" => eprintln!("[dispatch] volume — args={args:?}"),
-        "help" => eprintln!("[dispatch] help"),
-        "chat" => eprintln!("[dispatch] chat — args={args:?}"),
-        "wake_only" => eprintln!("[dispatch] wake only"),
-        other => eprintln!("[dispatch] unknown intent '{other}'"),
+
+        other => eprintln!("[dispatch] unhandled intent '{other}'"),
     }
 }
