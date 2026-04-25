@@ -139,7 +139,29 @@ pub fn start(
                     continue;
                 }
             }
+            {
+                let mut s = session.lock().unwrap();
+                if s.mode == crate::utils::voice::session::SessionMode::Answer {
+                    s.last_transcript = Some(transcript.clone());
+                    drop(s);
 
+                    let sc = session.clone();
+                    tauri::async_runtime::spawn(async move {
+                        crate::handlers::answers::analyze_answer(&[], &sc).await;
+                    });
+
+                    emit(
+                        &app_flush,
+                        VoiceEvent {
+                            transcript,
+                            wake_detected: false,
+                            command: None,
+                            speaker_identified: None,
+                        },
+                    );
+                    continue;
+                }
+            }
             if is_noise_transcript(&transcript) {
                 eprintln!("[capture] transcript looks like noise — skipping");
                 continue;
