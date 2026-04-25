@@ -22,3 +22,30 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
         dot / (na * nb)
     }
 }
+
+const NOISE_TRANSCRIPTS: &[&str] = &[
+    "you",
+    "the",
+    "a",
+    "uh",
+    "um",
+    "oh",
+    "ah",
+    "hm",
+    "hmm",
+    "thank you",
+    "thanks",
+    "bye",
+    "okay",
+    "ok",
+];
+
+/// Returns true if the transcript is likely noise, a filler word, or too short
+/// to contain a real utterance. Used to gate the voice pipeline before classification.
+pub fn is_noise_transcript(transcript: &str) -> bool {
+    let t = transcript.trim().to_lowercase();
+    if t.split_whitespace().count() == 1 && NOISE_TRANSCRIPTS.contains(&t.as_str()) {
+        return true;
+    }
+    t.chars().filter(|c| c.is_alphabetic()).count() < 3
+}
