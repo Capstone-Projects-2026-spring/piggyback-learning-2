@@ -1,3 +1,4 @@
+use crate::utils::text::normalize;
 use serde::Serialize;
 
 /// All phrases that should count as a wake event.
@@ -20,23 +21,8 @@ pub struct WakeWordResult {
     pub wake_detected: bool,
 }
 
-fn sanitize(text: &str) -> String {
-    text.chars()
-        .map(|c| {
-            if c.is_alphanumeric() || c == ' ' {
-                c
-            } else {
-                ' '
-            }
-        })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
 pub fn detect(transcript: &str) -> WakeWordResult {
-    let normalized = sanitize(&transcript.trim().to_lowercase());
+    let normalized = normalize(transcript.trim());
 
     let mut phrases_sorted = WAKE_PHRASES.to_vec();
     phrases_sorted.sort_by_key(|p| std::cmp::Reverse(p.len()));
