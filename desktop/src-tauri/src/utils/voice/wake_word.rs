@@ -1,34 +1,19 @@
 use serde::Serialize;
 
+/// All phrases that should count as a wake event.
+/// Sorted longest-first at runtime so "hey jarvis" matches before "jarvis" alone.
+/// Includes common Whisper mishearings of "Jarvis" across accents.
 const WAKE_PHRASES: &[&str] = &[
-    "hey peppa",
-    "hey pepper",
-    "hi peppa",
-    "hi pepper",
-    "hello peppa",
-    "hello pepper",
-    "hello people",
-    "peppa",
-    "pepper",
-    "people",
-    "hey papa",
-    "hey people",
-    "hey pappa",
-    "a peppa",
-    "a pepper",
-    "hey paper",
-    "hi paper",
-    "hello paper",
-    "paper",
-    "papa",
-    "peper",
-    "pepa",
-    "hepa",
+    "hey jarvis",
+    "hi jarvis",
+    "hello jarvis",
+    "okay jarvis",
+    "ok jarvis",
+    "jarvis",
 ];
 
-const WAKE_TOKENS: &[&str] = &[
-    "peppa", "pepper", "pepa", "peper", "hepa", "paper", "papa", "people",
-];
+/// Single-token fallback for when Whisper drops the greeting word entirely.
+const WAKE_TOKENS: &[&str] = &["jarvis", "jarvas", "jarves", "jarvi", "jarviz"];
 
 #[derive(Debug, Serialize)]
 pub struct WakeWordResult {
@@ -58,24 +43,23 @@ pub fn detect(transcript: &str) -> WakeWordResult {
 
     for phrase in &phrases_sorted {
         if normalized.contains(phrase) {
-            eprintln!("[wake] matched phrase '{phrase}' in '{normalized}'");
+            eprintln!("[wake] phrase match '{phrase}' in '{normalized}'");
             return WakeWordResult {
                 wake_detected: true,
             };
         }
     }
 
-    // Fuzzy token fallback
     for token in normalized.split_whitespace() {
         if WAKE_TOKENS.contains(&token) {
-            eprintln!("[wake] fuzzy token match '{token}' in '{normalized}'");
+            eprintln!("[wake] token match '{token}' in '{normalized}'");
             return WakeWordResult {
                 wake_detected: true,
             };
         }
     }
 
-    eprintln!("[wake] no wake word in: '{normalized}'");
+    eprintln!("[wake] no match in '{normalized}'");
     WakeWordResult {
         wake_detected: false,
     }
