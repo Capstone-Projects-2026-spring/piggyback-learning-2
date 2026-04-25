@@ -228,11 +228,7 @@ pub async fn start_kid_enrollment(
     match session.lock().unwrap().role.as_deref() {
         Some("parent") => {
             eprintln!("[kids] starting kid enrollment");
-            onboarding::start(
-                crate::utils::app_handle::get_app_handle(),
-                onboarding,
-                OnboardingFlow::Kid,
-            );
+            onboarding::start(onboarding, OnboardingFlow::Kid);
         }
         Some(r) => eprintln!("[kids] add_kid — role={r} is not parent"),
         None => eprintln!("[kids] add_kid — no user identified"),
