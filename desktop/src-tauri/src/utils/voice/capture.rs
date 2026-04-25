@@ -8,9 +8,10 @@ use super::onboarding::{
     average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
 };
 use super::vad::VadChunker;
-use crate::utils::app_handle;
 use crate::utils::voice::{
-    audio_processor, command_resolver, dispatcher,
+    audio_processor, command_resolver,
+    command_resolver::ResolvedCommand,
+    dispatcher,
     intent::Intent,
     onboarding::{self, SharedOnboarding},
     session::{SessionMode, SharedSession},
@@ -18,7 +19,7 @@ use crate::utils::voice::{
     state::get_whisper,
     wake_word,
 };
-use command_resolver::ResolvedCommand;
+use crate::utils::{app_handle, text::is_noise_transcript};
 
 const TARGET_RATE: u32 = 16000;
 
@@ -53,36 +54,43 @@ pub fn start(
     };
 
     let buffer: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
-    let buffer_w = buffer.clone();
 
-    let stream = match supported.sample_format() {
-        SampleFormat::F32 => device.build_input_stream(
-            &config,
-            move |data: &[f32], _| push_samples(data, channels, &buffer_w),
-            |e| eprintln!("[capture] stream error: {e}"),
-            None,
-        ),
-        SampleFormat::I16 => device.build_input_stream(
-            &config,
-            move |data: &[i16], _| {
-                let f: Vec<f32> = data.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
-                push_samples(&f, channels, &buffer_w);
-            },
-            |e| eprintln!("[capture] stream error: {e}"),
-            None,
-        ),
-        SampleFormat::U8 => device.build_input_stream(
-            &config,
-            move |data: &[u8], _| {
-                let f: Vec<f32> = data.iter().map(|&s| (s as f32 - 128.0) / 128.0).collect();
-                push_samples(&f, channels, &buffer_w);
-            },
-            |e| eprintln!("[capture] stream error: {e}"),
-            None,
-        ),
-        fmt => return Err(format!("[capture] unsupported sample format: {fmt}")),
-    }
-    .map_err(|e| format!("[capture] build_input_stream: {e}"))?;
+    let stream = {
+        let buffer_w = buffer.clone();
+        match supported.sample_format() {
+            SampleFormat::F32 => device.build_input_stream(
+                &config,
+                move |data: &[f32], _| {
+                    let mono = audio_processor::to_mono(data, channels);
+                    buffer_w.lock().unwrap().extend_from_slice(&mono);
+                },
+                |e| eprintln!("[capture] stream error: {e}"),
+                None,
+            ),
+            SampleFormat::I16 => device.build_input_stream(
+                &config,
+                move |data: &[i16], _| {
+                    let f: Vec<f32> = data.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
+                    let mono = audio_processor::to_mono(&f, channels);
+                    buffer_w.lock().unwrap().extend_from_slice(&mono);
+                },
+                |e| eprintln!("[capture] stream error: {e}"),
+                None,
+            ),
+            SampleFormat::U8 => device.build_input_stream(
+                &config,
+                move |data: &[u8], _| {
+                    let f: Vec<f32> = data.iter().map(|&s| (s as f32 - 128.0) / 128.0).collect();
+                    let mono = audio_processor::to_mono(&f, channels);
+                    buffer_w.lock().unwrap().extend_from_slice(&mono);
+                },
+                |e| eprintln!("[capture] stream error: {e}"),
+                None,
+            ),
+            fmt => return Err(format!("[capture] unsupported sample format: {fmt}")),
+        }
+        .map_err(|e| format!("[capture] build_input_stream: {e}"))?
+    };
 
     stream.play().map_err(|e| format!("[capture] play: {e}"))?;
     eprintln!(
@@ -117,7 +125,7 @@ fn run_capture_loop(
             continue;
         }
 
-        let resampled = resample(raw, native_rate, TARGET_RATE);
+        let resampled = audio_processor::resample(raw, native_rate, TARGET_RATE);
         let Some(chunk) = chunker.push(&resampled) else {
             continue;
         };
@@ -151,6 +159,8 @@ fn run_capture_loop(
         }
 
         // ── Answer mode — bypass wake + classifier ────────────────────────────
+        // Transcript is written into session before spawning so analyze_answer
+        // reads a consistent snapshot even if another utterance arrives quickly.
         {
             let mut s = session.lock().unwrap();
             if s.mode == SessionMode::Answer {
@@ -180,6 +190,7 @@ fn run_capture_loop(
         let wake = wake_word::detect(&transcript);
 
         if wake.wake_detected {
+            // Speaker ID runs async — does not block the audio loop
             if let Some(emb) = speaker::extract_embedding(&chunk) {
                 let sc = session.clone();
                 tauri::async_runtime::spawn(async move {
@@ -221,58 +232,7 @@ fn run_capture_loop(
     }
 }
 
-// ── Audio helpers ─────────────────────────────────────────────────────────────
-
-fn push_samples(data: &[f32], channels: usize, buffer: &Arc<Mutex<Vec<f32>>>) {
-    let mono: Vec<f32> = data
-        .chunks(channels)
-        .map(|frame| frame.iter().sum::<f32>() / channels as f32)
-        .collect();
-    buffer.lock().unwrap().extend_from_slice(&mono);
-}
-
-fn resample(samples: Vec<f32>, from: u32, to: u32) -> Vec<f32> {
-    if from == to {
-        return samples;
-    }
-    let ratio = from as f64 / to as f64;
-    let out_len = (samples.len() as f64 / ratio) as usize;
-    (0..out_len)
-        .map(|i| {
-            let pos = i as f64 * ratio;
-            let idx = pos as usize;
-            let frac = (pos - idx as f64) as f32;
-            let s0 = samples[idx.min(samples.len() - 1)];
-            let s1 = samples[(idx + 1).min(samples.len() - 1)];
-            s0 + (s1 - s0) * frac
-        })
-        .collect()
-}
-
-const NOISE_TRANSCRIPTS: &[&str] = &[
-    "you",
-    "the",
-    "a",
-    "uh",
-    "um",
-    "oh",
-    "ah",
-    "hm",
-    "hmm",
-    "thank you",
-    "thanks",
-    "bye",
-    "okay",
-    "ok",
-];
-
-fn is_noise_transcript(transcript: &str) -> bool {
-    let t = transcript.trim().to_lowercase();
-    if t.split_whitespace().count() == 1 && NOISE_TRANSCRIPTS.contains(&t.as_str()) {
-        return true;
-    }
-    t.chars().filter(|c| c.is_alphabetic()).count() < 3
-}
+// ── Transcription ─────────────────────────────────────────────────────────────
 
 fn transcribe(samples: &[f32]) -> String {
     let ctx = get_whisper();
@@ -330,12 +290,12 @@ fn handle_onboarding_audio(
 
     match stage {
         OnboardingStage::WaitingForName => {
-            if !onboarding::try_set_name(app_handle::get_app_handle(), onboarding, transcript) {
+            if !onboarding::try_set_name(onboarding, transcript) {
                 eprintln!("[onboarding] name rejected — waiting");
                 return;
             }
             std::thread::sleep(std::time::Duration::from_secs(2));
-            begin_voice_collection(app_handle::get_app_handle(), onboarding);
+            begin_voice_collection(onboarding);
         }
 
         OnboardingStage::CollectingVoice { prompt_index } => {
@@ -350,7 +310,7 @@ fn handle_onboarding_audio(
             };
 
             eprintln!("[onboarding] embedding dim={}", embedding.len());
-            let done = record_embedding(app_handle::get_app_handle(), onboarding, embedding);
+            let done = record_embedding(onboarding, embedding);
 
             if done {
                 let o = onboarding.lock().unwrap();
@@ -364,6 +324,9 @@ fn handle_onboarding_audio(
                 tauri::async_runtime::spawn(async move {
                     match create_user(name.clone(), avg, &role).await {
                         Ok(id) => {
+                            // Only update session for parent — kid enrollment is
+                            // triggered by an already-identified parent so the
+                            // session stays as-is after kid creation.
                             if role == "parent" {
                                 session_clone.lock().unwrap().set_user(
                                     id,
@@ -378,37 +341,31 @@ fn handle_onboarding_audio(
                                 ("kid_done", format!("You're all set, {name}! Say 'Hey Jarvis' whenever you want to learn something!"))
                             };
 
-                            emit_enrollment(
-                                app_handle::get_app_handle(),
-                                EnrollmentEvent {
-                                    stage: stage.to_string(),
-                                    message,
-                                    prompt_index: 0,
-                                    total_prompts: 0,
-                                    prompts: vec![],
-                                    flow: role,
-                                },
-                            );
+                            emit_enrollment(EnrollmentEvent {
+                                stage: stage.to_string(),
+                                message,
+                                prompt_index: 0,
+                                total_prompts: 0,
+                                prompts: vec![],
+                                flow: role,
+                            });
                         }
                         Err(e) => {
                             eprintln!("[onboarding] create_user failed: {e}");
-                            emit_enrollment(
-                                app_handle::get_app_handle(),
-                                EnrollmentEvent {
-                                    stage: "error".to_string(),
-                                    message: "Something went wrong. Please restart.".to_string(),
-                                    prompt_index: 0,
-                                    total_prompts: 0,
-                                    prompts: vec![],
-                                    flow: role,
-                                },
-                            );
+                            emit_enrollment(EnrollmentEvent {
+                                stage: "error".to_string(),
+                                message: "Something went wrong. Please restart.".to_string(),
+                                prompt_index: 0,
+                                total_prompts: 0,
+                                prompts: vec![],
+                                flow: role,
+                            });
                         }
                     }
                 });
             }
         }
 
-        _ => {}
+        other => eprintln!("[onboarding] unhandled stage: {other:?}"),
     }
 }
