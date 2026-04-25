@@ -1,13 +1,22 @@
 use image::{imageops::FilterType, GrayImage};
 use ort::session::{builder::GraphOptimizationLevel, Session};
 use ort::value::Tensor;
-use std::{path::Path, sync::{Mutex, OnceLock}};
+use std::{
+    path::Path,
+    sync::{Mutex, OnceLock},
+};
 
 static MOOD_SESSION: OnceLock<Mutex<Session>> = OnceLock::new();
 
 const LABELS: &[&str] = &[
-    "neutral", "happiness", "surprise", "sadness",
-    "anger", "disgust", "fear", "contempt",
+    "neutral",
+    "happiness",
+    "surprise",
+    "sadness",
+    "anger",
+    "disgust",
+    "fear",
+    "contempt",
 ];
 const INPUT_SIZE: u32 = 64;
 
@@ -39,11 +48,17 @@ pub fn detect_mood_from_frame(frame_bytes: &[u8]) -> String {
 
     let img = match image::load_from_memory(frame_bytes) {
         Ok(i) => i,
-        Err(e) => { eprintln!("[mood] decode error: {e}"); return "neutral".into(); }
+        Err(e) => {
+            eprintln!("[mood] decode error: {e}");
+            return "neutral".into();
+        }
     };
 
     let gray: GrayImage = image::imageops::resize(
-        &img.to_luma8(), INPUT_SIZE, INPUT_SIZE, FilterType::Triangle,
+        &img.to_luma8(),
+        INPUT_SIZE,
+        INPUT_SIZE,
+        FilterType::Triangle,
     );
 
     let mut input = vec![0f32; (INPUT_SIZE * INPUT_SIZE) as usize];
@@ -54,21 +69,33 @@ pub fn detect_mood_from_frame(frame_bytes: &[u8]) -> String {
     let shape = [1usize, 1, INPUT_SIZE as usize, INPUT_SIZE as usize];
     let array = match ndarray::Array4::from_shape_vec(shape, input) {
         Ok(a) => a,
-        Err(e) => { eprintln!("[mood] shape error: {e}"); return "neutral".into(); }
+        Err(e) => {
+            eprintln!("[mood] shape error: {e}");
+            return "neutral".into();
+        }
     };
     let tensor = match Tensor::from_array(array) {
         Ok(t) => t,
-        Err(e) => { eprintln!("[mood] tensor error: {e}"); return "neutral".into(); }
+        Err(e) => {
+            eprintln!("[mood] tensor error: {e}");
+            return "neutral".into();
+        }
     };
 
     let outputs = match session.run(ort::inputs!["Input3" => tensor]) {
         Ok(o) => o,
-        Err(e) => { eprintln!("[mood] inference error: {e}"); return "neutral".into(); }
+        Err(e) => {
+            eprintln!("[mood] inference error: {e}");
+            return "neutral".into();
+        }
     };
 
     let logits = match outputs[0].try_extract_tensor::<f32>() {
         Ok(t) => t,
-        Err(e) => { eprintln!("[mood] extract error: {e}"); return "neutral".into(); }
+        Err(e) => {
+            eprintln!("[mood] extract error: {e}");
+            return "neutral".into();
+        }
     };
 
     // Softmax over logits
@@ -78,7 +105,9 @@ pub fn detect_mood_from_frame(frame_bytes: &[u8]) -> String {
     let sum: f32 = exps.iter().sum();
     let probs: Vec<f32> = exps.iter().map(|x| x / sum).collect();
 
-    let (best_idx, best_prob) = probs.iter().enumerate()
+    let (best_idx, best_prob) = probs
+        .iter()
+        .enumerate()
         .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
         .map(|(i, p)| (i, *p))
         .unwrap_or((0, 0.0));

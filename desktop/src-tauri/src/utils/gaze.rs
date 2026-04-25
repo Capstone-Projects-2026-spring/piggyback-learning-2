@@ -210,7 +210,7 @@ fn gaze_loop() {
             }
         };
 
-    // ── Snapshot request fulfillment ──────────────────────────────────
+        // ── Snapshot request fulfillment ──────────────────────────────────
         if let Some(slot) = SNAPSHOT_TX.get() {
             // Non-blocking try — don't hold up the gaze loop
             if let Ok(mut guard) = slot.try_lock() {
