@@ -6,4 +6,5 @@ pub mod matching;
 pub mod mood;
 pub mod mpv;
 pub mod openai;
+pub mod text;
 pub mod voice;
