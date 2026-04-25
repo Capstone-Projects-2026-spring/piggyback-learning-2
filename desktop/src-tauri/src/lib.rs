@@ -1,7 +1,6 @@
 mod db;
 mod handlers;
 mod utils;
-
 use tauri::Manager;
 use utils::voice::{
     capture, intent_classifier,
@@ -15,6 +14,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
+            handlers::answers::set_answer_context,
+            handlers::answers::clear_answer_context,
+            handlers::answers::get_answers,
             handlers::videos::download_video_command,
             handlers::questions::save_questions,
             handlers::questions::get_segments,
@@ -36,7 +38,6 @@ pub fn run() {
                 .expect("[Peppa] resource dir must exist");
 
             utils::app_handle::init_app_handle(app.handle().clone());
-
             init_whisper(res.join("models/ggml-base.en.bin"));
 
             let spk_path = res.join("models/wespeaker.onnx");
@@ -54,6 +55,16 @@ pub fn run() {
                 eprintln!("[app] ultraface.onnx not found, gaze tracking disabled");
             }
 
+            crate::utils::gaze::init_snapshot_channel();
+
+            let mood_path = res.join("models/emotion-ferplus-8.onnx");
+            if mood_path.exists() {
+                crate::utils::mood::init_mood(&mood_path);
+                eprintln!("[app] emotion model loaded");
+            } else {
+                eprintln!("[app] emotion-ferplus-8.onnx not found, mood detection disabled");
+            }
+
             intent_classifier::init_classifier();
 
             tauri::async_runtime::block_on(async {
@@ -67,6 +78,9 @@ pub fn run() {
             let onboarding = onboarding::new_onboarding();
 
             crate::handlers::videos::init_session(session.clone());
+
+            // manage() must come before capture::start() consumes session
+            app.manage(session.clone());
 
             let needs_onboarding =
                 tauri::async_runtime::block_on(async { !db::init::has_parent_account().await });
@@ -85,8 +99,8 @@ pub fn run() {
 
             let handle = capture::start(app.handle().clone(), session, onboarding)
                 .unwrap_or_else(|e| panic!("[Peppa] audio capture failed: {e}"));
-
             Box::leak(Box::new(handle));
+
             Ok(())
         })
         .run(tauri::generate_context!())
