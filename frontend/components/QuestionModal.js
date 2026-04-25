@@ -21,6 +21,8 @@ export default function QuestionModal({
   const animFrameRef = useRef(null);
   const boredSentRef = useRef(false);
 
+  const audioRef = useRef(null);
+
   useEffect(() => {
     if (recordingState !== "recording") {
       cancelAnimationFrame(animFrameRef.current);
@@ -100,6 +102,57 @@ export default function QuestionModal({
   useEffect(() => {
     boredSentRef.current = false;
   }, [question]);
+
+  // --- NEW ELEVENLABS TTS EFFECT ---
+  useEffect(() => {
+    if (question) {
+      // 1. Clean up any currently playing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      window.speechSynthesis.cancel(); // Just in case the fallback was playing
+
+      // 2. Fetch high-quality audio from our Next.js API route
+      const playElevenLabsAudio = async () => {
+        try {
+          const response = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              text: question 
+              // voiceId: "YOUR_CUSTOM_VOICE_ID" (Optional: override default here)
+            }),
+          });
+
+          if (!response.ok) throw new Error("TTS fetch failed");
+
+          const blob = await response.blob();
+          const audioUrl = URL.createObjectURL(blob);
+          
+          audioRef.current = new Audio(audioUrl);
+          audioRef.current.play();
+
+        } catch (error) {
+          console.error("Inworld failed, falling back to robot voice:", error);
+          // Fallback to browser TTS if you hit API limits or network issues
+          const utterance = new SpeechSynthesisUtterance(question);
+          window.speechSynthesis.speak(utterance);
+        }
+      };
+
+      playElevenLabsAudio();
+    }
+
+    // Cleanup: stop speaking if the modal closes
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      window.speechSynthesis.cancel();
+    };
+  }, [question]);
+  // ---------------------------------
 
   if (!question) return null;
 

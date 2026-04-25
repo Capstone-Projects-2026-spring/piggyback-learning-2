@@ -84,8 +84,9 @@ export function useGazeTracker({
     if (debug) {
       debugContainer = document.createElement("div");
       debugContainer.id = "gaze-debug-ui";
+      // MOVED TO THE LEFT HERE: Changed 'right: 20px;' to 'left: 20px;'
       debugContainer.style.cssText = `
-        position: fixed; bottom: 20px; right: 20px; 
+        position: fixed; bottom: 20px; left: 20px; 
         background: rgba(0,0,0,0.85); color: white; 
         padding: 12px; border-radius: 10px; z-index: 999999; 
         font-family: monospace; font-size: 13px; pointer-events: none;
