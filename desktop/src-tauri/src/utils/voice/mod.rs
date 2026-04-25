@@ -3,6 +3,7 @@ pub mod capture;
 pub mod command_resolver;
 pub mod dispatcher;
 pub mod enrollment;
+pub mod intent;
 pub mod intent_classifier;
 pub mod onboarding;
 pub mod session;
