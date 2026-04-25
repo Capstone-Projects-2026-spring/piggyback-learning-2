@@ -4,11 +4,6 @@ use crate::utils::openai::{
     build_prompt, call_openai_vision, sample_frame_paths, QuestionItem, QuestionsResponse,
     SegmentResponse,
 };
-use crate::utils::voice::session::SharedSession;
-
-pub async fn get_by_video(args: &[String], session: &SharedSession) {
-    println!("[handler:questions] get_by_video — args={args:?}");
-}
 
 pub async fn generate_questions_for_video(video_id: &str) -> Result<(), String> {
     let pool = get_db();
@@ -302,7 +297,7 @@ async fn generate_for_segment(
 
 #[derive(serde::Deserialize)]
 pub struct QuestionUpdate {
-    pub segment_id: i64,
+    pub _segment_id: i64,
     pub qtype: String,
     pub question: String,
     pub answer: String,
