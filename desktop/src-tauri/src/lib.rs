@@ -9,6 +9,7 @@ use voice::{
     onboarding::{self, OnboardingFlow},
     session, speaker,
     state::init_whisper,
+    tts,
 };
 
 fn load_models(res: &std::path::Path) {
@@ -49,6 +50,8 @@ pub fn run() {
             handlers::videos::mpv_seek,
             handlers::videos::mpv_minimize,
             handlers::videos::mpv_quit,
+            tts::speak,
+            tts::stop_speaking,
             utils::gaze::gaze_start,
             utils::gaze::gaze_stop,
             utils::gaze::gaze_pause,
@@ -66,6 +69,8 @@ pub fn run() {
             utils::gaze::init_snapshot_channel();
             intent_classifier::init_classifier();
             utils::openai::init_openai();
+
+            app.manage(tts::init(&res));
 
             tauri::async_runtime::block_on(async {
                 match db::init::init_db().await {

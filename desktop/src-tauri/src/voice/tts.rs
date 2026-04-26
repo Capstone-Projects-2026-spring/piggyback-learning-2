@@ -2,7 +2,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
-pub struct TtsState(pub Mutex<Option<String>>); 
+pub struct TtsState(pub Mutex<Option<String>>);
 
 pub fn init(res: &std::path::Path) -> TtsState {
     let model_path = res.join("models/en_GB-alba-medium.onnx");
@@ -17,7 +17,7 @@ pub fn init(res: &std::path::Path) -> TtsState {
         return TtsState(Mutex::new(None));
     }
 
-    eprintln!("[tts] using Piper Alba — {}", model_path.display());
+    eprintln!("[tts] using Piper Alba - {}", model_path.display());
     TtsState(Mutex::new(Some(model_path.to_string_lossy().to_string())))
 }
 
@@ -72,7 +72,7 @@ pub fn speak(text: String, state: tauri::State<TtsState>) {
 
 #[tauri::command]
 pub fn stop_speaking(_state: tauri::State<TtsState>) {
-    // Piper runs as a subprocess — kill any running piper-tts + aplay processes
+    // Piper runs as a subprocess - kill any running piper-tts + aplay processes
     Command::new("pkill").arg("piper-tts").status().ok();
     Command::new("pkill").arg("aplay").status().ok();
 }
