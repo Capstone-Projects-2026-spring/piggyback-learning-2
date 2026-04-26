@@ -6,6 +6,9 @@ import Orb from "@/components/orb/Orb.jsx";
 import EnrollmentOverlay from "@/components/enrollment/EnrollmentOverlay.jsx";
 
 const VideoPanel = lazy(() => import("@/components/video/VideoPanel.jsx"));
+const ResultsPanel = lazy(
+  () => import("@/components/results/ResultsPanel.jsx"),
+);
 
 const LOADING_FALLBACK_MS = 2000;
 
@@ -14,11 +17,12 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [kidEnrolling, setKidEnrolling] = useState(false);
   const [showVideos, setShowVideos] = useState(false);
+  const [resultsData, setResultsData] = useState(null);
 
   useTauriListener("orb://ready", () => {
     setMode((m) => {
       if (m === "loading") {
-        speak("Hey I'm Jarvis. Say my name to get started.");
+        speak("Hey! I'm Jarvis. Say my name to get started.");
         return "ready";
       }
       return m;
@@ -27,6 +31,11 @@ export default function App() {
 
   useTauriListener("orb://my-videos", () => setShowVideos(true));
   useTauriListener("orb://recommendations", () => setShowVideos(true));
+
+  useTauriListener("orb://answers", (data) => {
+    const answers = Array.isArray(data) ? data : (data.answers ?? []);
+    setResultsData(answers);
+  });
 
   useEffect(() => {
     const offEnrollment = commandBus.onEnrollment((data) => {
@@ -46,7 +55,6 @@ export default function App() {
     const offSearch = commandBus.on("search", () => setShowVideos(true));
     const offMyVideos = commandBus.on("my_videos", () => setShowVideos(true));
 
-    // Fallback only if orb://ready never fires
     const fallback = setTimeout(() => {
       setMode((m) => {
         if (m === "loading") {
@@ -92,6 +100,15 @@ export default function App() {
       {showVideos && (
         <Suspense fallback={null}>
           <VideoPanel role={role} onClose={() => setShowVideos(false)} />
+        </Suspense>
+      )}
+
+      {resultsData && (
+        <Suspense fallback={null}>
+          <ResultsPanel
+            answers={resultsData}
+            onClose={() => setResultsData(null)}
+          />
         </Suspense>
       )}
 
