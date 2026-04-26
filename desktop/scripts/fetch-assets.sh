@@ -124,5 +124,34 @@ else
     fi
 fi
 
+# ── Piper Alba voice model ────────────────────────────────────────────────────
+download_if_missing \
+    "$MODEL_DIR/en_GB-alba-medium.onnx" \
+    "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx" \
+    "Piper Alba voice (~60MB)"
+download_if_missing \
+    "$MODEL_DIR/en_GB-alba-medium.onnx.json" \
+    "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx.json" \
+    "Piper Alba config"
+
+# ── TTS (Linux only) ──────────────────────────────────────────────────────────
+case "$(uname -s)" in
+    Linux*)
+        echo "Installing Linux TTS dependencies..."
+        if command -v pacman &>/dev/null; then
+            sudo pacman -S --noconfirm speech-dispatcher espeak-ng alsa-utils
+            yay -S --noconfirm piper-tts-bin
+        elif command -v apt-get &>/dev/null; then
+            sudo apt-get install -y libspeechd-dev speech-dispatcher espeak-ng alsa-utils
+            mkdir -p ~/.local/bin
+            cd /tmp
+            wget -q https://github.com/rhasspy/piper/releases/latest/download/piper_linux_x86_64.tar.gz
+            tar -xzf piper_linux_x86_64.tar.gz
+            cp piper/piper ~/.local/bin/piper-tts
+            chmod +x ~/.local/bin/piper-tts
+        fi
+        ;;
+esac
+
 echo ""
 echo "All assets ready."
