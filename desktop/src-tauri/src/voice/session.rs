@@ -5,6 +5,7 @@ pub enum SessionMode {
     #[default]
     Command,
     Answer,
+    Tts,
 }
 
 #[derive(Debug, Clone, Default)]
