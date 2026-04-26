@@ -64,7 +64,7 @@ impl VadChunker {
         None
     }
 
-    fn flush(&mut self, reason: &str) -> Option<Vec<f32>> {
+    pub fn flush(&mut self, reason: &str) -> Option<Vec<f32>> {
         if self.speech_buf.len() < MIN_SPEECH_SAMPLES {
             eprintln!("[vad] chunk too short, discarding ({reason})");
             self.reset();
@@ -79,7 +79,7 @@ impl VadChunker {
         Some(chunk)
     }
 
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.speech_buf.clear();
         self.silent_frames = 0;
         self.has_speech = false;
