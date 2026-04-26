@@ -31,6 +31,7 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
       const idx = data.prompt_index ?? 0;
       setActiveIdx(idx);
 
+      // Speak exactly once per stage - no fallthrough, no else.
       if (normalised === "name_confirmed") {
         const match = data.message.match(/you,\s+([^!]+)!/);
         if (match) setUserName(match[1].trim());
@@ -41,9 +42,10 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
       } else if (normalised === "done") {
         speak(data.message);
         setTimeout(() => onDoneRef.current?.(), 3000);
-      } else {
+      } else if (normalised === "greet") {
         speak(data.message);
       }
+      // error and unknown stages - no speak, just show message in UI
     });
   }, [flow]);
 
@@ -58,6 +60,8 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
     return "";
   };
 
+  // Show waiting UI immediately - don't wait for the first enrollment event.
+  // For kid flow the greet event may have already fired before this mounted.
   if (!message) {
     return (
       <div
@@ -69,7 +73,23 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
           className="w-36 h-36 object-contain"
           draggable={false}
         />
-        <p className="mt-6 text-sm text-pink-300 animate-pulse">Starting up…</p>
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <div className={`flex items-center gap-2`}>
+            <span
+              className={`w-2 h-2 rounded-full animate-pulse ${theme.dot}`}
+            />
+            <p className="text-xs text-gray-400">
+              {flow === "kid"
+                ? "Jarvis is listening for the kid's name…"
+                : "Jarvis is listening for your name…"}
+            </p>
+          </div>
+          <div className={`px-4 py-1.5 rounded-full border ${theme.pill}`}>
+            <p className="text-xs font-medium tracking-wide">
+              {flow === "kid" ? "new kid setup" : "getting started"}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
