@@ -1,4 +1,4 @@
-# Piggyback Learning (orb)
+# Piggyback Learning (desktop)
 
 A voice-activated educational desktop app for kids. Parents enroll their children by voice, assign YouTube videos, and the app quizzes kids at segment boundaries — tracking answers, mood, and engagement via webcam.
 
