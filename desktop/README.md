@@ -298,6 +298,8 @@ When a user enrolls, they are prompted to read 5 phrases aloud:
 
 The recorded audio from each phrase is passed through the WeSpeaker ONNX model (`wespeaker.onnx`) to produce a speaker embedding from 80-mel filter bank features computed over the raw 16 kHz mono samples. That embedding is then encrypted and stored in the `users` table. Crucially, **the raw audio is never persisted** — only the embedding is stored, and only in encrypted form.
 
+During quizzes, the webcam detects the child's mood in real time via the `emotion-ferplus-8.onnx` model, classifying each answer moment into one of 8 states: **happy, sad, angry, surprised, neutral, fearful, disgusted, or contempt**. The detected mood is stored alongside each answer in the `answers` table.
+
 ### Encryption
 
 Voice embeddings are encrypted with **AES-256-GCM** before being written to the database.
