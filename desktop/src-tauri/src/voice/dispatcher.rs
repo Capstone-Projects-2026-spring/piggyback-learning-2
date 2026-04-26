@@ -24,7 +24,11 @@ pub async fn dispatch(
         Intent::MyVideos => handlers::kids::get_video_assignments(args, &session).await,
         Intent::AssignVideo => handlers::kids::assign_video(args, &session).await,
         Intent::Recommendations => handlers::kids::get_recommendations(args, &session).await,
-        Intent::MyAnswers => handlers::answers::get_answers_for_session(args, &session).await,
+        Intent::KidResults => {
+            // Pass full transcript for kid name extraction
+            let args_with_raw = &[resolved.raw.clone()];
+            handlers::answers::get_kids_answers(args_with_raw, &session).await
+        }
         Intent::Search => handlers::videos::search(args).await,
         Intent::WatchVideo => emit("orb://watch-video", serde_json::json!({})),
         Intent::DownloadVideo => eprintln!("[dispatch] download_video - handled by frontend"),
