@@ -60,10 +60,12 @@ pub fn run() {
                 .resource_dir()
                 .expect("[app] resource dir must exist");
 
+            // init once
             utils::app_handle::init_app_handle(app.handle().clone());
             load_models(&res);
             utils::gaze::init_snapshot_channel();
             intent_classifier::init_classifier();
+            utils::openai::init_openai();
 
             tauri::async_runtime::block_on(async {
                 match db::init::init_db().await {

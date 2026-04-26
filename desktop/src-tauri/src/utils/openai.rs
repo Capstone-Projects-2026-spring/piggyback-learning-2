@@ -2,17 +2,22 @@ use async_openai::{config::OpenAIConfig, Client as OpenAIClient};
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::fs;
-use std::sync::OnceLock;
+use std::{fs, sync::OnceLock};
 
 static OPENAI_CLIENT: OnceLock<OpenAIClient<OpenAIConfig>> = OnceLock::new();
 
-pub fn get_openai_client() -> &'static OpenAIClient<OpenAIConfig> {
+pub fn init_openai() {
     OPENAI_CLIENT.get_or_init(|| {
-        let api_key = env!("OPENAI_API_KEY");
-        let config = OpenAIConfig::new().with_api_key(api_key);
+        let config = OpenAIConfig::new().with_api_key(env!("OPENAI_API_KEY"));
+        eprintln!("[openai] client ready");
         OpenAIClient::with_config(config)
-    })
+    });
+}
+
+fn get_client() -> &'static OpenAIClient<OpenAIConfig> {
+    OPENAI_CLIENT
+        .get()
+        .expect("[openai] not initialised — call init_openai() at startup")
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,6 +46,8 @@ pub struct QuestionsResponse {
     pub segment: SegmentResponse,
     pub questions: Vec<QuestionItem>,
 }
+
+// Separate from the public types above so the API shape stays internal.
 
 #[derive(Deserialize)]
 pub struct OpenAIFollowUp {
@@ -74,6 +81,9 @@ pub struct OpenAIResponse {
     pub best_question: String,
 }
 
+// API calls
+
+/// Sample up to `max` evenly-spaced paths from a frame list.
 pub fn sample_frame_paths(paths: &[String], max: usize) -> Vec<String> {
     if paths.len() <= max {
         return paths.to_vec();
@@ -82,51 +92,44 @@ pub fn sample_frame_paths(paths: &[String], max: usize) -> Vec<String> {
     paths.iter().step_by(step).take(max).cloned().collect()
 }
 
+/// Send frames to GPT-4o and parse the structured question response.
 pub async fn call_openai_vision(
     prompt: String,
     image_paths: Vec<String>,
 ) -> Result<OpenAIResponse, String> {
-    let client = get_openai_client();
-
-    let mut content = vec![json!({
-        "type": "text",
-        "text": prompt
-    })];
+    let mut content = vec![json!({ "type": "text", "text": prompt })];
 
     for path in &image_paths {
         match fs::read(path) {
-            Ok(bytes) => {
-                let b64 = general_purpose::STANDARD.encode(&bytes);
-                content.push(json!({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": format!("data:image/jpeg;base64,{}", b64),
-                        "detail": "low"
-                    }
-                }));
-            }
+            Ok(bytes) => content.push(json!({
+                "type": "image_url",
+                "image_url": {
+                    "url":    format!("data:image/jpeg;base64,{}", general_purpose::STANDARD.encode(&bytes)),
+                    "detail": "low"
+                }
+            })),
             Err(e) => eprintln!("[openai] could not read frame {path}: {e}"),
         }
     }
 
     let request_body = json!({
-        "model": "gpt-4o",
-        "temperature": 0.2,
-        "max_tokens": 2000,
+        "model":           "gpt-4o",
+        "temperature":     0.2,
+        "max_tokens":      2000,
         "response_format": { "type": "json_object" },
         "messages": [
             {
-                "role": "system",
+                "role":    "system",
                 "content": "You are a safe, child-focused educational assistant. Always return valid JSON."
             },
             {
-                "role": "user",
+                "role":    "user",
                 "content": content
             }
         ]
     });
 
-    let response: serde_json::Value = client
+    let response: serde_json::Value = get_client()
         .chat()
         .create_byot(request_body)
         .await
@@ -139,18 +142,19 @@ pub async fn call_openai_vision(
     serde_json::from_str(text).map_err(|e| format!("[openai] JSON parse failed: {e}\nraw: {text}"))
 }
 
+/// Build the GPT-4o prompt for a video segment.
+/// `existing_questions` prevents the model from repeating questions
+/// already generated for earlier segments of the same video.
 pub fn build_prompt(start: i32, end: i32, existing_questions: &[String]) -> String {
     let repeat_warning = if existing_questions.is_empty() {
         String::new()
     } else {
-        format!(
-            "PREVIOUSLY ASKED QUESTIONS (do not repeat or closely resemble these):\n{}\n\n",
-            existing_questions
-                .iter()
-                .map(|q| format!("- \"{q}\""))
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
+        let list = existing_questions
+            .iter()
+            .map(|q| format!("- \"{q}\""))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!("PREVIOUSLY ASKED QUESTIONS (do not repeat or closely resemble these):\n{list}\n\n")
     };
 
     format!(
