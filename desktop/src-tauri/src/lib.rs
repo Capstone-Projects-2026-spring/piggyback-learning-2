@@ -40,7 +40,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             handlers::answers::set_answer_context,
             handlers::answers::clear_answer_context,
-            handlers::answers::get_answers,
             handlers::videos::download_video_command,
             handlers::questions::save_questions,
             handlers::questions::get_segments,
