@@ -3,9 +3,8 @@ use crate::handlers::{
     frames::extract_frames,
     tags::{get_or_create_tag, infer_tags_from_text},
 };
-use crate::utils::{
-    app_handle::emit, download::download_video, mpv, voice::session::SharedSession,
-};
+use crate::utils::{app_handle::emit, download::download_video, mpv};
+use crate::voice::session::SharedSession;
 
 use std::sync::OnceLock;
 

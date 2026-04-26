@@ -1,5 +1,5 @@
 use crate::utils::text::cosine_similarity;
-use crate::utils::voice::intent::Intent;
+use crate::voice::intent::Intent;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use std::sync::{Mutex, OnceLock};
 

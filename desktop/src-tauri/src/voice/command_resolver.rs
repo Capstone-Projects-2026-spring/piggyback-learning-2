@@ -1,6 +1,6 @@
 use super::intent_classifier;
 use crate::utils::text::normalize;
-use crate::utils::voice::intent::Intent;
+use crate::voice::intent::Intent;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Clone)]

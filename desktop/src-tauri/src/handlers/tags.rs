@@ -1,6 +1,6 @@
 use crate::db::init::get_db;
 use crate::utils::text::cosine_similarity;
-use crate::utils::voice::intent_classifier::embed_strings;
+use crate::voice::intent_classifier::embed_strings;
 
 /// Returns the id of an existing tag with this name, or inserts and returns the new one.
 pub async fn get_or_create_tag(name: &str) -> Result<i64, String> {

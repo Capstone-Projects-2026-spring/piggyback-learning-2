@@ -2,7 +2,7 @@ use crate::db::init::get_db;
 use crate::handlers::tags::get_or_create_tag;
 use crate::utils::app_handle::emit;
 use crate::utils::text::normalize;
-use crate::utils::voice::{
+use crate::voice::{
     onboarding::{self, OnboardingFlow, SharedOnboarding},
     session::SharedSession,
 };

@@ -8,7 +8,8 @@ use super::onboarding::{
     average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
 };
 use super::vad::VadChunker;
-use crate::utils::voice::{
+use crate::utils::{app_handle, text::is_noise_transcript};
+use crate::voice::{
     audio_processor, command_resolver,
     command_resolver::ResolvedCommand,
     dispatcher,
@@ -19,7 +20,6 @@ use crate::utils::voice::{
     state::get_whisper,
     wake_word,
 };
-use crate::utils::{app_handle, text::is_noise_transcript};
 
 const TARGET_RATE: u32 = 16000;
 

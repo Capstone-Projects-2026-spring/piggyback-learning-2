@@ -1,5 +1,5 @@
 use crate::utils::text::{cosine_similarity, normalize};
-use crate::utils::voice::intent_classifier::embed_strings;
+use crate::voice::intent_classifier::embed_strings;
 
 /// Score a kid's transcript against the expected answer.
 /// Returns (is_correct, similarity_score).

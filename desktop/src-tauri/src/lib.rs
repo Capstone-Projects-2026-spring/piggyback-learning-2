@@ -1,9 +1,10 @@
 mod db;
 mod handlers;
 mod utils;
+mod voice;
 
 use tauri::Manager;
-use utils::voice::{
+use voice::{
     capture, intent_classifier,
     onboarding::{self, OnboardingFlow},
     session, speaker,
