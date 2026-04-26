@@ -1,4 +1,5 @@
 use crate::db::init::get_db;
+use crate::utils::app_handle::emit;
 use crate::utils::crypto::{self, get_voice_key};
 use crate::utils::text::cosine_similarity;
 use crate::utils::voice::mel::compute_fbank;
@@ -105,9 +106,27 @@ pub async fn identify_speaker(embedding: &[f32], session: &SharedSession) {
             session
                 .lock()
                 .unwrap()
-                .set_user(id as i32, best_name, best_role);
+                .set_user(id as i32, best_name.clone(), best_role.clone());
+
+            emit(
+                "orb://speaker-identified",
+                serde_json::json!({
+                    "user_id": id,
+                    "name":    best_name,
+                    "role":    best_role,
+                    "score":   best_score,
+                }),
+            );
         }
     } else {
         eprintln!("[speaker] no match above threshold ({best_score:.3})");
+        emit(
+            "orb://speaker-identified",
+            serde_json::json!({
+                "user_id": null,
+                "name":    null,
+                "role":    null,
+            }),
+        );
     }
 }
