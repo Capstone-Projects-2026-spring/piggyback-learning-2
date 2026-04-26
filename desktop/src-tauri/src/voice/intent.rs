@@ -5,7 +5,7 @@ use serde::Serialize;
 pub enum Intent {
     Search,
     AddKid,
-    MyAnswers,
+    KidResults,
     AddTag,
     MyVideos,
     AssignVideo,
@@ -22,7 +22,7 @@ impl Intent {
         match s {
             "search" => Self::Search,
             "add_kid" => Self::AddKid,
-            "my_answers" => Self::MyAnswers,
+            "kid_results" => Self::KidResults,
             "add_tag" => Self::AddTag,
             "my_videos" => Self::MyVideos,
             "assign_video" => Self::AssignVideo,

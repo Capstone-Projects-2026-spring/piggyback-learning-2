@@ -45,14 +45,23 @@ const INTENT_EXAMPLES: &[(&str, &[&str])] = &[
         ],
     ),
     (
-        "my_answers",
+        "kid_results",
         &[
-            "my answers",
-            "my results",
-            "show my answers",
-            "how did i do",
-            "my quiz results",
-            "show my results",
+            "show me adam's results",
+            "how did sarah do",
+            "show results for jake",
+            "what were emma's answers",
+            "show me the results for tom",
+            "how did lily do on the video",
+            "check jake's progress",
+            "show adam's quiz results",
+            "how well did noah do",
+            "what did emma score",
+            "show me how jake did",
+            "pull up sarah's results",
+            "how is adam doing",
+            "results for my kid",
+            "show kid results",
         ],
     ),
     (
@@ -235,28 +244,31 @@ pub fn embed_strings(inputs: &[&str]) -> Result<Vec<Vec<f32>>, String> {
         .map_err(|e| format!("[classifier] embed failed: {e}"))
 }
 
-fn keyword_fallback(text: &str) -> Intent {
-    let l = text.to_lowercase();
-    if l.contains("my video") || l.contains("assigned") {
-        return Intent::MyVideos;
-    }
-    if l.contains("recommend") || l.contains("suggest") {
-        return Intent::Recommendations;
-    }
-    if l.contains("download") {
+fn keyword_fallback(transcript: &str) -> Intent {
+    let t = transcript.to_lowercase();
+    if t.contains("download") || t.contains("save") {
         return Intent::DownloadVideo;
     }
-    if l.contains("my answer") || l.contains("how did i do") {
-        return Intent::MyAnswers;
+    if t.contains("search") || t.contains("find") || t.contains("look up") {
+        return Intent::Search;
     }
-    if l.contains("likes ")
-        || l.contains("loves ")
-        || l.contains("enjoys ")
-        || l.contains("i like ")
-        || l.contains("i love ")
-        || l.contains("interested in")
-    {
-        return Intent::AddTag;
+    if t.contains("watch") || t.contains("play") {
+        return Intent::WatchVideo;
+    }
+    if t.contains("assign") || t.contains("give it to") {
+        return Intent::AssignVideo;
+    }
+    if t.contains("recommend") || t.contains("suggest") {
+        return Intent::Recommendations;
+    }
+    if t.contains("add kid") || t.contains("add child") || t.contains("new kid") {
+        return Intent::AddKid;
+    }
+    if t.contains("results") || t.contains("how did") || t.contains("answers") {
+        return Intent::KidResults;
+    }
+    if t.contains("my videos") || t.contains("assigned") {
+        return Intent::MyVideos;
     }
     Intent::Unhandled
 }
