@@ -1,9 +1,6 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-
-pub static TTS_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 pub struct TtsState(pub Mutex<Option<String>>);
 
@@ -42,8 +39,6 @@ pub fn speak(text: String, state: tauri::State<TtsState>) {
     drop(guard);
 
     std::thread::spawn(move || {
-        TTS_ACTIVE.store(true, Ordering::SeqCst);
-
         let mut child = match Command::new("piper-tts")
             .args(["--model", &model, "--output_raw"])
             .stdin(Stdio::piped())
@@ -54,7 +49,6 @@ pub fn speak(text: String, state: tauri::State<TtsState>) {
             Ok(c) => c,
             Err(e) => {
                 eprintln!("[tts] piper-tts spawn failed: {e}");
-                TTS_ACTIVE.store(false, Ordering::SeqCst);
                 return;
             }
         };
@@ -73,10 +67,6 @@ pub fn speak(text: String, state: tauri::State<TtsState>) {
         }
 
         child.wait().ok();
-
-        // Small buffer after speech ends so the mic doesn't catch reverb
-        std::thread::sleep(std::time::Duration::from_millis(300));
-        TTS_ACTIVE.store(false, Ordering::SeqCst);
     });
 }
 
@@ -84,5 +74,4 @@ pub fn speak(text: String, state: tauri::State<TtsState>) {
 pub fn stop_speaking(_state: tauri::State<TtsState>) {
     Command::new("pkill").arg("piper-tts").status().ok();
     Command::new("pkill").arg("aplay").status().ok();
-    TTS_ACTIVE.store(false, Ordering::SeqCst);
 }
