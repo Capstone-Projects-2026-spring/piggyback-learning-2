@@ -1,51 +1,31 @@
-import { listen } from "@tauri-apps/api/event";
-import { commandBus } from "./commandBus.js";
-
-let unlistenVoice = null;
-let unlistenEnrollment = null;
+let unlistenSpeaker = null;
 
 export async function startOrb() {
   if (unlistenVoice) return;
 
-  // Register enrollment listener first
-  unlistenEnrollment = await listen("orb://enrollment", (event) => {
-    let data = event.payload;
-    if (typeof data === "string") {
-      try {
-        data = JSON.parse(data);
-      } catch (e) {
-        console.error("[recorder] parse failed:", e);
-        return;
-      }
-    }
-    console.log("[recorder] enrollment:", data.stage, data);
-    commandBus.dispatchEnrollment(data);
+  unlistenEnrollment = await listen("orb://enrollment", ({ payload }) => {
+    console.log("[orb] enrollment:", payload.stage, payload);
+    commandBus.dispatchEnrollment(payload);
   });
 
-  unlistenVoice = await listen("orb://voice-result", (event) => {
-    let result = event.payload;
-    if (typeof result === "string") {
-      try {
-        result = JSON.parse(result);
-      } catch (e) {
-        console.error("[recorder] parse failed:", e);
-        return;
-      }
-    }
-    if (result.transcript) commandBus.dispatchTranscript(result.transcript);
-    if (result.wake_detected) {
-      commandBus.dispatchWake(!!result.speaker_identified);
-    } else if (result.command) {
-      commandBus.dispatch(result.command);
-    }
+  unlistenSpeaker = await listen("orb://speaker-identified", ({ payload }) => {
+    commandBus.dispatchSpeaker(payload);
   });
 
-  console.info("[recorder] listeners registered");
+  unlistenVoice = await listen("orb://voice-result", ({ payload }) => {
+    if (payload.transcript) commandBus.dispatchTranscript(payload.transcript);
+    if (payload.wake_detected) commandBus.dispatchWake();
+    else if (payload.command) commandBus.dispatch(payload.command);
+  });
+
+  console.info("[orb] listeners registered");
 }
 
 export function stopOrb() {
   unlistenVoice?.();
   unlistenEnrollment?.();
+  unlistenSpeaker?.();
   unlistenVoice = null;
   unlistenEnrollment = null;
+  unlistenSpeaker = null;
 }
