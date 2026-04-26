@@ -103,7 +103,7 @@ pub fn start(
     Ok(CaptureHandle { _stream: stream })
 }
 
-// ── Capture loop ──────────────────────────────────────────────────────────────
+// Capture loop
 
 fn run_capture_loop(
     session: SharedSession,
@@ -131,14 +131,14 @@ fn run_capture_loop(
         };
 
         eprintln!(
-            "[capture] utterance ready — {} samples ({:.1}s)",
+            "[capture] utterance ready - {} samples ({:.1}s)",
             chunk.len(),
             chunk.len() as f32 / TARGET_RATE as f32
         );
 
         let processed = audio_processor::process_f32(chunk.clone());
         if processed.is_empty() {
-            eprintln!("[capture] silence after processing — skipping");
+            eprintln!("[capture] silence after processing - skipping");
             continue;
         }
 
@@ -148,7 +148,7 @@ fn run_capture_loop(
             continue;
         }
 
-        // ── Onboarding — highest priority ─────────────────────────────────────
+        // Onboarding - highest priority
         {
             let o = onboarding.lock().unwrap();
             if o.is_active() {
@@ -158,7 +158,7 @@ fn run_capture_loop(
             }
         }
 
-        // ── Answer mode — bypass wake + classifier ────────────────────────────
+        // Answer mode - bypass wake + classifier
         // Transcript is written into session before spawning so analyze_answer
         // reads a consistent snapshot even if another utterance arrives quickly.
         {
@@ -181,16 +181,16 @@ fn run_capture_loop(
             }
         }
 
-        // ── Normal pipeline ───────────────────────────────────────────────────
+        // Normal pipeline
         if is_noise_transcript(&transcript) {
-            eprintln!("[capture] noise transcript — skipping");
+            eprintln!("[capture] noise transcript - skipping");
             continue;
         }
 
         let wake = wake_word::detect(&transcript);
 
         if wake.wake_detected {
-            // Speaker ID runs async — does not block the audio loop
+            // Speaker ID runs async - does not block the audio loop
             if let Some(emb) = speaker::extract_embedding(&chunk) {
                 let sc = session.clone();
                 tauri::async_runtime::spawn(async move {
@@ -207,7 +207,7 @@ fn run_capture_loop(
 
             match resolved.intent {
                 Intent::Unhandled | Intent::WakeOnly => {
-                    eprintln!("[capture] no command matched — passive listen");
+                    eprintln!("[capture] no command matched - passive listen");
                     emit_voice(VoiceEvent {
                         transcript,
                         wake_detected: false,
@@ -232,7 +232,7 @@ fn run_capture_loop(
     }
 }
 
-// ── Transcription ─────────────────────────────────────────────────────────────
+// Transcription
 
 fn transcribe(samples: &[f32]) -> String {
     let ctx = get_whisper();
@@ -265,7 +265,7 @@ fn transcribe(samples: &[f32]) -> String {
         .to_lowercase()
 }
 
-// ── Events ────────────────────────────────────────────────────────────────────
+// Events
 
 #[derive(serde::Serialize, Clone)]
 pub struct VoiceEvent {
@@ -278,7 +278,7 @@ fn emit_voice(event: VoiceEvent) {
     app_handle::emit("orb://voice-result", event);
 }
 
-// ── Onboarding ────────────────────────────────────────────────────────────────
+// Onboarding
 
 fn handle_onboarding_audio(
     onboarding: &SharedOnboarding,
@@ -291,7 +291,7 @@ fn handle_onboarding_audio(
     match stage {
         OnboardingStage::WaitingForName => {
             if !onboarding::try_set_name(onboarding, transcript) {
-                eprintln!("[onboarding] name rejected — waiting");
+                eprintln!("[onboarding] name rejected - waiting");
                 return;
             }
             std::thread::sleep(std::time::Duration::from_secs(2));
@@ -305,7 +305,7 @@ fn handle_onboarding_audio(
             );
 
             let Some(embedding) = speaker::extract_embedding(audio) else {
-                eprintln!("[onboarding] no embedding — waiting for next chunk");
+                eprintln!("[onboarding] no embedding - waiting for next chunk");
                 return;
             };
 
@@ -324,7 +324,7 @@ fn handle_onboarding_audio(
                 tauri::async_runtime::spawn(async move {
                     match create_user(name.clone(), avg, &role).await {
                         Ok(id) => {
-                            // Only update session for parent — kid enrollment is
+                            // Only update session for parent - kid enrollment is
                             // triggered by an already-identified parent so the
                             // session stays as-is after kid creation.
                             if role == "parent" {

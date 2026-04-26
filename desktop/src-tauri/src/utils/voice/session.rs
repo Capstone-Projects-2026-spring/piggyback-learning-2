@@ -34,7 +34,7 @@ impl SessionContext {
     /// Switch to AnswerMode. The next Whisper transcript will be scored
     /// as an answer rather than dispatched as a voice command.
     pub fn enter_answer_mode(&mut self, expected: String, video_id: String, segment_id: i32) {
-        eprintln!("[session] → AnswerMode segment={segment_id}");
+        eprintln!("[session] - AnswerMode segment={segment_id}");
         self.mode = SessionMode::Answer;
         self.expected_answer = Some(expected);
         self.current_video = Some(video_id);
@@ -45,7 +45,7 @@ impl SessionContext {
     /// Return to CommandMode. Clears answer-specific fields but preserves
     /// current_video and current_segment; those belong to the broader session.
     pub fn exit_answer_mode(&mut self) {
-        eprintln!("[session] → CommandMode");
+        eprintln!("[session] - CommandMode");
         self.mode = SessionMode::Command;
         self.expected_answer = None;
         self.last_transcript = None;

@@ -17,7 +17,7 @@ impl OnboardingFlow {
         }
     }
 
-    /// Prefix event stage names for kid flow ("greet" → "kid_greet").
+    /// Prefix event stage names for kid flow ("greet" -> "kid_greet").
     fn stage(&self, event: &str) -> String {
         match self {
             OnboardingFlow::Parent => event.to_string(),
@@ -73,7 +73,7 @@ pub fn start(onboarding: &SharedOnboarding, flow: OnboardingFlow) {
 
     let message = match o.flow {
         OnboardingFlow::Parent => {
-            "Hi there! I'm Jarvis, your learning buddy. Let's get started — what's your name?"
+            "Hi there! I'm Jarvis, your learning buddy. Let's get started, what's your name?"
                 .to_string()
         }
         OnboardingFlow::Kid => "Hi! Let's set up a new kid account. What's your name?".to_string(),
@@ -83,13 +83,13 @@ pub fn start(onboarding: &SharedOnboarding, flow: OnboardingFlow) {
     drop(o);
 
     emit_enrollment(event);
-    eprintln!("[onboarding] started — waiting for name");
+    eprintln!("[onboarding] started - waiting for name");
 }
 
 pub fn try_set_name(onboarding: &SharedOnboarding, transcript: &str) -> bool {
     let cleaned = clean_transcript(transcript);
     if !is_valid_name(&cleaned) {
-        eprintln!("[onboarding] rejected name: '{transcript}' → '{cleaned}'");
+        eprintln!("[onboarding] rejected name: '{transcript}' - '{cleaned}'");
         return false;
     }
 
@@ -130,7 +130,7 @@ pub fn begin_voice_collection(onboarding: &SharedOnboarding) {
     drop(o);
 
     emit_enrollment(event);
-    eprintln!("[onboarding] voice collection started — prompt 0");
+    eprintln!("[onboarding] voice collection started - prompt 0");
 }
 
 /// Returns true when all prompts have been collected.

@@ -27,7 +27,7 @@ fn load_models(res: &std::path::Path) {
             init_fn(&path);
             eprintln!("[app] loaded {relative}");
         } else {
-            eprintln!("[app] {relative} not found — feature disabled");
+            eprintln!("[app] {relative} not found - feature disabled");
         }
     }
 }
@@ -35,7 +35,6 @@ fn load_models(res: &std::path::Path) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             handlers::answers::set_answer_context,
             handlers::answers::clear_answer_context,
@@ -91,7 +90,7 @@ pub fn run() {
                     onboarding::start(&onboarding_clone, OnboardingFlow::Parent);
                 });
             } else {
-                eprintln!("[app] parent account exists — skipping onboarding");
+                eprintln!("[app] parent account exists - skipping onboarding");
             }
 
             let handle = capture::start(session, onboarding)

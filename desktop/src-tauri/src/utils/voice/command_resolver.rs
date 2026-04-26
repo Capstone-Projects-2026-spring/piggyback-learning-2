@@ -25,7 +25,7 @@ pub fn resolve(transcript: &str) -> ResolvedCommand {
     let tokens: Vec<String> = clean.split_whitespace().map(str::to_string).collect();
     let intent = intent_classifier::classify(&clean);
 
-    eprintln!("[resolver] '{raw}' → {intent:?}");
+    eprintln!("[resolver] '{raw}' - {intent:?}");
     ResolvedCommand {
         intent,
         args: tokens,

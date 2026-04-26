@@ -23,7 +23,7 @@ pub async fn extract_frames(video_id: &str) -> Result<(), String> {
     }
 
     if output_dir.exists() {
-        eprintln!("[frames] already extracted for {video_id} — skipping to questions");
+        eprintln!("[frames] already extracted for {video_id} - skipping to questions");
         let vid = video_id.to_string();
         tokio::spawn(async move {
             if let Err(e) = generate_questions_for_video(&vid).await {
@@ -42,7 +42,7 @@ pub async fn extract_frames(video_id: &str) -> Result<(), String> {
 
     eprintln!("[frames] detecting scene changes for {video_id}");
 
-    // Pass 1 — detect scene change timestamps via ffmpeg showinfo
+    // Pass 1 - detect scene change timestamps via ffmpeg showinfo
     let scene_output = Command::new("ffmpeg")
         .arg("-i")
         .arg(input.to_string_lossy().as_ref())
@@ -75,7 +75,7 @@ pub async fn extract_frames(video_id: &str) -> Result<(), String> {
 
     eprintln!("[frames] scene timestamps: {:?}", scene_timestamps);
 
-    // Pass 2 — extract frames at 1fps
+    // Pass 2 - extract frames at 1fps
     eprintln!("[frames] starting frame extraction for {video_id}");
 
     let status = Command::new("ffmpeg")

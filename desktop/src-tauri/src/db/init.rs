@@ -8,7 +8,7 @@ static DB: OnceLock<SqlitePool> = OnceLock::new();
 
 pub fn get_db() -> &'static SqlitePool {
     DB.get()
-        .expect("[db] not initialised — call init_db() at startup")
+        .expect("[db] not initialised - call init_db() at startup")
 }
 
 pub async fn init_db() -> Result<std::path::PathBuf, String> {
@@ -41,7 +41,7 @@ pub async fn init_db() -> Result<std::path::PathBuf, String> {
         .execute(&pool)
         .await
         .map_err(|e| format!("[db] first-run stamp failed: {e}"))?;
-        eprintln!("[db] first run — schema created");
+        eprintln!("[db] first run - schema created");
     } else {
         eprintln!("[db] existing db loaded");
     }

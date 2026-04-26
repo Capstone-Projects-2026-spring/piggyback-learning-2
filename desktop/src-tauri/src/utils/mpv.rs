@@ -114,7 +114,7 @@ pub fn launch_mpv(video_path: &str) -> Result<(), String> {
 
     state.process = Some(child);
     MPV_RUNNING.store(true, Ordering::SeqCst);
-    eprintln!("[mpv] launched — {video_path}");
+    eprintln!("[mpv] launched - {video_path}");
     Ok(())
 }
 
@@ -205,7 +205,7 @@ pub fn start_position_poller(segments: Vec<(f64, f64, i64)>) {
                 // Only trigger if playback is within this segment and has reached the end
                 if pos >= *start && pos >= *end && last_triggered != Some(*seg_id) {
                     last_triggered = Some(*seg_id);
-                    eprintln!("[mpv] segment end — id={seg_id} pos={pos:.2}");
+                    eprintln!("[mpv] segment end - id={seg_id} pos={pos:.2}");
                     let _ = pause();
                     let _ = minimize();
                     crate::handlers::videos::bring_tauri_to_front();

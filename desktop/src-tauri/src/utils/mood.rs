@@ -30,20 +30,20 @@ pub fn init_mood(model_path: &Path) {
             .with_optimization_level(GraphOptimizationLevel::Level3)
             .unwrap()
             .commit_from_file(model_path)
-            .expect("[mood] failed to load model — check models/mood/ path");
+            .expect("[mood] failed to load model - check models/mood/ path");
         eprintln!("[mood] ready");
         Mutex::new(session)
     });
 }
 
 /// Run FER+ inference on a raw JPEG/PNG frame and return the dominant emotion label.
-/// Always returns a valid label — falls back to "neutral" on any failure since
+/// Always returns a valid label - falls back to "neutral" on any failure since
 /// mood is non-critical metadata that should never block the answer pipeline.
 pub fn detect_mood_from_frame(frame_bytes: &[u8]) -> String {
     match run_inference(frame_bytes) {
         Ok(label) => label,
         Err(e) => {
-            eprintln!("[mood] {e} — defaulting to neutral");
+            eprintln!("[mood] {e} - defaulting to neutral");
             "neutral".into()
         }
     }
@@ -54,13 +54,13 @@ pub fn detect_mood_from_frame(frame_bytes: &[u8]) -> String {
 fn run_inference(frame_bytes: &[u8]) -> Result<String, String> {
     let mutex = MOOD_SESSION
         .get()
-        .ok_or("not initialised — was init_mood() called?")?;
+        .ok_or("not initialised - was init_mood() called?")?;
 
     let mut session = mutex
         .lock()
         .map_err(|_| "session mutex poisoned".to_string())?;
 
-    // Decode → greyscale → resize to 64×64 (FER+ input spec)
+    // Decode -> greyscale -> resize to 64×64 (FER+ input spec)
     let img = image::load_from_memory(frame_bytes).map_err(|e| format!("decode failed: {e}"))?;
 
     let gray: GrayImage = image::imageops::resize(

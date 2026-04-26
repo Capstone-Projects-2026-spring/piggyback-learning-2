@@ -18,5 +18,5 @@ pub fn init_whisper(model_path: &Path) {
 pub fn get_whisper() -> &'static WhisperContext {
     WHISPER_CTX
         .get()
-        .expect("[state] whisper not initialised — call init_whisper() before starting capture")
+        .expect("[state] whisper not initialised - call init_whisper() before starting capture")
 }

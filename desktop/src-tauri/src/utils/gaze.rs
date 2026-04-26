@@ -146,7 +146,7 @@ fn gaze_loop() {
     }
 
     eprintln!(
-        "[gaze] stream open — {}x{}",
+        "[gaze] stream open - {}x{}",
         camera.resolution().width(),
         camera.resolution().height(),
     );
@@ -156,7 +156,7 @@ fn gaze_loop() {
     let mut return_counter = 0u32;
 
     while GAZE_RUNNING.load(Ordering::SeqCst) {
-        // ~4fps — enough for gaze detection, low CPU usage
+        // ~4fps - enough for gaze detection, low CPU usage
         thread::sleep(Duration::from_millis(250));
 
         if GAZE_PAUSED.load(Ordering::SeqCst) {
@@ -250,12 +250,12 @@ fn try_fulfill_snapshot(frame: &nokhwa::Buffer, rgb: &RgbImage) {
 // Inference
 
 /// Returns true if a face is detected above the confidence threshold.
-/// Defaults to true on any error — assume present rather than falsely pausing.
+/// Defaults to true on any error - assume present rather than falsely pausing.
 fn detect_face(raw_rgb: Vec<u8>, resolution: Resolution) -> bool {
     match run_face_detection(raw_rgb, resolution) {
         Ok(detected) => detected,
         Err(e) => {
-            eprintln!("[gaze] detection error: {e} — assuming present");
+            eprintln!("[gaze] detection error: {e} - assuming present");
             true
         }
     }
@@ -291,7 +291,7 @@ fn run_face_detection(raw_rgb: Vec<u8>, resolution: Resolution) -> Result<bool, 
         .map_err(|e| format!("tensor shape error: {e}"))?;
     let tensor = Tensor::from_array(array).map_err(|e| format!("tensor error: {e}"))?;
 
-    // Ultraface output: scores [1, N, 2] — index 1 of last dim is face confidence
+    // Ultraface output: scores [1, N, 2] - index 1 of last dim is face confidence
     let outputs = session
         .run(ort::inputs!["input" => tensor])
         .map_err(|e| format!("inference error: {e}"))?;

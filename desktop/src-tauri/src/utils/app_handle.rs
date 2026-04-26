@@ -12,7 +12,7 @@ pub fn init_app_handle(handle: AppHandle) {
 pub fn get_app_handle() -> &'static AppHandle {
     APP_HANDLE
         .get()
-        .expect("[app_handle] not initialised — call init_app_handle() at startup")
+        .expect("[app_handle] not initialised - call init_app_handle() at startup")
 }
 
 pub fn emit<T: serde::Serialize + Clone>(event: &str, payload: T) {

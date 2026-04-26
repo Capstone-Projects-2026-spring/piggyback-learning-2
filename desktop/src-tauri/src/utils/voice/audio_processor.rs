@@ -40,15 +40,15 @@ pub fn process_f32(samples: Vec<f32>) -> Vec<f32> {
         return vec![];
     }
 
-    // RMS gate — reject background noise before doing any work
+    // RMS gate - reject background noise before doing any work
     let rms = (samples.iter().map(|s| s * s).sum::<f32>() / samples.len() as f32).sqrt();
     if rms < MIN_RMS {
-        eprintln!("[audio] rejected — rms={rms:.4} below threshold");
+        eprintln!("[audio] rejected - rms={rms:.4} below threshold");
         return vec![];
     }
     eprintln!("[audio] rms={rms:.4}");
 
-    // Pre-emphasis — boost high frequencies for cleaner Whisper input
+    // Pre-emphasis - boost high frequencies for cleaner Whisper input
     let mut emphasized = Vec::with_capacity(samples.len());
     emphasized.push(samples[0]);
     for i in 1..samples.len() {
@@ -66,13 +66,13 @@ pub fn process_f32(samples: Vec<f32>) -> Vec<f32> {
         .unwrap_or(0);
 
     if start >= end {
-        eprintln!("[audio] rejected — nothing above silence threshold after trim");
+        eprintln!("[audio] rejected - nothing above silence threshold after trim");
         return vec![];
     }
 
     let trimmed = &emphasized[start..end];
 
-    // Activity ratio check — filters out single noise spikes
+    // Activity ratio check - filters out single noise spikes
     let active_ratio = trimmed
         .iter()
         .filter(|s| s.abs() > SILENCE_THRESHOLD)
@@ -80,7 +80,7 @@ pub fn process_f32(samples: Vec<f32>) -> Vec<f32> {
         / trimmed.len() as f32;
 
     if active_ratio < MIN_ACTIVE_RATIO {
-        eprintln!("[audio] rejected — sparse activity (ratio={active_ratio:.2})");
+        eprintln!("[audio] rejected - sparse activity (ratio={active_ratio:.2})");
         return vec![];
     }
 

@@ -48,11 +48,11 @@ pub async fn search(args: &[String]) {
         .join(" ");
 
     if query.is_empty() {
-        eprintln!("[videos] search — empty query after filtering");
+        eprintln!("[videos] search - empty query after filtering");
         return;
     }
 
-    eprintln!("[videos] search — {query}");
+    eprintln!("[videos] search - {query}");
     emit(
         "orb://search-status",
         serde_json::json!({ "status": "searching", "query": query }),
@@ -92,7 +92,7 @@ pub async fn search(args: &[String]) {
                     .take(10)
                     .collect();
 
-                eprintln!("[videos] search → {} results", results.len());
+                eprintln!("[videos] search - {} results", results.len());
                 emit(
                     "orb://search-results",
                     serde_json::json!({ "query": query, "results": results }),
@@ -109,7 +109,7 @@ pub async fn search(args: &[String]) {
 
 #[tauri::command]
 pub async fn download_video_command(video_id: String) -> Result<(), String> {
-    eprintln!("[videos] download — video_id={video_id}");
+    eprintln!("[videos] download - video_id={video_id}");
 
     tokio::spawn(async move {
         if let Some(session) = SESSION.get() {
@@ -120,7 +120,7 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
 
         match download_video(&video_id).await {
             Ok(None) => {
-                eprintln!("[videos] already downloaded — {video_id}");
+                eprintln!("[videos] already downloaded - {video_id}");
                 emit(
                     "orb://video-status",
                     serde_json::json!({
@@ -209,7 +209,7 @@ pub struct SegmentInfo {
 
 #[tauri::command]
 pub async fn launch_video(path: String, segments: Vec<SegmentInfo>) -> Result<(), String> {
-    eprintln!("[videos] launch — {path}");
+    eprintln!("[videos] launch - {path}");
     tokio::task::spawn_blocking(move || {
         mpv::launch_mpv(&path)?;
         if !mpv::wait_for_socket() {
@@ -286,7 +286,7 @@ async fn upsert_video(
     .execute(get_db())
     .await
     .map_err(|e| format!("[videos] upsert failed: {e}"))?;
-    eprintln!("[videos] upsert ok — id={id}");
+    eprintln!("[videos] upsert ok - id={id}");
     Ok(())
 }
 
@@ -296,7 +296,7 @@ async fn generate_and_assign_tags(video_id: &str, vtt_path: &str) -> Result<(), 
 
     let text = vtt_to_plain_text(&raw);
     if text.is_empty() {
-        eprintln!("[videos] transcript empty after stripping — skipping tags");
+        eprintln!("[videos] transcript empty after stripping - skipping tags");
         return Ok(());
     }
 
@@ -313,7 +313,7 @@ async fn generate_and_assign_tags(video_id: &str, vtt_path: &str) -> Result<(), 
             .execute(pool)
             .await
             .map_err(|e| format!("[videos] video_tags insert failed: {e}"))?;
-        eprintln!("[videos] tagged '{tag_name}' (id={tag_id}) → {video_id}");
+        eprintln!("[videos] tagged '{tag_name}' (id={tag_id}) - {video_id}");
     }
 
     Ok(())

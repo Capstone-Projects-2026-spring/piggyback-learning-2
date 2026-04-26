@@ -38,7 +38,7 @@ pub async fn get_video_assignments(_args: &[String], session: &SharedSession) {
         match (s.role.as_deref(), s.user_id) {
             (Some("kid"), Some(id)) => id as i64,
             _ => {
-                eprintln!("[kids] get_video_assignments — kid session required");
+                eprintln!("[kids] get_video_assignments - kid session required");
                 return;
             }
         }
@@ -67,7 +67,7 @@ pub async fn get_video_assignments(_args: &[String], session: &SharedSession) {
         .collect();
 
     eprintln!(
-        "[kids] get_video_assignments — kid_id={kid_id} {} videos",
+        "[kids] get_video_assignments - kid_id={kid_id} {} videos",
         videos.len()
     );
     emit("orb://my-videos", serde_json::json!({ "videos": videos }));
@@ -81,7 +81,7 @@ pub async fn assign_video(args: &[String], session: &SharedSession) {
         match s.current_video.clone() {
             Some(v) => v,
             None => {
-                eprintln!("[kids] assign_video — no current_video in session");
+                eprintln!("[kids] assign_video - no current_video in session");
                 emit(
                     "orb://assign-error",
                     serde_json::json!({ "message": "No video is currently active." }),
@@ -94,7 +94,7 @@ pub async fn assign_video(args: &[String], session: &SharedSession) {
     let kid_id = match resolve_kid_id(args, session).await {
         Some(id) => id,
         None => {
-            eprintln!("[kids] assign_video — could not resolve kid");
+            eprintln!("[kids] assign_video - could not resolve kid");
             emit(
                 "orb://assign-error",
                 serde_json::json!({ "message": "Which kid did you mean?" }),
@@ -139,7 +139,7 @@ pub async fn get_recommendations(args: &[String], session: &SharedSession) {
     let kid_id = match resolve_kid_id(args, session).await {
         Some(id) => id,
         None => {
-            eprintln!("[kids] get_recommendations — could not resolve kid");
+            eprintln!("[kids] get_recommendations - could not resolve kid");
             emit(
                 "orb://recommendations-error",
                 serde_json::json!({ "message": "Which kid did you mean?" }),
@@ -200,7 +200,7 @@ pub async fn get_recommendations(args: &[String], session: &SharedSession) {
         .collect();
 
     eprintln!(
-        "[kids] recommendations for '{kid_name}' (id={kid_id}) — {} results, {} tags",
+        "[kids] recommendations for '{kid_name}' (id={kid_id}) - {} results, {} tags",
         recommendations.len(),
         tags.len()
     );
@@ -230,8 +230,8 @@ pub async fn start_kid_enrollment(
             eprintln!("[kids] starting kid enrollment");
             onboarding::start(onboarding, OnboardingFlow::Kid);
         }
-        Some(r) => eprintln!("[kids] add_kid — role={r} is not parent"),
-        None => eprintln!("[kids] add_kid — no user identified"),
+        Some(r) => eprintln!("[kids] add_kid - role={r} is not parent"),
+        None => eprintln!("[kids] add_kid - no user identified"),
     }
 }
 
@@ -248,7 +248,7 @@ async fn assign_tag_to_kid(kid_id: i64, tag_id: i64) -> Result<(), String> {
 }
 
 /// Resolve which kid the transcript refers to.
-/// Priority: name match in transcript → speaker is a kid → only one kid exists.
+/// Priority: name match in transcript -> speaker is a kid -> only one kid exists.
 async fn resolve_kid_id(args: &[String], session: &SharedSession) -> Option<i64> {
     let pool = get_db();
 
@@ -260,14 +260,14 @@ async fn resolve_kid_id(args: &[String], session: &SharedSession) -> Option<i64>
     .unwrap_or_default();
 
     if kids.is_empty() {
-        eprintln!("[kids] resolve_kid_id — no kids in DB");
+        eprintln!("[kids] resolve_kid_id - no kids in DB");
         return None;
     }
 
     let transcript = normalize(&args.join(" "));
     for (id, name) in &kids {
         if transcript.contains(&normalize(name)) {
-            eprintln!("[kids] resolve_kid_id — name match '{name}' → id={id}");
+            eprintln!("[kids] resolve_kid_id - name match '{name}' & id={id}");
             return Some(*id);
         }
     }
@@ -276,7 +276,7 @@ async fn resolve_kid_id(args: &[String], session: &SharedSession) -> Option<i64>
         let s = session.lock().unwrap();
         if s.role.as_deref() == Some("kid") {
             if let Some(uid) = s.user_id {
-                eprintln!("[kids] resolve_kid_id — speaker is kid, id={uid}");
+                eprintln!("[kids] resolve_kid_id - speaker is kid, id={uid}");
                 return Some(uid as i64);
             }
         }
@@ -284,12 +284,12 @@ async fn resolve_kid_id(args: &[String], session: &SharedSession) -> Option<i64>
 
     if kids.len() == 1 {
         let (id, name) = &kids[0];
-        eprintln!("[kids] resolve_kid_id — only one kid '{name}', id={id}");
+        eprintln!("[kids] resolve_kid_id - only one kid '{name}', id={id}");
         return Some(*id);
     }
 
     eprintln!(
-        "[kids] resolve_kid_id — ambiguous ({} kids, no name match)",
+        "[kids] resolve_kid_id - ambiguous ({} kids, no name match)",
         kids.len()
     );
     None
@@ -337,7 +337,7 @@ pub async fn add_tags(args: &[String], session: &SharedSession) {
     let topics = extract_topics(&transcript);
 
     if topics.is_empty() {
-        eprintln!("[kids] add_tags — no topics in: {transcript:?}");
+        eprintln!("[kids] add_tags - no topics in: {transcript:?}");
         return;
     }
 
@@ -346,7 +346,7 @@ pub async fn add_tags(args: &[String], session: &SharedSession) {
         None => return,
     };
 
-    eprintln!("[kids] add_tags — kid_id={kid_id} topics={topics:?}");
+    eprintln!("[kids] add_tags - kid_id={kid_id} topics={topics:?}");
 
     for topic in topics {
         let kid_id_copy = kid_id;

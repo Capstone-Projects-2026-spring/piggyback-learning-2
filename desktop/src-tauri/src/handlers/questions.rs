@@ -16,7 +16,7 @@ pub async fn generate_questions_for_video(video_id: &str) -> Result<(), String> 
             .map_err(|e| format!("[questions] count failed: {e}"))?;
 
     if existing > 0 {
-        eprintln!("[questions] already generated for {video_id} — skipping");
+        eprintln!("[questions] already generated for {video_id} - skipping");
         return Ok(());
     }
 
@@ -40,7 +40,7 @@ pub async fn generate_questions_for_video(video_id: &str) -> Result<(), String> 
     let mut all_responses: Vec<QuestionsResponse> = Vec::new();
 
     for (i, (start, end)) in segments.iter().enumerate() {
-        eprintln!("[questions] generating for {video_id} [{start}s → {end}s]");
+        eprintln!("[questions] generating for {video_id} [{start}s -> {end}s]");
 
         emit(
             "orb://processing-status",
@@ -63,9 +63,9 @@ pub async fn generate_questions_for_video(video_id: &str) -> Result<(), String> 
                     }
                 }
                 all_responses.push(response);
-                eprintln!("[questions] done [{start}s → {end}s]");
+                eprintln!("[questions] done [{start}s -> {end}s]");
             }
-            Err(e) => eprintln!("[questions] failed [{start}s → {end}s]: {e}"),
+            Err(e) => eprintln!("[questions] failed [{start}s -> {end}s]: {e}"),
         }
     }
 
@@ -80,7 +80,7 @@ pub async fn generate_questions_for_video(video_id: &str) -> Result<(), String> 
     Ok(())
 }
 
-// ── Internals ────────────────────────────────────────────────────────────────
+// Internals
 
 /// Reads keyframe timestamps from DB instead of re-running ffmpeg.
 async fn get_keyframe_boundaries(video_id: &str) -> Result<Vec<i32>, String> {
@@ -195,7 +195,7 @@ async fn generate_for_segment(
     .collect();
 
     if frame_paths.is_empty() {
-        return Err(format!("[questions] no frames for [{start}→{end}]"));
+        return Err(format!("[questions] no frames for [{start} -> {end}]"));
     }
 
     let sampled = sample_frame_paths(&frame_paths, 5);
@@ -469,7 +469,7 @@ pub async fn get_segments(video_id: String) -> Result<Vec<SegmentWithQuestions>,
     }
 
     eprintln!(
-        "[questions] get_segments → {} segments for {video_id}",
+        "[questions] get_segments - {} segments for {video_id}",
         result.len()
     );
     Ok(result)

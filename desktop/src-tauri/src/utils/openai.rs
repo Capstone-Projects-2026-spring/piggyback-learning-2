@@ -17,7 +17,7 @@ pub fn init_openai() {
 fn get_client() -> &'static OpenAIClient<OpenAIConfig> {
     OPENAI_CLIENT
         .get()
-        .expect("[openai] not initialised — call init_openai() at startup")
+        .expect("[openai] not initialised - call init_openai() at startup")
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

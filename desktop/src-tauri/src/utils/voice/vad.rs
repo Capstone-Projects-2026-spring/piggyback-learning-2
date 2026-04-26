@@ -71,7 +71,7 @@ impl VadChunker {
             return None;
         }
         eprintln!(
-            "[vad] flush ({reason}) — {:.1}s",
+            "[vad] flush ({reason}) - {:.1}s",
             self.speech_buf.len() as f32 / 16000.0
         );
         let chunk = self.speech_buf.clone();

@@ -30,11 +30,11 @@ pub fn compute_similarity(transcript: &str, expected: &str) -> (bool, f32) {
             (score >= 0.6, score)
         }
         Ok(_) => {
-            eprintln!("[matching] unexpected embedding count — scoring as incorrect");
+            eprintln!("[matching] unexpected embedding count - scoring as incorrect");
             (false, 0.0)
         }
         Err(err) => {
-            eprintln!("[matching] embed failed ({err}) — exact-only fallback");
+            eprintln!("[matching] embed failed ({err}) - exact-only fallback");
             (
                 t == e || t.contains(&e),
                 if t == e || t.contains(&e) { 1.0 } else { 0.0 },

@@ -176,7 +176,7 @@ pub fn init_classifier() {
             .ok();
 
         eprintln!(
-            "[classifier] ready — {} intents pre-embedded",
+            "[classifier] ready - {} intents pre-embedded",
             INTENT_EXAMPLES.len()
         );
     });
@@ -184,7 +184,7 @@ pub fn init_classifier() {
 
 pub fn classify(transcript: &str) -> Intent {
     let Some(mutex) = CLASSIFIER.get() else {
-        eprintln!("[classifier] not ready — keyword fallback");
+        eprintln!("[classifier] not ready - keyword fallback");
         return keyword_fallback(transcript);
     };
 
@@ -216,12 +216,12 @@ pub fn classify(transcript: &str) -> Intent {
     }
 
     if best_score < MATCH_THRESHOLD {
-        eprintln!("[classifier] {best_score:.3} below threshold → unhandled");
+        eprintln!("[classifier] {best_score:.3} below threshold - unhandled");
         return Intent::Unhandled;
     }
 
     let intent = Intent::from_str(best_intent);
-    eprintln!("[classifier] '{transcript}' → {intent:?} ({best_score:.3})");
+    eprintln!("[classifier] '{transcript}' - {intent:?} ({best_score:.3})");
     intent
 }
 

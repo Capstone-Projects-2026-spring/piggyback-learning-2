@@ -14,8 +14,6 @@ pub struct Answer {
     pub segment_id: i32,
 }
 
-// ── Tauri commands ────────────────────────────────────────────────────────────
-
 /// Frontend calls this when a question appears.
 /// Puts the pipeline into AnswerMode so the next utterance is scored, not classified.
 #[tauri::command]
@@ -37,7 +35,7 @@ pub fn clear_answer_context(session: tauri::State<SharedSession>) {
     session.lock().unwrap().exit_answer_mode();
 }
 
-/// Tauri command — called from frontend with explicit kid_id + video_id
+/// Tauri command - called from frontend with explicit kid_id + video_id
 #[tauri::command]
 pub async fn get_answers(kid_id: i32, video_id: String) -> Result<Vec<Answer>, String> {
     let answers = fetch_answers(kid_id, &video_id).await?;
@@ -45,7 +43,7 @@ pub async fn get_answers(kid_id: i32, video_id: String) -> Result<Vec<Answer>, S
     Ok(answers)
 }
 
-/// Dispatcher entry point — reads kid_id + video_id from session
+/// Dispatcher entry point - reads kid_id + video_id from session
 pub async fn get_answers_for_session(args: &[String], session: &SharedSession) {
     let (kid_id, video_id) = {
         let s = session.lock().unwrap();
@@ -69,7 +67,7 @@ pub async fn get_answers_for_session(args: &[String], session: &SharedSession) {
     }
 }
 
-// ── Dispatcher entry point ────────────────────────────────────────────────────
+// Dispatcher entry point
 
 /// Called directly from capture loop when SessionMode::Answer.
 /// Reads last_transcript + session context, scores, detects mood, persists, emits.
@@ -108,7 +106,7 @@ pub async fn analyze_answer(_args: &[String], session: &SharedSession) {
         (kid_id, video_id, segment_id, transcript, expected)
     };
 
-    // Exit answer mode immediately — next utterance goes back through classifier
+    // Exit answer mode immediately - next utterance goes back through classifier
     session.lock().unwrap().exit_answer_mode();
 
     eprintln!("[answers] transcript={transcript:?} expected={expected_answer:?}");
@@ -141,19 +139,19 @@ pub async fn analyze_answer(_args: &[String], session: &SharedSession) {
     );
 }
 
-// ── Camera snapshot ───────────────────────────────────────────────────────────
+// Camera snapshot
 
 async fn capture_face_frame_for_mood() -> String {
     match crate::utils::gaze::request_snapshot().await {
         Some(jpeg_bytes) => detect_mood_from_frame(&jpeg_bytes),
         None => {
-            eprintln!("[answers] no snapshot available — mood=neutral");
+            eprintln!("[answers] no snapshot available - mood=neutral");
             "neutral".into()
         }
     }
 }
 
-// ── DB ────────────────────────────────────────────────────────────────────────
+// DB
 
 async fn persist_answer(kid_id: i32, video_id: &str, a: &Answer) -> Result<(), String> {
     let db = get_db();

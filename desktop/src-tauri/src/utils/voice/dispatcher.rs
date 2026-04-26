@@ -14,7 +14,7 @@ pub async fn dispatch(
     eprintln!("[dispatch] intent={:?} args={args:?}", resolved.intent);
 
     if !session.lock().unwrap().is_identified() {
-        eprintln!("[dispatch] no user — ignoring {:?}", resolved.intent);
+        eprintln!("[dispatch] no user - ignoring {:?}", resolved.intent);
         return;
     }
 
@@ -27,7 +27,7 @@ pub async fn dispatch(
         Intent::MyAnswers => handlers::answers::get_answers_for_session(args, &session).await,
         Intent::Search => handlers::videos::search(args).await,
         Intent::WatchVideo => emit("orb://watch-video", serde_json::json!({})),
-        Intent::DownloadVideo => eprintln!("[dispatch] download_video — handled by frontend"),
+        Intent::DownloadVideo => eprintln!("[dispatch] download_video - handled by frontend"),
         // These never reach dispatch rather filtered out in capture.rs
         Intent::WakeOnly | Intent::Unhandled => {}
     }

@@ -13,7 +13,7 @@ static VOICE_KEY: OnceLock<[u8; 32]> = OnceLock::new();
 pub fn get_voice_key() -> &'static [u8; 32] {
     VOICE_KEY
         .get()
-        .expect("[crypto] voice key not initialised — call init_voice_key() at startup")
+        .expect("[crypto] voice key not initialised - call init_voice_key() at startup")
 }
 
 /// Load or generate the voice embedding encryption key and cache it.
