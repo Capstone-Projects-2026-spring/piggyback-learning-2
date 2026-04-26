@@ -1,3 +1,4 @@
+use crate::voice::session::{SessionMode, SharedSession};
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
@@ -6,17 +7,14 @@ pub struct TtsState(pub Mutex<Option<String>>);
 
 pub fn init(res: &std::path::Path) -> TtsState {
     let model_path = res.join("models/en_GB-alba-medium.onnx");
-
     if !model_path.exists() {
         eprintln!("[tts] Alba model not found at {}", model_path.display());
         return TtsState(Mutex::new(None));
     }
-
     if !which_piper() {
         eprintln!("[tts] piper-tts binary not found in PATH");
         return TtsState(Mutex::new(None));
     }
-
     eprintln!("[tts] using Piper Alba - {}", model_path.display());
     TtsState(Mutex::new(Some(model_path.to_string_lossy().to_string())))
 }
@@ -30,7 +28,7 @@ fn which_piper() -> bool {
 }
 
 #[tauri::command]
-pub fn speak(text: String, state: tauri::State<TtsState>) {
+pub fn speak(text: String, state: tauri::State<TtsState>, session: tauri::State<SharedSession>) {
     let guard = state.0.lock().unwrap();
     let Some(model) = guard.clone() else {
         eprintln!("[tts] speak called but TTS unavailable");
@@ -38,7 +36,12 @@ pub fn speak(text: String, state: tauri::State<TtsState>) {
     };
     drop(guard);
 
+    let session = session.inner().clone();
+
     std::thread::spawn(move || {
+        session.lock().unwrap().mode = SessionMode::Tts;
+        eprintln!("[tts] entering TTS mode");
+
         let mut child = match Command::new("piper-tts")
             .args(["--model", &model, "--output_raw"])
             .stdin(Stdio::piped())
@@ -49,6 +52,7 @@ pub fn speak(text: String, state: tauri::State<TtsState>) {
             Ok(c) => c,
             Err(e) => {
                 eprintln!("[tts] piper-tts spawn failed: {e}");
+                session.lock().unwrap().mode = SessionMode::Command;
                 return;
             }
         };
@@ -67,11 +71,16 @@ pub fn speak(text: String, state: tauri::State<TtsState>) {
         }
 
         child.wait().ok();
+
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        session.lock().unwrap().mode = SessionMode::Command;
+        eprintln!("[tts] exiting TTS mode");
     });
 }
 
 #[tauri::command]
-pub fn stop_speaking(_state: tauri::State<TtsState>) {
+pub fn stop_speaking(_state: tauri::State<TtsState>, session: tauri::State<SharedSession>) {
     Command::new("pkill").arg("piper-tts").status().ok();
     Command::new("pkill").arg("aplay").status().ok();
+    session.lock().unwrap().mode = SessionMode::Command;
 }
