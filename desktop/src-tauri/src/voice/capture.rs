@@ -1,8 +1,6 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, SampleRate, StreamConfig};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 use whisper_rs::{FullParams, SamplingStrategy};
 
 use super::enrollment::{create_user, emit_enrollment, EnrollmentEvent};
@@ -24,51 +22,6 @@ use crate::voice::{
 };
 
 const TARGET_RATE: u32 = 16000;
-
-// Cooldown sizing constants
-const COOLDOWN_MS_PER_CHAR: u64 = 60;
-const COOLDOWN_MIN_MS: u64 = 1500;
-const COOLDOWN_MAX_MS: u64 = 6000;
-
-// Stores the timestamp (ms since epoch) until which audio should be dropped.
-static COOLDOWN_UNTIL_MS: AtomicU64 = AtomicU64::new(0);
-
-fn now_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64
-}
-
-fn in_cooldown() -> bool {
-    let until = COOLDOWN_UNTIL_MS.load(Ordering::SeqCst);
-    until != 0 && now_ms() < until
-}
-
-fn mark_dispatched() {
-    COOLDOWN_UNTIL_MS.store(now_ms() + 4000, Ordering::SeqCst);
-}
-
-fn mark_dispatched_with_text(text: &str) {
-    let estimated =
-        (text.len() as u64 * COOLDOWN_MS_PER_CHAR).clamp(COOLDOWN_MIN_MS, COOLDOWN_MAX_MS);
-    COOLDOWN_UNTIL_MS.store(now_ms() + estimated, Ordering::SeqCst);
-}
-
-fn intent_response(intent: &Intent) -> Option<&'static str> {
-    match intent {
-        Intent::Search => Some("Searching for that."),
-        Intent::AddKid => Some("Let's add a new kid profile!"),
-        Intent::MyAnswers => Some("Let me pull up your results."),
-        Intent::AddTag => Some("Adding that tag now."),
-        Intent::MyVideos => Some("Here are your assigned videos."),
-        Intent::AssignVideo => Some("Assigning that video now."),
-        Intent::WatchVideo => Some("Loading the video for you."),
-        Intent::Recommendations => Some("Let me find something good for you!"),
-        Intent::DownloadVideo => Some("Downloading that video now."),
-        _ => None,
-    }
-}
 
 pub struct CaptureHandle {
     _stream: cpal::Stream,
@@ -161,12 +114,16 @@ fn run_capture_loop(
     loop {
         std::thread::sleep(std::time::Duration::from_millis(30));
 
-        // During cooldown, drain the buffer and reset VAD so audio doesn't
-        // accumulate and fire the moment cooldown expires.
-        if in_cooldown() {
-            buffer.lock().unwrap().clear();
-            chunker.flush("reset so audio doesn't accumulate");
-            continue;
+        // Flush buffer and VAD while TTS is playing so audio doesn't
+        // accumulate and fire the moment TTS mode exits.
+        {
+            let s = session.lock().unwrap();
+            if s.mode == SessionMode::Tts {
+                drop(s);
+                buffer.lock().unwrap().clear();
+                chunker.flush("tts active");
+                continue;
+            }
         }
 
         let raw: Vec<f32> = {
@@ -189,6 +146,16 @@ fn run_capture_loop(
             chunk.len() as f32 / TARGET_RATE as f32
         );
 
+        // Check TTS mode again after VAD - a chunk may have completed just as TTS started.
+        {
+            let s = session.lock().unwrap();
+            if s.mode == SessionMode::Tts {
+                eprintln!("[capture] TTS mode - dropping chunk");
+                chunker.flush("tts active post-vad");
+                continue;
+            }
+        }
+
         let processed = audio_processor::process_f32(chunk.clone());
         if processed.is_empty() {
             eprintln!("[capture] silence after processing - skipping");
@@ -201,12 +168,14 @@ fn run_capture_loop(
             continue;
         }
 
-        // Check cooldown again after transcription - whisper takes 1-3s so a
-        // dispatch may have happened during inference (e.g. previous command's
-        // TTS started while we were transcribing the next utterance).
-        if in_cooldown() {
-            eprintln!("[capture] cooldown active post-transcription - dropping");
-            continue;
+        // Check TTS mode after transcription - whisper takes 1-3s so TTS
+        // may have started during inference.
+        {
+            let s = session.lock().unwrap();
+            if s.mode == SessionMode::Tts {
+                eprintln!("[capture] TTS mode post-transcription - dropping");
+                continue;
+            }
         }
 
         // Onboarding - highest priority
@@ -249,7 +218,6 @@ fn run_capture_loop(
         let wake = wake_word::detect(&transcript);
 
         if wake.wake_detected {
-            mark_dispatched();
             if let Some(emb) = speaker::extract_embedding(&chunk) {
                 let sc = session.clone();
                 tauri::async_runtime::spawn(async move {
@@ -274,8 +242,6 @@ fn run_capture_loop(
                     });
                 }
                 _ => {
-                    let cooldown_text = intent_response(&resolved.intent).unwrap_or("");
-                    mark_dispatched_with_text(cooldown_text);
                     let rc = resolved.clone();
                     let sc = session.clone();
                     let oc = onboarding.clone();
