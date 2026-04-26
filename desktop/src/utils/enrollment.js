@@ -2,15 +2,6 @@ export function normaliseStage(stage) {
   return stage.replace(/^kid_/, "");
 }
 
-export function speak(text) {
-  if (!text) return;
-  speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.pitch = 1.4;
-  utt.rate = 1.05;
-  speechSynthesis.speak(utt);
-}
-
 export const THEME = {
   parent: {
     bg: "from-pink-50 to-white",
