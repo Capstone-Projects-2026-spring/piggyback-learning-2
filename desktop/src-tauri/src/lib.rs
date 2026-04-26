@@ -103,6 +103,8 @@ pub fn run() {
                 .unwrap_or_else(|e| panic!("[app] audio capture failed: {e}"));
             Box::leak(Box::new(handle));
 
+            utils::app_handle::emit("orb://ready", ());
+
             Ok(())
         })
         .run(tauri::generate_context!())
