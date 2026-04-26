@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -8,6 +8,7 @@ export function useGazeTracker({ onLookAway, onReturn, enabled, paused }) {
   const onReturnRef = useRef(onReturn);
   const pausedRef = useRef(paused);
 
+  // Keep callback refs current so the listener closure never captures stale callbacks.
   useEffect(() => {
     onLookAwayRef.current = onLookAway;
   }, [onLookAway]);
@@ -15,12 +16,15 @@ export function useGazeTracker({ onLookAway, onReturn, enabled, paused }) {
     onReturnRef.current = onReturn;
   }, [onReturn]);
 
-  // When paused, tell Rust to suppress events and resolve any active away state
+  // Sync paused state to Rust and resolve any active away state immediately.
+  // pausedRef is updated first so the gaze listener sees the new value in the
+  // same tick, before any async Tauri round-trip completes.
   useEffect(() => {
     pausedRef.current = paused;
+
     if (paused) {
       invoke("gaze_pause").catch(() => {});
-      // If we were away, fire return so the video resumes
+      // Treat pause as an implicit return so callers (e.g. video player) resume.
       if (isAwayRef.current) {
         isAwayRef.current = false;
         onReturnRef.current?.();
@@ -31,9 +35,18 @@ export function useGazeTracker({ onLookAway, onReturn, enabled, paused }) {
   }, [paused]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      // Pause emission and reset away state so a subsequent re-enable starts clean.
+      invoke("gaze_pause").catch(() => {});
+      isAwayRef.current = false;
+      return;
+    }
 
-    let unlisten;
+    // If the component unmounts or `enabled` changes before listen() resolves,
+    // this flag lets the .then() immediately call the unlisten fn rather than leaking.
+    let cancelled = false;
+    let unlisten = null;
+
     listen("orb://gaze-status", ({ payload }) => {
       const data = typeof payload === "string" ? JSON.parse(payload) : payload;
 
@@ -45,12 +58,18 @@ export function useGazeTracker({ onLookAway, onReturn, enabled, paused }) {
         onReturnRef.current?.();
       }
     }).then((fn) => {
-      unlisten = fn;
+      if (cancelled) {
+        fn(); // cleanup already ran — unlisten immediately
+      } else {
+        unlisten = fn;
+      }
     });
 
     return () => {
+      cancelled = true;
       unlisten?.();
-      invoke("gaze_pause").catch(() => {}); // stop emitting when component unmounts
+      invoke("gaze_pause").catch(() => {});
+      isAwayRef.current = false;
     };
   }, [enabled]);
 }
