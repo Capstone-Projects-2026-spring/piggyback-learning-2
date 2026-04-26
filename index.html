@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Hello from Piggyback Learning 2 | Piggyback Learning 2</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><meta data-rh="true" property="og:title" content="Hello from Piggyback Learning 2 | Piggyback Learning 2"><meta data-rh="true" name="description" content="Description will go into a meta tag in &lt;head /&gt;"><meta data-rh="true" property="og:description" content="Description will go into a meta tag in &lt;head /&gt;"><link data-rh="true" rel="icon" href="/piggyback-learning-2/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/"><link data-rh="true" rel="alternate" href="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/" hreflang="en"><link data-rh="true" rel="alternate" href="https://Capstone-Projects-2026-spring.github.io/piggyback-learning-2/" hreflang="x-default"><script data-rh="true">function insertBanner(){var n=document.createElement("div");n.id="__docusaurus-base-url-issue-banner-container";n.innerHTML='\n<div id="__docusaurus-base-url-issue-banner" style="border: thick solid red; background-color: rgb(255, 230, 179); margin: 20px; padding: 20px; font-size: 20px;">\n   <p style="font-weight: bold; font-size: 30px;">Your Docusaurus site did not load properly.</p>\n   <p>A very common reason is a wrong site <a href="https://docusaurus.io/docs/docusaurus.config.js/#baseUrl" style="font-weight: bold;">baseUrl configuration</a>.</p>\n   <p>Current configured baseUrl = <span style="font-weight: bold; color: red;">/piggyback-learning-2/</span> </p>\n   <p>We suggest trying baseUrl = <span id="__docusaurus-base-url-issue-banner-suggestion-container" style="font-weight: bold; color: green;"></span></p>\n</div>\n',document.body.prepend(n);var e=document.getElementById("__docusaurus-base-url-issue-banner-suggestion-container"),s=window.location.pathname,o="/"===s.substr(-1)?s:s+"/";e.innerHTML=o}document.addEventListener("DOMContentLoaded",function(){void 0===window.docusaurus&&insertBanner()})</script><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script><link rel="stylesheet" href="/piggyback-learning-2/assets/css/styles.7aa687c6.css">
-<script src="/piggyback-learning-2/assets/js/runtime~main.aacfd5ec.js" defer="defer"></script>
+<script src="/piggyback-learning-2/assets/js/runtime~main.38312d66.js" defer="defer"></script>
 <script src="/piggyback-learning-2/assets/js/main.497dd701.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -16,16 +16,18 @@
 <p>The system processes YouTube videos, generates questions using AI, and provides a kid-friendly interface for answering questions with support for speech, playback tracking, and real-time interactions.</p>
 <hr>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="architecture">Architecture<a href="#architecture" class="hash-link" aria-label="Direct link to Architecture" title="Direct link to Architecture" translate="no">​</a></h2>
-<p>The project is split into two main parts:</p>
+<p>The project is split into three main parts:</p>
 <ul>
 <li class=""><strong>Frontend</strong> — Built with Next.js (React) for an interactive user experience</li>
-<li class=""><strong>Backend</strong> — Built with Loco.rs (Rust, Axum, SeaORM) for high-performance APIs, video processing, and AI integration</li>
+<li class=""><strong>Backend</strong> — Built with <a href="https://loco.rs" target="_blank" rel="noopener noreferrer" class="">Loco.rs</a> (Rust, Axum, SeaORM) for high-performance APIs, video processing, and AI integration</li>
+<li class=""><strong>Desktop</strong> — A standalone Tauri v2 + React desktop app with on-device voice, speaker identification, and offline-capable quiz delivery</li>
 </ul>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="repositories">Repositories<a href="#repositories" class="hash-link" aria-label="Direct link to Repositories" title="Direct link to Repositories" translate="no">​</a></h3>
 <ul>
 <li class="">Docker Setup: <a href="#docker" class="">Docker Setup</a></li>
 <li class="">Frontend setup and development: <a class="" href="/piggyback-learning-2/frontend/README.md">Frontend Setup</a></li>
 <li class="">Backend setup and development: <a class="" href="/piggyback-learning-2/backend/README.md">Backend Setup</a></li>
+<li class="">Desktop app setup and development: <a class="" href="/piggyback-learning-2/desktop/README.md">Desktop Setup</a></li>
 </ul>
 <blockquote>
 <p>Follow the instructions in each README to run the full application locally.</p>
@@ -47,6 +49,13 @@
 <li class="">Audio-based responses and feedback</li>
 <li class="">Progress tracking and engagement monitoring</li>
 </ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="desktop-app">Desktop App<a href="#desktop-app" class="hash-link" aria-label="Direct link to Desktop App" title="Direct link to Desktop App" translate="no">​</a></h3>
+<ul>
+<li class="">Voice-activated interface with wake word detection (&quot;Jarvis&quot;)</li>
+<li class="">On-device speaker identification and enrollment</li>
+<li class="">Encrypted voice embedding storage via OS keychain</li>
+<li class="">Gaze tracking and mood detection via webcam</li>
+</ul>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="system-capabilities">System Capabilities<a href="#system-capabilities" class="hash-link" aria-label="Direct link to System Capabilities" title="Direct link to System Capabilities" translate="no">​</a></h3>
 <ul>
 <li class="">REST API backend (Axum)</li>
@@ -57,23 +66,34 @@
 <hr>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="how-it-works">How It Works<a href="#how-it-works" class="hash-link" aria-label="Direct link to How It Works" title="Direct link to How It Works" translate="no">​</a></h2>
 <ol>
-<li class=""><strong>Backend</strong></li>
-</ol>
+<li class="">
+<p><strong>Backend</strong></p>
 <ul>
 <li class="">Downloads and processes videos</li>
 <li class="">Generates questions using AI</li>
 <li class="">Stores structured quiz data</li>
 <li class="">Provides REST + WebSocket APIs</li>
 </ul>
-<ol start="2">
-<li class=""><strong>Frontend</strong></li>
-</ol>
+</li>
+<li class="">
+<p><strong>Frontend</strong></p>
 <ul>
 <li class="">Displays videos and quizzes</li>
 <li class="">Captures user responses (text/audio)</li>
 <li class="">Communicates with backend APIs</li>
 <li class="">Streams real-time updates</li>
 </ul>
+</li>
+<li class="">
+<p><strong>Desktop</strong></p>
+<ul>
+<li class="">Fully self-contained — runs without the web backend</li>
+<li class="">Parents enroll by voice; kids are identified automatically each session</li>
+<li class="">Quizzes kids at video segment boundaries via spoken responses</li>
+<li class="">Tracks answers, mood, and gaze engagement locally</li>
+</ul>
+</li>
+</ol>
 <hr>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="running-the-project">Running the Project<a href="#running-the-project" class="hash-link" aria-label="Direct link to Running the Project" title="Direct link to Running the Project" translate="no">​</a></h2>
 <p>To run the full application locally:</p>
@@ -104,33 +124,46 @@ If you&#x27;re testing, there&#x27;s a free Inworld API key and Open AI API key 
 <p>If you have followed the above steps, you may ignore the setups below.</p>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="1-start-the-backend">1. Start the Backend<a href="#1-start-the-backend" class="hash-link" aria-label="Direct link to 1. Start the Backend" title="Direct link to 1. Start the Backend" translate="no">​</a></h3>
 <p>Follow: <a class="" href="/piggyback-learning-2/backend/README.md">Backend Setup</a></p>
-<p>The backend runs at: <a href="http://localhost:5150" target="_blank" rel="noopener noreferrer" class="">http://localhost:5150</a></p>
-<p>API docs: <a href="http://localhost:5150/docs" target="_blank" rel="noopener noreferrer" class="">http://localhost:5150/docs</a></p>
+<p>The backend runs at: <code>http://localhost:5150</code><br>
+<!-- -->API docs: <code>http://localhost:5150/docs</code></p>
 <hr>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="2-start-the-frontend">2. Start the Frontend<a href="#2-start-the-frontend" class="hash-link" aria-label="Direct link to 2. Start the Frontend" title="Direct link to 2. Start the Frontend" translate="no">​</a></h3>
 <p>Follow: <a class="" href="/piggyback-learning-2/frontend/README.md">Frontend Setup</a></p>
-<p>The frontend runs at: <a href="http://localhost:3000" target="_blank" rel="noopener noreferrer" class="">http://localhost:3000</a></p>
+<p>The frontend runs at: <code>http://localhost:3000</code></p>
 <hr>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="3-connect-frontend-to-backend">3. Connect Frontend to Backend<a href="#3-connect-frontend-to-backend" class="hash-link" aria-label="Direct link to 3. Connect Frontend to Backend" title="Direct link to 3. Connect Frontend to Backend" translate="no">​</a></h3>
 <p>Ensure your frontend environment variables are set:</p>
 <div class="language-env codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#bfc7d5;--prism-background-color:#292d3e"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-env codeBlock_bY9V thin-scrollbar" style="color:#bfc7d5;background-color:#292d3e"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#bfc7d5"><span class="token plain">NEXT_PUBLIC_API_BASE_URL=http://localhost:5150</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">NEXT_PUBLIC_WS_BASE_URL=ws://localhost:5150</span><br></span></code></pre></div></div>
 <hr>
-<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="project-structure">Project Structure<a href="#project-structure" class="hash-link" aria-label="Direct link to Project Structure" title="Direct link to Project Structure" translate="no">​</a></h3>
-<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#bfc7d5;--prism-background-color:#292d3e"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#bfc7d5;background-color:#292d3e"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#bfc7d5"><span class="token plain">piggyback-learning-2/</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">├── frontend/          # Next.js application</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">├── backend/           # Loco.rs (Rust) backend</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">└── README.md          # Root project overview (this file)</span><br></span></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="4-run-the-desktop-app-optional">4. Run the Desktop App (optional)<a href="#4-run-the-desktop-app-optional" class="hash-link" aria-label="Direct link to 4. Run the Desktop App (optional)" title="Direct link to 4. Run the Desktop App (optional)" translate="no">​</a></h3>
+<p>Follow: <a class="" href="/piggyback-learning-2/desktop/README.md">Desktop Setup</a></p>
+<p>The desktop app runs standalone and does not require the web backend.</p>
 <hr>
-<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="technologies-used">Technologies Used<a href="#technologies-used" class="hash-link" aria-label="Direct link to Technologies Used" title="Direct link to Technologies Used" translate="no">​</a></h3>
-<p>Frontend</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="project-structure">Project Structure<a href="#project-structure" class="hash-link" aria-label="Direct link to Project Structure" title="Direct link to Project Structure" translate="no">​</a></h2>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#bfc7d5;--prism-background-color:#292d3e"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#bfc7d5;background-color:#292d3e"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#bfc7d5"><span class="token plain">piggyback-learning-2/</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">├── frontend/          # Next.js application</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">├── backend/           # Loco.rs (Rust) backend</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">├── desktop/           # Tauri v2 + React desktop app</span><br></span><span class="token-line" style="color:#bfc7d5"><span class="token plain">└── README.md          # Root project overview (this file)</span><br></span></code></pre></div></div>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="technologies-used">Technologies Used<a href="#technologies-used" class="hash-link" aria-label="Direct link to Technologies Used" title="Direct link to Technologies Used" translate="no">​</a></h2>
+<p><strong>Frontend</strong></p>
 <ul>
 <li class="">Next.js (React)</li>
 <li class="">WebSockets</li>
 <li class="">Modern React hooks + context</li>
 </ul>
-<p>Backend</p>
+<p><strong>Backend</strong></p>
 <ul>
 <li class="">Loco.rs (Axum)</li>
 <li class="">SeaORM (SQLite)</li>
 <li class="">Vosk (offline speech recognition)</li>
 <li class="">FFmpeg + yt-dlp</li>
+</ul>
+<p><strong>Desktop</strong></p>
+<ul>
+<li class="">Tauri v2 (Rust)</li>
+<li class="">React + Vite + Tailwind v4</li>
+<li class="">Whisper (on-device STT)</li>
+<li class="">WeSpeaker (speaker identification)</li>
+<li class="">Piper TTS</li>
+<li class="">AES-256-GCM + OS keychain (voice encryption)</li>
 </ul>
 <hr>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="collaborators">Collaborators<a href="#collaborators" class="hash-link" aria-label="Direct link to Collaborators" title="Direct link to Collaborators" translate="no">​</a></h2>
