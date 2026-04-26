@@ -1,0 +1,60 @@
+[package]
+name = "desktop"
+version = "0.1.0"
+description = "Piggyback Learning"
+authors = ["Ayush Gupta"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri
+tauri = { version = "2", features = [] }
+
+# Async runtime
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "process"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Database
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"] }
+
+# ML / inference
+ort = { version = "2.0.0-rc.12", features = [] }
+fastembed = "5.13.3"
+whisper-rs = "0.16.0"
+ndarray = "0.17.2"
+
+# Audio
+cpal = "0.15"
+webrtc-vad = "0.4"
+rustfft = "6"
+
+# Vision
+nokhwa = { version = "0.10", features = ["input-native"] }
+image = "0.25"
+
+# Crypto
+aes-gcm = "0.10"
+keyring = "2"
+rand = "0.8"
+hex = "0.4"
+
+# OpenAI
+async-openai = { version = "0.34.0", features = ["byot", "chat-completion"] }
+base64 = "0.22.1"
+
+# Utilities
+dirs = "5"
