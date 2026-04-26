@@ -12,6 +12,7 @@ pub struct Answer {
     pub similarity_score: f32,
     pub mood: String,
     pub segment_id: i32,
+    pub video_id: String,
 }
 
 /// Frontend calls this when a question appears.
@@ -35,39 +36,41 @@ pub fn clear_answer_context(session: tauri::State<SharedSession>) {
     session.lock().unwrap().exit_answer_mode();
 }
 
-/// Tauri command - called from frontend with explicit kid_id + video_id
-#[tauri::command]
-pub async fn get_answers(kid_id: i32, video_id: String) -> Result<Vec<Answer>, String> {
-    let answers = fetch_answers(kid_id, &video_id).await?;
-    crate::utils::app_handle::emit("orb://answers", serde_json::json!(answers));
-    Ok(answers)
-}
-
-/// Dispatcher entry point - reads kid_id + video_id from session
-pub async fn get_answers_for_session(args: &[String], session: &SharedSession) {
-    let (kid_id, video_id) = {
+/// Dispatcher entry point - parent views all answers for a named kid.
+pub async fn get_kids_answers(args: &[String], session: &SharedSession) {
+    let (transcript, role) = {
         let s = session.lock().unwrap();
-        let kid_id = match s.user_id {
-            Some(id) => id,
-            None => {
-                eprintln!("[answers] no user in session");
-                return;
-            }
-        };
-        let video_id = args
-            .first()
-            .cloned()
-            .or_else(|| s.current_video.clone())
-            .unwrap_or_default();
-        (kid_id, video_id)
+        let role = s.role.clone().unwrap_or_default();
+        let transcript = args.first().cloned().unwrap_or_default();
+        (transcript, role)
     };
-    match fetch_answers(kid_id, &video_id).await {
-        Ok(answers) => crate::utils::app_handle::emit("orb://answers", serde_json::json!(answers)),
+
+    // TODO: re-enable parent-only guard
+    // if role != "parent" {
+    //     eprintln!("[answers] non-parent attempted to view results - blocked");
+    //     return;
+    // }
+
+    let kid_id = match resolve_kid_name_from_transcript(&transcript).await {
+        Some(id) => id,
+        None => {
+            eprintln!("[answers] could not resolve kid name from: {transcript:?}");
+            crate::utils::app_handle::emit(
+                "orb://answers-error",
+                serde_json::json!({ "message": "I couldn't figure out which kid you meant." }),
+            );
+            return;
+        }
+    };
+
+    match fetch_all_answers(kid_id).await {
+        Ok(answers) => crate::utils::app_handle::emit(
+            "orb://answers",
+            serde_json::json!({ "answers": answers, "kid_id": kid_id }),
+        ),
         Err(e) => eprintln!("[answers] fetch failed: {e}"),
     }
 }
-
-// Dispatcher entry point
 
 /// Called directly from capture loop when SessionMode::Answer.
 /// Reads last_transcript + session context, scores, detects mood, persists, emits.
@@ -106,13 +109,11 @@ pub async fn analyze_answer(_args: &[String], session: &SharedSession) {
         (kid_id, video_id, segment_id, transcript, expected)
     };
 
-    // Exit answer mode immediately - next utterance goes back through classifier
     session.lock().unwrap().exit_answer_mode();
 
     eprintln!("[answers] transcript={transcript:?} expected={expected_answer:?}");
 
     let (is_correct, similarity_score) = compute_similarity(&transcript, &expected_answer);
-
     let mood = capture_face_frame_for_mood().await;
 
     let answer = Answer {
@@ -121,6 +122,7 @@ pub async fn analyze_answer(_args: &[String], session: &SharedSession) {
         similarity_score,
         mood,
         segment_id,
+        video_id: video_id.clone(),
     };
 
     if let Err(e) = persist_answer(kid_id, &video_id, &answer).await {
@@ -135,11 +137,63 @@ pub async fn analyze_answer(_args: &[String], session: &SharedSession) {
             "mood":             answer.mood,
             "segment_id":       answer.segment_id,
             "transcript":       answer.transcript,
+            "video_id":         answer.video_id,
         }),
     );
 }
 
-// Camera snapshot
+// DB
+
+async fn fetch_all_answers(kid_id: i32) -> Result<Vec<Answer>, String> {
+    let db = get_db();
+    let rows = sqlx::query(
+        "SELECT a.transcript, a.is_correct, a.similarity_score, a.mood,
+                a.segment_id, a.video_id, v.title
+         FROM answers a
+         LEFT JOIN videos v ON v.id = a.video_id
+         WHERE a.kid_id = ?
+         ORDER BY a.video_id, a.id ASC",
+    )
+    .bind(kid_id)
+    .fetch_all(db)
+    .await
+    .map_err(|e| format!("fetch_all_answers: {e}"))?;
+
+    use sqlx::Row;
+    Ok(rows
+        .iter()
+        .map(|r| Answer {
+            transcript: r.get("transcript"),
+            is_correct: r.get::<i32, _>("is_correct") != 0,
+            similarity_score: r.get::<f64, _>("similarity_score") as f32,
+            mood: r
+                .get::<Option<String>, _>("mood")
+                .unwrap_or_else(|| "neutral".into()),
+            segment_id: r.get("segment_id"),
+            video_id: r.get("video_id"),
+        })
+        .collect())
+}
+
+async fn persist_answer(kid_id: i32, video_id: &str, a: &Answer) -> Result<(), String> {
+    let db = get_db();
+    sqlx::query(
+        "INSERT INTO answers
+            (kid_id, video_id, segment_id, transcript, is_correct, similarity_score, mood)
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(kid_id)
+    .bind(video_id)
+    .bind(a.segment_id)
+    .bind(&a.transcript)
+    .bind(a.is_correct as i32)
+    .bind(a.similarity_score)
+    .bind(&a.mood)
+    .execute(db)
+    .await
+    .map_err(|e| format!("persist_answer: {e}"))?;
+    Ok(())
+}
 
 async fn capture_face_frame_for_mood() -> String {
     match crate::utils::gaze::request_snapshot().await {
@@ -151,54 +205,22 @@ async fn capture_face_frame_for_mood() -> String {
     }
 }
 
-// DB
-
-async fn persist_answer(kid_id: i32, video_id: &str, a: &Answer) -> Result<(), String> {
+async fn resolve_kid_name_from_transcript(transcript: &str) -> Option<i32> {
     let db = get_db();
-    let is_correct_int = a.is_correct as i32;
-    sqlx::query(
-        "INSERT INTO answers
-            (kid_id, video_id, segment_id, transcript, is_correct, similarity_score, mood)
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
-    )
-    .bind(kid_id)
-    .bind(video_id)
-    .bind(a.segment_id)
-    .bind(&a.transcript)
-    .bind(is_correct_int)
-    .bind(a.similarity_score)
-    .bind(&a.mood)
-    .execute(db)
-    .await
-    .map_err(|e| format!("persist_answer: {e}"))?;
-    Ok(())
-}
+    let rows = sqlx::query("SELECT id, name FROM users WHERE role = 'kid'")
+        .fetch_all(db)
+        .await
+        .ok()?;
 
-async fn fetch_answers(kid_id: i32, video_id: &str) -> Result<Vec<Answer>, String> {
-    let db = get_db();
-    let rows = sqlx::query(
-        "SELECT transcript, is_correct, similarity_score, mood, segment_id
-         FROM answers WHERE kid_id = ? AND video_id = ? ORDER BY id ASC",
-    )
-    .bind(kid_id)
-    .bind(video_id)
-    .fetch_all(db)
-    .await
-    .map_err(|e| format!("fetch_answers: {e}"))?;
-
-    Ok(rows
-        .iter()
-        .map(|r| {
-            use sqlx::Row;
-            Answer {
-                transcript: r.get("transcript"),
-                is_correct: r.get::<i32, _>("is_correct") != 0,
-                similarity_score: r.get::<f64, _>("similarity_score") as f32,
-                mood: r
-                    .get::<Option<String>, _>("mood")
-                    .unwrap_or_else(|| "neutral".into()),
-                segment_id: r.get("segment_id"),
-            }
-        })
-        .collect())
+    let normalised = crate::utils::text::normalize(transcript);
+    use sqlx::Row;
+    rows.iter().find_map(|row| {
+        let name: String = row.get("name");
+        let id: i32 = row.get("id");
+        if normalised.contains(&crate::utils::text::normalize(&name)) {
+            Some(id)
+        } else {
+            None
+        }
+    })
 }
