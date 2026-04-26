@@ -26,7 +26,7 @@ export default function QuestionOverlay({
   return (
     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center pb-8 px-5 z-20">
       <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl">
-        <div className="bg-gradient-to-r from-pink-400 to-violet-400 px-5 py-4 flex items-center justify-between">
+        <div className="bg-linear-to-r from-pink-400 to-violet-400 px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xl">🎤</span>
             <span className="text-white font-semibold text-sm">

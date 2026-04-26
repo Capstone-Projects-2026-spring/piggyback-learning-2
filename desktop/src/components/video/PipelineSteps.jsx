@@ -13,7 +13,7 @@ export default function PipelineSteps({ stage, hasQuestions }) {
         return (
           <div key={step.key} className="flex items-center gap-2">
             <div
-              className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+              className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${
                 done
                   ? "bg-green-400"
                   : active

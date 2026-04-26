@@ -10,7 +10,7 @@ export const RING_CLASS = {
   speaking: "ring-4 ring-blue-300 ring-offset-4",
 };
 
-// Mirrors Intent enum in intent.rs — WakeOnly and Unhandled are never dispatched.
+// Mirrors Intent enum in intent.rs - WakeOnly and Unhandled are never dispatched.
 export const INTENT_RESPONSES = {
   search: "Searching for that.",
   add_kid: "Let's add a new kid profile!",

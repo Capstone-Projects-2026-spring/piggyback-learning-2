@@ -16,7 +16,7 @@ export default function QuestionCard({
     >
       <div className="flex items-start gap-3 p-4">
         <span
-          className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${QTYPE_COLORS[q.qtype] ?? "bg-gray-50 border-gray-200 text-gray-500"}`}
+          className={`shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${QTYPE_COLORS[q.qtype] ?? "bg-gray-50 border-gray-200 text-gray-500"}`}
         >
           {QTYPE_LABELS[q.qtype] ?? q.qtype}
         </span>
@@ -38,7 +38,7 @@ export default function QuestionCard({
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+        <div className="flex flex-col items-end gap-2 shrink-0">
           <button
             onClick={onSetBest}
             title={isBest ? "Current best" : "Set as best"}

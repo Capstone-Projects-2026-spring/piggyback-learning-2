@@ -154,7 +154,7 @@ export default function VideoPanel({ onClose, role }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex flex-col bg-gradient-to-b from-pink-50 to-white">
+      <div className="fixed inset-0 z-40 flex flex-col bg-linear-to-b from-pink-50 to-white">
         <div className="flex items-center justify-between px-5 pt-8 pb-4">
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-gray-800 truncate">

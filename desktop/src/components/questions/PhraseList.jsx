@@ -24,7 +24,7 @@ export default function PhraseList({ prompts, completedCount, stage }) {
             }`}
           >
             <div
-              className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+              className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
                 done
                   ? "bg-green-400"
                   : active

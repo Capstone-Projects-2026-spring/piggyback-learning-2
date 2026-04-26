@@ -80,7 +80,7 @@ export default function VideoCard({
             )}
           </div>
 
-          {/* Status badge — hide while processing is active */}
+          {/* Status badge - hide while processing is active */}
           {!isAssigned && status && !processingInfo && (
             <VideoStatusBadge status={status} />
           )}
@@ -116,7 +116,7 @@ export default function VideoCard({
             </div>
           )}
 
-          {/* Pipeline checklist — only shown once downloaded */}
+          {/* Pipeline checklist - only shown once downloaded */}
           {!isAssigned && isDownloaded && (
             <PipelineSteps stage={stage} hasQuestions={hasQuestions} />
           )}
@@ -133,7 +133,7 @@ export default function VideoCard({
           {isAssigned && (
             <button
               onClick={onWatch}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-pink-400 to-violet-400 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+              className="w-full py-2.5 rounded-xl bg-linear-to-r from-pink-400 to-violet-400 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               ▶ Watch & Learn
             </button>

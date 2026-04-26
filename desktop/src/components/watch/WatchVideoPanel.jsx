@@ -94,7 +94,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     };
   }, []);
 
-  // ── Navigation helpers ────────────────────────────────────────────────────
+  // Navigation helpers
 
   const advanceAndPlay = useCallback(() => {
     const segs = segmentsRef.current;
@@ -169,7 +169,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       } else {
         setRecordingState("wrong");
         if (followup) {
-          setStatus("wrong", "Not quite — let's rewatch!");
+          setStatus("wrong", "Not quite - let's rewatch!");
           addTimer(() => {
             setCurrentQuestion(null);
             setIsFollowup(false);
@@ -178,7 +178,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
             addTimer(() => replaySegment(), 100);
           }, 2000);
         } else if (q?.followup_wrong_question) {
-          setStatus("wrong", "Not quite — try this instead!");
+          setStatus("wrong", "Not quite - try this instead!");
           addTimer(() => {
             setRecordingState("idle");
             setStatusMessage("");
@@ -186,7 +186,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
             setIsFollowup(true);
           }, 2000);
         } else {
-          setStatus("wrong", "Not quite — let's rewatch!");
+          setStatus("wrong", "Not quite - let's rewatch!");
           addTimer(() => {
             setCurrentQuestion(null);
             setRecordingState("idle");
@@ -206,7 +206,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     advanceAndPlay();
   }, [advanceAndPlay]);
 
-  // ── Tauri event listeners ─────────────────────────────────────────────────
+  // Tauri event listeners
 
   useTauriListener("orb://mpv-tick", (data) => {
     const segs = segmentsRef.current;
@@ -215,7 +215,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     const timeLeft = segs[idx].end_seconds - data.position;
     if (timeLeft <= 6 && timeLeft > 3 && !sixSecondShownRef.current) {
       sixSecondShownRef.current = true;
-      piggySpeak("talk", "Pay attention — a question is coming 👀");
+      piggySpeak("talk", "Pay attention - a question is coming 👀");
     }
     if (timeLeft <= 3 && timeLeft > 0 && !threeSecondShownRef.current) {
       threeSecondShownRef.current = true;
@@ -255,7 +255,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     addTimer(() => handleResult(data), 600);
   });
 
-  // ── Set answer context whenever question/followup changes ─────────────────
+  // Set answer context whenever question/followup changes
 
   useEffect(() => {
     if (!currentQuestion) return;
@@ -288,7 +288,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     speak("Listening for your answer");
   }, [currentQuestion, isFollowup, followupType, videoId]);
 
-  // ── Gaze tracker ──────────────────────────────────────────────────────────
+  // Gaze tracker
 
   useGazeTracker({
     enabled: true,
@@ -308,7 +308,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     },
   });
 
-  // ── Derived display values ────────────────────────────────────────────────
+  // Derived display values
 
   const displayQuestion = isFollowup
     ? followupType === "correct"

@@ -7,7 +7,7 @@ class CommandBus {
   #enrollmentListeners = new Set();
   #lastEnrollmentEvent = null;
 
-  // Safe handler invocation — isolates listener errors from each other
+  // Safe handler invocation - isolates listener errors from each other
   #call(handler, payload) {
     try {
       handler(payload);
@@ -43,7 +43,7 @@ class CommandBus {
 
   onEnrollment(handler) {
     this.#enrollmentListeners.add(handler);
-    // Replay cached parent enrollment events — these can arrive before the
+    // Replay cached parent enrollment events - these can arrive before the
     // subscriber registers since the overlay mounts after the Tauri event fires.
     // Kid enrollment is always triggered while the overlay is already mounted.
     if (this.#lastEnrollmentEvent?.flow === "parent") {
@@ -54,7 +54,7 @@ class CommandBus {
 
   dispatch({ intent, args, raw }) {
     const event = { intent, args, raw };
-    console.info("[orb] command ←", event);
+    console.info("[orb] command <-", event);
     this.#handlers.get(intent)?.forEach((h) => this.#call(h, event));
     this.#wildcards.forEach((h) => this.#call(h, event));
   }
@@ -69,13 +69,13 @@ class CommandBus {
   }
 
   dispatchSpeaker(data) {
-    console.info("[orb] speaker ←", data); // check this appears with correct shape
+    console.info("[orb] speaker <-", data);
     this.#speakerListeners.forEach((h) => this.#call(h, data));
   }
 
   dispatchEnrollment(data) {
     this.#lastEnrollmentEvent = data;
-    console.info("[orb] enrollment ←", data.stage, data);
+    console.info("[orb] enrollment <-", data.stage, data);
     this.#enrollmentListeners.forEach((h) => this.#call(h, data));
   }
 }

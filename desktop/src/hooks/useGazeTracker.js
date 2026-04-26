@@ -59,7 +59,7 @@ export function useGazeTracker({ onLookAway, onReturn, enabled, paused }) {
       }
     }).then((fn) => {
       if (cancelled) {
-        fn(); // cleanup already ran — unlisten immediately
+        fn(); // cleanup already ran - unlisten immediately
       } else {
         unlisten = fn;
       }

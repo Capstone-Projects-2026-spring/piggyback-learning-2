@@ -52,7 +52,7 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
       return flow === "kid" ? "new kid setup" : "getting started";
     if (stage === "name_confirmed") return `hey, ${userName || "there"}!`;
     if (stage === "prompt")
-      return `voice setup — ${activeIdx} of ${prompts.length} done`;
+      return `voice setup - ${activeIdx} of ${prompts.length} done`;
     if (stage === "done") return "all set!";
     if (stage === "error") return "something went wrong";
     return "";
@@ -61,7 +61,7 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
   if (!message) {
     return (
       <div
-        className={`flex flex-col items-center justify-center min-h-screen bg-gradient-to-b ${theme.bg} select-none`}
+        className={`flex flex-col items-center justify-center min-h-screen bg-linear-to-b ${theme.bg} select-none`}
       >
         <img
           src={orbPng}
@@ -76,7 +76,7 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
 
   return (
     <div
-      className={`flex flex-col items-center min-h-screen bg-gradient-to-b ${theme.bg} select-none px-6 py-12`}
+      className={`flex flex-col items-center min-h-screen bg-linear-to-b ${theme.bg} select-none px-6 py-12`}
     >
       <OrbDisplay stage={stage} theme={theme} />
 

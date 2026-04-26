@@ -52,7 +52,7 @@ export default function Orb() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-pink-50 to-white select-none">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-linear-to-b from-pink-50 to-white select-none">
       <div className="absolute top-6 right-6">
         <SessionBadge />
       </div>

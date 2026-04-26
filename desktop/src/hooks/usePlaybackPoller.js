@@ -26,7 +26,7 @@ export function usePlaybackPoller({
       const idx = segmentIndexRef.current;
 
       if (!player || segs.length === 0) return;
-      if (idx >= segs.length) return; // exhausted — caller should stop the poller
+      if (idx >= segs.length) return; // exhausted - caller should stop the poller
 
       const segment = segs[idx];
 
@@ -51,7 +51,7 @@ export function usePlaybackPoller({
         lastTriggeredIdxRef.current !== idx - 1 &&
         lastTriggeredIdxRef.current !== idx
       ) {
-        // fresh segment — ensure lock is clear so it can fire
+        // fresh segment - ensure lock is clear so it can fire
       }
       // Reset lock if we've rewound behind the trigger window for this segment.
       if (currentTime < end - 0.5 && lastTriggeredIdxRef.current === idx) {
@@ -70,6 +70,6 @@ export function usePlaybackPoller({
     }, 250);
 
     return () => clearInterval(interval);
-    // Refs are stable — this intentionally runs once. Callbacks are handled via refs above.
+    // Refs are stable - this intentionally runs once. Callbacks are handled via refs above.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }

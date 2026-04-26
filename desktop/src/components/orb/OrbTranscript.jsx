@@ -16,7 +16,7 @@ export default function OrbTranscript({ transcript, lastCommand }) {
           </span>
           {lastCommand.args?.length > 0 && (
             <span className="text-xs text-pink-300">
-              — {lastCommand.args.join(" ")}
+              - {lastCommand.args.join(" ")}
             </span>
           )}
         </div>

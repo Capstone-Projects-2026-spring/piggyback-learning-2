@@ -17,7 +17,7 @@ pub fn init(res: &std::path::Path) -> TtsState {
         return TtsState(Mutex::new(None));
     }
 
-    eprintln!("[tts] using Piper Alba — {}", model_path.display());
+    eprintln!("[tts] using Piper Alba - {}", model_path.display());
     TtsState(Mutex::new(Some(model_path.to_string_lossy().to_string())))
 }
 

@@ -88,7 +88,7 @@ export default function QuestionModal({ videoId, segments, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <Backdrop onClick={onClose} />
       <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl flex flex-col max-h-[88vh]">
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="text-base font-bold text-gray-800">Questions</h2>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -111,7 +111,7 @@ export default function QuestionModal({ videoId, segments, onClose }) {
         />
 
         {currentBest && (
-          <div className="mx-5 mt-3 mb-1 px-4 py-3 rounded-2xl bg-pink-50 border border-pink-200 flex-shrink-0">
+          <div className="mx-5 mt-3 mb-1 px-4 py-3 rounded-2xl bg-pink-50 border border-pink-200 shrink-0">
             <p className="text-xs text-pink-400 font-medium mb-1">
               ⭐ Best Question
             </p>
@@ -140,7 +140,7 @@ export default function QuestionModal({ videoId, segments, onClose }) {
           <div className="h-2" />
         </div>
 
-        <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
+        <div className="px-5 py-4 border-t border-gray-100 shrink-0">
           <button
             onClick={handleSave}
             disabled={saving}
