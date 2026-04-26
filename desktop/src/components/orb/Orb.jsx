@@ -33,7 +33,6 @@ export default function Orb() {
 
       commandBus.onWake((hasEmbedding) => {
         setStatus("processing");
-        speak(hasEmbedding ? "I recognise you! Go ahead." : "Hey! I'm here.");
         setTimeout(() => setStatus("listening"), 1500);
       }),
 

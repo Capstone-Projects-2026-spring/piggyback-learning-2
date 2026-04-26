@@ -201,11 +201,11 @@ fn run_capture_loop(
             continue;
         }
 
-        // Check cooldown again after transcription — whisper takes 1-3s so a
+        // Check cooldown again after transcription - whisper takes 1-3s so a
         // dispatch may have happened during inference (e.g. previous command's
         // TTS started while we were transcribing the next utterance).
         if in_cooldown() {
-            eprintln!("[capture] cooldown active post-transcription — dropping");
+            eprintln!("[capture] cooldown active post-transcription - dropping");
             continue;
         }
 

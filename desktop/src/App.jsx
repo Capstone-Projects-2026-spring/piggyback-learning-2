@@ -43,7 +43,7 @@ export default function App() {
     const fallback = setTimeout(() => {
       setMode((m) => {
         if (m === "loading") {
-          speak("Hey! I'm Jarvis. Say my name to get started.");
+          speak("Hey I'm Jarvis. Say my name to get started.");
           return "ready";
         }
         return m;
