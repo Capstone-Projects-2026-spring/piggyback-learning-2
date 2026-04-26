@@ -1,5 +1,6 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, SampleRate, StreamConfig};
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use whisper_rs::{FullParams, SamplingStrategy};
 
@@ -8,6 +9,7 @@ use super::onboarding::{
     average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
 };
 use super::vad::VadChunker;
+use crate::tts::TTS_ACTIVE;
 use crate::utils::{app_handle, text::is_noise_transcript};
 use crate::voice::{
     audio_processor, command_resolver,
@@ -135,6 +137,13 @@ fn run_capture_loop(
             chunk.len(),
             chunk.len() as f32 / TARGET_RATE as f32
         );
+
+        // Drop audio captured while TTS is playing - prevents the orb from
+        // hearing its own voice and trying to transcribe it.
+        if TTS_ACTIVE.load(Ordering::SeqCst) {
+            eprintln!("[capture] TTS active — dropping chunk");
+            continue;
+        }
 
         let processed = audio_processor::process_f32(chunk.clone());
         if processed.is_empty() {
