@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { commandBus } from "@/lib";
 import { useTauriListener } from "@/hooks";
+import { speak } from "@/utils";
 import Orb from "@/components/orb/Orb.jsx";
 import EnrollmentOverlay from "@/components/enrollment/EnrollmentOverlay.jsx";
-import VideoPanel from "@/components/video/VideoPanel.jsx";
-import { speak } from "@/utils";
 
-const LOADING_FALLBACK_MS = 6000;
+const VideoPanel = lazy(() => import("@/components/video/VideoPanel.jsx"));
+
+const LOADING_FALLBACK_MS = 2000;
 
 export default function App() {
   const [mode, setMode] = useState("loading");
@@ -14,13 +15,18 @@ export default function App() {
   const [kidEnrolling, setKidEnrolling] = useState(false);
   const [showVideos, setShowVideos] = useState(false);
 
-  useTauriListener("orb://my-videos", () => {
-    setShowVideos(true);
+  useTauriListener("orb://ready", () => {
+    setMode((m) => {
+      if (m === "loading") {
+        speak("Hey I'm Jarvis. Say my name to get started.");
+        return "ready";
+      }
+      return m;
+    });
   });
 
-  useTauriListener("orb://recommendations", () => {
-    setShowVideos(true);
-  });
+  useTauriListener("orb://my-videos", () => setShowVideos(true));
+  useTauriListener("orb://recommendations", () => setShowVideos(true));
 
   useEffect(() => {
     const offEnrollment = commandBus.onEnrollment((data) => {
@@ -38,8 +44,9 @@ export default function App() {
     });
 
     const offSearch = commandBus.on("search", () => setShowVideos(true));
+    const offMyVideos = commandBus.on("my_videos", () => setShowVideos(true));
 
-    // Fallback in case Rust never fires an enrollment event (already enrolled).
+    // Fallback only if orb://ready never fires
     const fallback = setTimeout(() => {
       setMode((m) => {
         if (m === "loading") {
@@ -53,13 +60,14 @@ export default function App() {
     return () => {
       offEnrollment();
       offSearch();
+      offMyVideos();
       clearTimeout(fallback);
     };
   }, []);
 
   if (mode === "loading") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-pink-50 to-white select-none">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-linear-to-b from-pink-50 to-white select-none">
         <p className="text-sm text-pink-300 animate-pulse">Starting up…</p>
       </div>
     );
@@ -82,7 +90,9 @@ export default function App() {
       <Orb />
 
       {showVideos && (
-        <VideoPanel role={role} onClose={() => setShowVideos(false)} />
+        <Suspense fallback={null}>
+          <VideoPanel role={role} onClose={() => setShowVideos(false)} />
+        </Suspense>
       )}
 
       {kidEnrolling && (

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { startOrb, stopOrb, commandBus } from "@/lib";
 import { speak } from "@/utils";
 import SessionBadge from "./SessionBadge.jsx";
@@ -31,7 +31,7 @@ export default function Orb() {
     const offs = [
       commandBus.onTranscript((text) => setTranscript(text)),
 
-      commandBus.onWake((hasEmbedding) => {
+      commandBus.onWake(() => {
         setStatus("processing");
         setTimeout(() => setStatus("listening"), 1500);
       }),

@@ -1,16 +1,13 @@
 export const STATUS_LABEL = {
   listening: "Listening…",
   processing: "Processing…",
-  speaking: "Jarvis is speaking…",
 };
 
 export const RING_CLASS = {
   listening: "",
   processing: "ring-4 ring-pink-300 ring-offset-4 animate-pulse",
-  speaking: "ring-4 ring-blue-300 ring-offset-4",
 };
 
-// Mirrors Intent enum in intent.rs - WakeOnly and Unhandled are never dispatched.
 export const INTENT_RESPONSES = {
   search: "Searching for that.",
   add_kid: "Let's add a new kid profile!",
@@ -23,4 +20,4 @@ export const INTENT_RESPONSES = {
   download_video: "Downloading that video now.",
 };
 
-export const STARTUP_DELAY_MS = 1500;
+export const STARTUP_DELAY_MS = 500;
