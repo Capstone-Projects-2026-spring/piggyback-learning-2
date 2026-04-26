@@ -1,7 +1,8 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, SampleRate, StreamConfig};
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 use whisper_rs::{FullParams, SamplingStrategy};
 
 use super::enrollment::{create_user, emit_enrollment, EnrollmentEvent};
@@ -9,7 +10,6 @@ use super::onboarding::{
     average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
 };
 use super::vad::VadChunker;
-use crate::tts::TTS_ACTIVE;
 use crate::utils::{app_handle, text::is_noise_transcript};
 use crate::voice::{
     audio_processor, command_resolver,
@@ -24,6 +24,51 @@ use crate::voice::{
 };
 
 const TARGET_RATE: u32 = 16000;
+
+// Cooldown sizing constants
+const COOLDOWN_MS_PER_CHAR: u64 = 60;
+const COOLDOWN_MIN_MS: u64 = 1500;
+const COOLDOWN_MAX_MS: u64 = 6000;
+
+// Stores the timestamp (ms since epoch) until which audio should be dropped.
+static COOLDOWN_UNTIL_MS: AtomicU64 = AtomicU64::new(0);
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
+fn in_cooldown() -> bool {
+    let until = COOLDOWN_UNTIL_MS.load(Ordering::SeqCst);
+    until != 0 && now_ms() < until
+}
+
+fn mark_dispatched() {
+    COOLDOWN_UNTIL_MS.store(now_ms() + 4000, Ordering::SeqCst);
+}
+
+fn mark_dispatched_with_text(text: &str) {
+    let estimated =
+        (text.len() as u64 * COOLDOWN_MS_PER_CHAR).clamp(COOLDOWN_MIN_MS, COOLDOWN_MAX_MS);
+    COOLDOWN_UNTIL_MS.store(now_ms() + estimated, Ordering::SeqCst);
+}
+
+fn intent_response(intent: &Intent) -> Option<&'static str> {
+    match intent {
+        Intent::Search => Some("Searching for that."),
+        Intent::AddKid => Some("Let's add a new kid profile!"),
+        Intent::MyAnswers => Some("Let me pull up your results."),
+        Intent::AddTag => Some("Adding that tag now."),
+        Intent::MyVideos => Some("Here are your assigned videos."),
+        Intent::AssignVideo => Some("Assigning that video now."),
+        Intent::WatchVideo => Some("Loading the video for you."),
+        Intent::Recommendations => Some("Let me find something good for you!"),
+        Intent::DownloadVideo => Some("Downloading that video now."),
+        _ => None,
+    }
+}
 
 pub struct CaptureHandle {
     _stream: cpal::Stream,
@@ -105,8 +150,6 @@ pub fn start(
     Ok(CaptureHandle { _stream: stream })
 }
 
-// Capture loop
-
 fn run_capture_loop(
     session: SharedSession,
     onboarding: SharedOnboarding,
@@ -117,6 +160,14 @@ fn run_capture_loop(
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(30));
+
+        // During cooldown, drain the buffer and reset VAD so audio doesn't
+        // accumulate and fire the moment cooldown expires.
+        if in_cooldown() {
+            buffer.lock().unwrap().clear();
+            chunker.flush("reset so audio doesn't accumulate");
+            continue;
+        }
 
         let raw: Vec<f32> = {
             let mut buf = buffer.lock().unwrap();
@@ -138,13 +189,6 @@ fn run_capture_loop(
             chunk.len() as f32 / TARGET_RATE as f32
         );
 
-        // Drop audio captured while TTS is playing - prevents the orb from
-        // hearing its own voice and trying to transcribe it.
-        if TTS_ACTIVE.load(Ordering::SeqCst) {
-            eprintln!("[capture] TTS active — dropping chunk");
-            continue;
-        }
-
         let processed = audio_processor::process_f32(chunk.clone());
         if processed.is_empty() {
             eprintln!("[capture] silence after processing - skipping");
@@ -154,6 +198,14 @@ fn run_capture_loop(
         let transcript = transcribe(&processed);
         eprintln!("[capture] transcript: {:?}", transcript);
         if transcript.is_empty() {
+            continue;
+        }
+
+        // Check cooldown again after transcription — whisper takes 1-3s so a
+        // dispatch may have happened during inference (e.g. previous command's
+        // TTS started while we were transcribing the next utterance).
+        if in_cooldown() {
+            eprintln!("[capture] cooldown active post-transcription — dropping");
             continue;
         }
 
@@ -168,8 +220,6 @@ fn run_capture_loop(
         }
 
         // Answer mode - bypass wake + classifier
-        // Transcript is written into session before spawning so analyze_answer
-        // reads a consistent snapshot even if another utterance arrives quickly.
         {
             let mut s = session.lock().unwrap();
             if s.mode == SessionMode::Answer {
@@ -199,7 +249,7 @@ fn run_capture_loop(
         let wake = wake_word::detect(&transcript);
 
         if wake.wake_detected {
-            // Speaker ID runs async - does not block the audio loop
+            mark_dispatched();
             if let Some(emb) = speaker::extract_embedding(&chunk) {
                 let sc = session.clone();
                 tauri::async_runtime::spawn(async move {
@@ -224,6 +274,8 @@ fn run_capture_loop(
                     });
                 }
                 _ => {
+                    let cooldown_text = intent_response(&resolved.intent).unwrap_or("");
+                    mark_dispatched_with_text(cooldown_text);
                     let rc = resolved.clone();
                     let sc = session.clone();
                     let oc = onboarding.clone();
@@ -240,8 +292,6 @@ fn run_capture_loop(
         }
     }
 }
-
-// Transcription
 
 fn transcribe(samples: &[f32]) -> String {
     let ctx = get_whisper();
@@ -274,8 +324,6 @@ fn transcribe(samples: &[f32]) -> String {
         .to_lowercase()
 }
 
-// Events
-
 #[derive(serde::Serialize, Clone)]
 pub struct VoiceEvent {
     pub transcript: String,
@@ -286,8 +334,6 @@ pub struct VoiceEvent {
 fn emit_voice(event: VoiceEvent) {
     app_handle::emit("orb://voice-result", event);
 }
-
-// Onboarding
 
 fn handle_onboarding_audio(
     onboarding: &SharedOnboarding,
@@ -333,9 +379,6 @@ fn handle_onboarding_audio(
                 tauri::async_runtime::spawn(async move {
                     match create_user(name.clone(), avg, &role).await {
                         Ok(id) => {
-                            // Only update session for parent - kid enrollment is
-                            // triggered by an already-identified parent so the
-                            // session stays as-is after kid creation.
                             if role == "parent" {
                                 session_clone.lock().unwrap().set_user(
                                     id,
@@ -345,7 +388,7 @@ fn handle_onboarding_audio(
                             }
 
                             let (stage, message) = if role == "parent" {
-                                ("done",     format!("You're all set, {name}! Say 'Hey Jarvis' whenever you need me!"))
+                                ("done", format!("You're all set, {name}! Say 'Hey Jarvis' whenever you need me!"))
                             } else {
                                 ("kid_done", format!("You're all set, {name}! Say 'Hey Jarvis' whenever you want to learn something!"))
                             };
