@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { speak } from "@/utils";
 import Spinner from "../ui/Spinner.jsx";
 
 export default function QuestionOverlay({
@@ -7,6 +9,20 @@ export default function QuestionOverlay({
   isFollowup,
   onClose,
 }) {
+  useEffect(() => {
+    if (question) speak(question);
+  }, [question]);
+
+  // Speak result messages.
+  useEffect(() => {
+    if (
+      statusMessage &&
+      (recordingState === "correct" || recordingState === "wrong")
+    ) {
+      speak(statusMessage);
+    }
+  }, [recordingState, statusMessage]);
+
   return (
     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-end justify-center pb-8 px-5 z-20">
       <div className="w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl">

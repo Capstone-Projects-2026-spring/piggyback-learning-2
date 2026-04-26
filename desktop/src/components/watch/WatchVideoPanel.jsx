@@ -1,15 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSegments, useGazeTracker, useTauriListener } from "@/hooks";
+import { speak } from "@/utils";
 import PiggyCompanion from "./PiggyCompanion.jsx";
 import LookAtScreenModal from "./LookAtScreenModal.jsx";
 import QuestionOverlay from "./QuestionOverlay.jsx";
-
-const PAUSE_MESSAGES = [
-  "Let's go — what happened? ▶️",
-  "Why did we stop? Let's keep watching 👀",
-  "Come on, we were doing so good 😄",
-];
 
 const WATCH_TEXT = "Let's watch carefully 👀";
 
@@ -30,16 +25,28 @@ export default function WatchVideoPanel({ videoId, onClose }) {
   const threeSecondShownRef = useRef(false);
   const isFollowupRef = useRef(false);
   const followupTypeRef = useRef(null);
-  // Track active timers so we can clear them all on unmount.
   const timersRef = useRef([]);
 
   const { segments, segmentsRef, videoPath } = useSegments(videoId);
 
-  const addTimer = (fn, ms) => {
+  // Stable refs so useCallback deps stay minimal.
+  const addTimer = useCallback((fn, ms) => {
     const id = setTimeout(fn, ms);
     timersRef.current.push(id);
     return id;
-  };
+  }, []);
+
+  const piggySpeak = useCallback((mode, text) => {
+    setPiggyMode(mode);
+    setPiggyText(text);
+    if (text) speak(text);
+  }, []);
+
+  const setStatus = useCallback((state, message) => {
+    setRecordingState(state);
+    setStatusMessage(message);
+    if (message) speak(message);
+  }, []);
 
   // Clear all pending timers on unmount.
   useEffect(() => {
@@ -70,15 +77,12 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       end_seconds: s.end_seconds,
     }));
     invoke("launch_video", { path: videoPath, segments: segmentInfos })
-      .then(() => {
-        setPiggyMode("watch");
-        setPiggyText(WATCH_TEXT);
-      })
+      .then(() => piggySpeak("watch", WATCH_TEXT))
       .catch((e) => {
         console.error("[WatchVideoPanel] launch failed:", e);
-        setPiggyText("Failed to launch video");
+        piggySpeak("talk", "Failed to launch video");
       });
-  }, [videoPath, segments, launched]);
+  }, [videoPath, segments, launched, piggySpeak]);
 
   // Start/stop gaze detection for the lifetime of this panel.
   useEffect(() => {
@@ -107,19 +111,16 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     invoke("clear_answer_context").catch(() => {});
 
     if (nextIdx >= segs.length) {
+      speak("Great job! You finished the video.");
       invoke("mpv_quit").catch(() => {});
       onClose();
       return;
     }
 
-    setPiggyMode("talk");
-    setPiggyText("Nice! Let's keep watching 🎬");
-    addTimer(() => {
-      setPiggyMode("watch");
-      setPiggyText(WATCH_TEXT);
-    }, 2000);
+    piggySpeak("talk", "Nice! Let's keep watching 🎬");
+    addTimer(() => piggySpeak("watch", WATCH_TEXT), 2000);
     invoke("mpv_play").catch(console.error);
-  }, [segmentsRef, onClose]);
+  }, [segmentsRef, onClose, piggySpeak, addTimer]);
 
   const replaySegment = useCallback(() => {
     const segs = segmentsRef.current;
@@ -130,17 +131,13 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     threeSecondShownRef.current = false;
     invoke("clear_answer_context").catch(() => {});
 
-    setPiggyMode("talk");
-    setPiggyText("Let's try that part again 👀");
-    addTimer(() => {
-      setPiggyMode("watch");
-      setPiggyText(WATCH_TEXT);
-    }, 2000);
+    piggySpeak("talk", "Let's try that part again 👀");
+    addTimer(() => piggySpeak("watch", WATCH_TEXT), 2000);
     invoke("mpv_seek", { seconds: segs[idx].start_seconds }).catch(
       console.error,
     );
     invoke("mpv_play").catch(console.error);
-  }, [segmentsRef]);
+  }, [segmentsRef, piggySpeak, addTimer]);
 
   const handleResult = useCallback(
     (result) => {
@@ -151,15 +148,14 @@ export default function WatchVideoPanel({ videoId, onClose }) {
 
       const q = currentQuestionRef.current;
       const followup = isFollowupRef.current;
-      const fType = followupTypeRef.current;
 
       if (result.is_correct) {
         setRecordingState("correct");
         if (followup) {
-          setStatusMessage("Correct! Well done 🎉");
+          setStatus("correct", "Correct! Well done 🎉");
           addTimer(() => advanceAndPlay(), 2000);
         } else if (q?.followup_correct_question) {
-          setStatusMessage("Correct! Here's a bonus question.");
+          setStatus("correct", "Correct! Here's a bonus question.");
           addTimer(() => {
             setRecordingState("idle");
             setStatusMessage("");
@@ -167,13 +163,13 @@ export default function WatchVideoPanel({ videoId, onClose }) {
             setIsFollowup(true);
           }, 2000);
         } else {
-          setStatusMessage("Correct! Well done 🎉");
+          setStatus("correct", "Correct! Well done 🎉");
           addTimer(() => advanceAndPlay(), 2000);
         }
       } else {
         setRecordingState("wrong");
         if (followup) {
-          setStatusMessage("Not quite — let's rewatch!");
+          setStatus("wrong", "Not quite — let's rewatch!");
           addTimer(() => {
             setCurrentQuestion(null);
             setIsFollowup(false);
@@ -182,7 +178,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
             addTimer(() => replaySegment(), 100);
           }, 2000);
         } else if (q?.followup_wrong_question) {
-          setStatusMessage("Not quite — try this instead!");
+          setStatus("wrong", "Not quite — try this instead!");
           addTimer(() => {
             setRecordingState("idle");
             setStatusMessage("");
@@ -190,7 +186,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
             setIsFollowup(true);
           }, 2000);
         } else {
-          setStatusMessage("Not quite — let's rewatch!");
+          setStatus("wrong", "Not quite — let's rewatch!");
           addTimer(() => {
             setCurrentQuestion(null);
             setRecordingState("idle");
@@ -199,7 +195,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
         }
       }
     },
-    [advanceAndPlay, replaySegment],
+    [advanceAndPlay, replaySegment, setStatus, addTimer],
   );
 
   const handleCloseQuestion = useCallback(() => {
@@ -219,13 +215,11 @@ export default function WatchVideoPanel({ videoId, onClose }) {
     const timeLeft = segs[idx].end_seconds - data.position;
     if (timeLeft <= 6 && timeLeft > 3 && !sixSecondShownRef.current) {
       sixSecondShownRef.current = true;
-      setPiggyMode("talk");
-      setPiggyText("Pay attention — a question is coming 👀");
+      piggySpeak("talk", "Pay attention — a question is coming 👀");
     }
     if (timeLeft <= 3 && timeLeft > 0 && !threeSecondShownRef.current) {
       threeSecondShownRef.current = true;
-      setPiggyMode("talk");
-      setPiggyText("Get ready to answer! 🎤");
+      piggySpeak("talk", "Get ready to answer! 🎤");
     }
   });
 
@@ -257,6 +251,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
   useTauriListener("orb://answer-result", (data) => {
     setRecordingState("analyzing");
     setStatusMessage("Checking your answer…");
+    speak("Checking your answer…");
     addTimer(() => handleResult(data), 600);
   });
 
@@ -290,6 +285,7 @@ export default function WatchVideoPanel({ videoId, onClose }) {
 
     setRecordingState("listening");
     setStatusMessage("Listening for your answer… 🎤");
+    speak("Listening for your answer");
   }, [currentQuestion, isFollowup, followupType, videoId]);
 
   // ── Gaze tracker ──────────────────────────────────────────────────────────
@@ -301,10 +297,14 @@ export default function WatchVideoPanel({ videoId, onClose }) {
       invoke("mpv_pause").catch(() => {});
       invoke("mpv_minimize").catch(() => {});
       setLookingAway(true);
+      speak("Hey, look at the screen!");
     },
     onReturn: () => {
       setLookingAway(false);
-      if (!currentQuestionRef.current) invoke("mpv_play").catch(() => {});
+      if (!currentQuestionRef.current) {
+        speak("Great, let's continue!");
+        invoke("mpv_play").catch(() => {});
+      }
     },
   });
 
@@ -327,7 +327,6 @@ export default function WatchVideoPanel({ videoId, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 pointer-events-none">
-      {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3 pointer-events-auto">
         <button
           onClick={() => {

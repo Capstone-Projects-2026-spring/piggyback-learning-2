@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { commandBus } from "@/lib";
+import { speak } from "@/utils";
 
 export default function SessionBadge() {
-  const [speaker, setSpeaker] = useState(null); // { name, role, score }
+  const [speaker, setSpeaker] = useState(null);
   const [flashWake, setFlashWake] = useState(false);
 
   useEffect(() => {
@@ -14,7 +15,10 @@ export default function SessionBadge() {
     });
 
     const offSpeaker = commandBus.onSpeaker((data) => {
-      if (data?.user_id) setSpeaker(data);
+      if (data?.user_id) {
+        setSpeaker(data);
+        speak(`Welcome back, ${data.name}!`);
+      }
     });
 
     return () => {

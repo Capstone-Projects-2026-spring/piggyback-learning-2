@@ -4,6 +4,7 @@ import { useTauriListener } from "@/hooks";
 import Orb from "@/components/orb/Orb.jsx";
 import EnrollmentOverlay from "@/components/enrollment/EnrollmentOverlay.jsx";
 import VideoPanel from "@/components/video/VideoPanel.jsx";
+import { speak } from "@/utils";
 
 const LOADING_FALLBACK_MS = 6000;
 
@@ -40,7 +41,13 @@ export default function App() {
 
     // Fallback in case Rust never fires an enrollment event (already enrolled).
     const fallback = setTimeout(() => {
-      setMode((m) => (m === "loading" ? "ready" : m));
+      setMode((m) => {
+        if (m === "loading") {
+          speak("Hey! I'm Jarvis. Say my name to get started.");
+          return "ready";
+        }
+        return m;
+      });
     }, LOADING_FALLBACK_MS);
 
     return () => {
