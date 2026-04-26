@@ -297,7 +297,7 @@ async fn generate_for_segment(
 
 #[derive(serde::Deserialize)]
 pub struct QuestionUpdate {
-    pub _segment_id: i64,
+    pub segment_id: i64,
     pub qtype: String,
     pub question: String,
     pub answer: String,
