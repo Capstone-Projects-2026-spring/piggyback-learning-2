@@ -1,3 +1,8 @@
+import { listen } from "@tauri-apps/api/event";
+import { commandBus } from "./commandBus.js";
+
+let unlistenVoice = null;
+let unlistenEnrollment = null;
 let unlistenSpeaker = null;
 
 export async function startOrb() {

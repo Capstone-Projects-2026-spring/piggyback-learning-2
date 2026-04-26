@@ -69,7 +69,7 @@ class CommandBus {
   }
 
   dispatchSpeaker(data) {
-    console.info("[orb] speaker ←", data.name ?? "unrecognized");
+    console.info("[orb] speaker ←", data); // check this appears with correct shape
     this.#speakerListeners.forEach((h) => this.#call(h, data));
   }
 
