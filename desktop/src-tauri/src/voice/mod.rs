@@ -10,5 +10,6 @@ pub mod onboarding;
 pub mod session;
 pub mod speaker;
 pub mod state;
+pub mod tts;
 pub mod vad;
 pub mod wake_word;
