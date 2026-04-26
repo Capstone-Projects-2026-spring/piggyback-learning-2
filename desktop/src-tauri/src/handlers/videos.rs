@@ -128,13 +128,21 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                     }),
                 );
             }
-            Ok(Some((id, title, thumbnail, duration, video_path, transcript_path))) => {
-                if let Err(e) = upsert_video(&id, &title, &thumbnail, duration, &video_path).await {
+            Ok(Some(video)) => {
+                if let Err(e) = upsert_video(
+                    &video.id,
+                    &video.title,
+                    &video.thumbnail,
+                    video.duration,
+                    &video.video_path,
+                )
+                .await
+                {
                     eprintln!("[videos] upsert failed: {e}");
                     emit(
                         "orb://video-status",
                         serde_json::json!({
-                            "video_id": id, "status": "error", "msg": e
+                            "video_id": video.id, "status": "error", "msg": e
                         }),
                     );
                     return;
@@ -143,19 +151,19 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                 emit(
                     "orb://video-status",
                     serde_json::json!({
-                        "video_id":        id,
+                        "video_id":        video.id,
                         "status":          "done",
-                        "title":           title,
-                        "thumbnail":       thumbnail,
-                        "duration":        duration,
-                        "video_path":      video_path,
-                        "transcript_path": transcript_path,
+                        "title":           video.title,
+                        "thumbnail":       video.thumbnail,
+                        "duration":        video.duration,
+                        "video_path":      video.video_path,
+                        "transcript_path": video.transcript_path,
                     }),
                 );
 
-                if !transcript_path.is_empty() {
-                    let id_clone = id.clone();
-                    let transcript_clone = transcript_path.clone();
+                if !video.transcript_path.is_empty() {
+                    let id_clone = video.id.clone();
+                    let transcript_clone = video.transcript_path.clone();
                     tokio::spawn(async move {
                         emit(
                             "orb://processing-status",
@@ -170,7 +178,7 @@ pub async fn download_video_command(video_id: String) -> Result<(), String> {
                     });
                 }
 
-                let id_clone = id.clone();
+                let id_clone = video.id.clone();
                 tokio::spawn(async move {
                     if let Err(e) = extract_frames(&id_clone).await {
                         eprintln!("[videos] frame extraction failed: {e}");

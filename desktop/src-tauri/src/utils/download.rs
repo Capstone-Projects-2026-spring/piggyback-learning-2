@@ -1,21 +1,22 @@
 use serde_json::Value;
-use std::fs;
+use std::{fs, path::PathBuf};
 use tokio::process::Command;
 
-/// Returns Ok(None) if already downloaded.
-/// Returns Ok(Some((id, title, thumbnail, duration, video_path, transcript_path)))
-/// transcript_path is empty string if no subtitles were available.
-pub async fn download_video(
-    video_id: &str,
-) -> Result<Option<(String, String, String, i32, String, String)>, String> {
-    let data_dir = dirs::data_local_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("piggyback")
-        .join("downloads")
-        .join(video_id);
+/// All paths relevant to a single downloaded video.
+pub struct DownloadedVideo {
+    pub id: String,
+    pub title: String,
+    pub thumbnail: String,
+    pub duration: i32,
+    pub video_path: String,
+    /// Empty if no subtitles were available — non-fatal.
+    pub transcript_path: String,
+}
 
-    fs::create_dir_all(&data_dir).map_err(|e| format!("[download] create_dir failed: {e}"))?;
-
+/// Download a YouTube video by ID into the local data directory.
+/// Returns `Ok(None)` if the video is already on disk.
+pub async fn download_video(video_id: &str) -> Result<Option<DownloadedVideo>, String> {
+    let data_dir = video_data_dir(video_id)?;
     let video_path = data_dir.join(format!("{video_id}.mp4"));
 
     if video_path.exists() {
@@ -24,19 +25,20 @@ pub async fn download_video(
     }
 
     let url = format!("https://www.youtube.com/watch?v={video_id}");
+    eprintln!("[download] starting for {video_id}");
 
-    eprintln!("[download] starting yt-dlp for {video_id}");
-
-    // ── Video ────────────────────────────────────────────────────────────────
+    // ── Video ─────────────────────────────────────────────────────────────────
     let output = Command::new("yt-dlp")
-        .arg("-f")
-        .arg("mp4")
-        .arg("--merge-output-format")
-        .arg("mp4")
-        .arg("-o")
-        .arg(video_path.to_string_lossy().as_ref())
-        .arg("--print-json")
-        .arg(&url)
+        .args([
+            "-f",
+            "mp4",
+            "--merge-output-format",
+            "mp4",
+            "-o",
+            video_path.to_string_lossy().as_ref(),
+            "--print-json",
+            &url,
+        ])
         .output()
         .await
         .map_err(|e| format!("[download] yt-dlp spawn failed: {e}"))?;
@@ -62,24 +64,54 @@ pub async fn download_video(
 
     eprintln!("[download] video done — '{title}' ({duration}s)");
 
-    // ── Transcript (non-fatal) ───────────────────────────────────────────────
+    // ── Transcript (non-fatal) ────────────────────────────────────────────────
+    let transcript_path = download_transcript(video_id, &data_dir, &url).await;
+
+    Ok(Some(DownloadedVideo {
+        id,
+        title,
+        thumbnail,
+        duration,
+        video_path: video_path.to_string_lossy().to_string(),
+        transcript_path,
+    }))
+}
+
+/// Returns the local data directory for a given video, creating it if needed.
+pub fn video_data_dir(video_id: &str) -> Result<PathBuf, String> {
+    let dir = dirs::data_local_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("piggyback")
+        .join("downloads")
+        .join(video_id);
+
+    fs::create_dir_all(&dir).map_err(|e| format!("[download] create_dir failed: {e}"))?;
+    Ok(dir)
+}
+
+/// Download English subtitles for a video. Returns the VTT path on success,
+/// empty string if unavailable — never propagates an error since transcripts
+/// are optional for the app to function.
+async fn download_transcript(video_id: &str, data_dir: &PathBuf, url: &str) -> String {
     let vtt_path = data_dir.join(format!("{video_id}.en.vtt"));
 
-    let transcript_result = Command::new("yt-dlp")
-        .arg("--skip-download")
-        .arg("--write-auto-sub")
-        .arg("--write-sub")
-        .arg("--sub-lang")
-        .arg("en")
-        .arg("--sub-format")
-        .arg("vtt")
-        .arg("-o")
-        .arg(data_dir.join("%(id)s").to_string_lossy().as_ref())
-        .arg(&url)
+    let result = Command::new("yt-dlp")
+        .args([
+            "--skip-download",
+            "--write-auto-sub",
+            "--write-sub",
+            "--sub-lang",
+            "en",
+            "--sub-format",
+            "vtt",
+            "-o",
+            data_dir.join("%(id)s").to_string_lossy().as_ref(),
+            url,
+        ])
         .output()
         .await;
 
-    let transcript_path = match transcript_result {
+    match result {
         Ok(out) if out.status.success() && vtt_path.exists() => {
             eprintln!("[download] transcript saved → {}", vtt_path.display());
             vtt_path.to_string_lossy().to_string()
@@ -88,14 +120,5 @@ pub async fn download_video(
             eprintln!("[download] transcript unavailable for {video_id}");
             String::new()
         }
-    };
-
-    Ok(Some((
-        id,
-        title,
-        thumbnail,
-        duration,
-        video_path.to_string_lossy().to_string(),
-        transcript_path,
-    )))
+    }
 }
