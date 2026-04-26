@@ -44,6 +44,34 @@ Download-If-Missing `
     -Url   "https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/raw/master/models/onnx/version-RFB-320.onnx" `
     -Label "ultraface ONNX (~1MB)"
 
+# ── Piper Alba voice model ────────────────────────────────────────────────────
+Download-If-Missing `
+    -Path  "$ModelDir\en_GB-alba-medium.onnx" `
+    -Url   "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx" `
+    -Label "Piper Alba voice (~60MB)"
+Download-If-Missing `
+    -Path  "$ModelDir\en_GB-alba-medium.onnx.json" `
+    -Url   "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx.json" `
+    -Label "Piper Alba config"
+
+# ── Piper binary ──────────────────────────────────────────────────────────────
+$PiperBin = "$BinDir\piper-tts-$Triple.exe"
+if (Test-Path $PiperBin) {
+    Write-Host "piper-tts already present, skipping"
+} else {
+    Write-Host "Downloading piper binary..."
+    $PiperZip = "$env:TEMP\piper_windows.zip"
+    Invoke-WebRequest `
+        -Uri "https://github.com/rhasspy/piper/releases/latest/download/piper_windows_amd64.zip" `
+        -OutFile $PiperZip -UseBasicParsing
+    Expand-Archive -Path $PiperZip -DestinationPath "$env:TEMP\piper_extract" -Force
+    Copy-Item "$env:TEMP\piper_extract\piper\piper.exe" $PiperBin
+    # Copy required DLLs alongside the binary
+    Copy-Item "$env:TEMP\piper_extract\piper\*.dll" $BinDir -ErrorAction SilentlyContinue
+    Remove-Item $PiperZip, "$env:TEMP\piper_extract" -Recurse -Force
+    Write-Host "  -> $PiperBin"
+}
+
 # ── yt-dlp ────────────────────────────────────────────────────────────────────
 Download-If-Missing `
     -Path  "$BinDir\yt-dlp-$Triple.exe" `
@@ -62,40 +90,29 @@ if (Test-Path $MpvBin) {
     Write-Host "mpv already present, skipping"
 } else {
     $mpvPath = $null
-
-    # Check if already installed
     try {
         $mpvPath = (Get-Command mpv -ErrorAction Stop).Source
         Write-Host "mpv found at $mpvPath"
     } catch {
         Write-Host "Installing mpv..."
-
-        # Try winget first (built into Windows 11)
         if (Get-Command winget -ErrorAction SilentlyContinue) {
             winget install --id=mpv.net -e --silent
             try { $mpvPath = (Get-Command mpv -ErrorAction Stop).Source } catch {}
         }
-
-        # Try scoop as fallback
         if (-not $mpvPath -and (Get-Command scoop -ErrorAction SilentlyContinue)) {
             scoop install mpv
             try { $mpvPath = (Get-Command mpv -ErrorAction Stop).Source } catch {}
         }
-
-        # Try choco as fallback
         if (-not $mpvPath -and (Get-Command choco -ErrorAction SilentlyContinue)) {
             choco install mpv -y
             try { $mpvPath = (Get-Command mpv -ErrorAction Stop).Source } catch {}
         }
-
         if (-not $mpvPath) {
             Write-Host "ERROR: Could not install mpv automatically."
             Write-Host "Install manually: winget install mpv  OR  scoop install mpv"
-            Write-Host "Then re-run this script."
             exit 1
         }
     }
-
     Copy-Item $mpvPath $MpvBin
     Write-Host "  -> $MpvBin (copied from $mpvPath)"
 }

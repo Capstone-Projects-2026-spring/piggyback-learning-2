@@ -28,12 +28,14 @@ case "$(uname -s)" in
         TRIPLE="x86_64-unknown-linux-gnu"
         YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
         FFMPEG_URL="https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-linux-x64"
+        PIPER_URL="https://github.com/rhasspy/piper/releases/latest/download/piper_linux_x86_64.tar.gz"
         BIN_EXT=""
         ;;
     Darwin*)
         TRIPLE="x86_64-apple-darwin"
         YTDLP_URL="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos"
         FFMPEG_URL="https://github.com/eugeneware/ffmpeg-static/releases/latest/download/ffmpeg-darwin-x64"
+        PIPER_URL="https://github.com/rhasspy/piper/releases/latest/download/piper_macos_x64.tar.gz"
         BIN_EXT=""
         ;;
     *)
@@ -66,6 +68,74 @@ download_if_missing \
     "https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/raw/master/models/onnx/version-RFB-320.onnx" \
     "ultraface ONNX (~1MB)"
 
+# ── Piper Alba voice model (all platforms) ────────────────────────────────────
+download_if_missing \
+    "$MODEL_DIR/en_GB-alba-medium.onnx" \
+    "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx" \
+    "Piper Alba voice (~60MB)"
+download_if_missing \
+    "$MODEL_DIR/en_GB-alba-medium.onnx.json" \
+    "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx.json" \
+    "Piper Alba config"
+
+# ── Piper binary ──────────────────────────────────────────────────────────────
+PIPER_BIN="$BIN_DIR/piper-tts-$TRIPLE$BIN_EXT"
+if [ -f "$PIPER_BIN" ]; then
+    echo "piper-tts already present, skipping"
+else
+    case "$(uname -s)" in
+        Linux*)
+            if command -v piper-tts &>/dev/null; then
+                # Already installed via package manager (e.g. AUR piper-tts-bin)
+                cp "$(command -v piper-tts)" "$PIPER_BIN"
+                chmod +x "$PIPER_BIN"
+                echo "  -> $PIPER_BIN (copied from $(command -v piper-tts))"
+            else
+                echo "Downloading piper binary..."
+                cd /tmp
+                curl -L "$PIPER_URL" -o piper.tar.gz
+                tar -xzf piper.tar.gz
+                cp piper/piper "$PIPER_BIN"
+                chmod +x "$PIPER_BIN"
+                rm -rf piper piper.tar.gz
+                echo "  -> $PIPER_BIN"
+            fi
+            ;;
+        Darwin*)
+            if command -v piper-tts &>/dev/null; then
+                cp "$(command -v piper-tts)" "$PIPER_BIN"
+                chmod +x "$PIPER_BIN"
+                echo "  -> $PIPER_BIN (copied from $(command -v piper-tts))"
+            else
+                echo "Downloading piper binary..."
+                cd /tmp
+                curl -L "$PIPER_URL" -o piper.tar.gz
+                tar -xzf piper.tar.gz
+                cp piper/piper "$PIPER_BIN"
+                chmod +x "$PIPER_BIN"
+                rm -rf piper piper.tar.gz
+                echo "  -> $PIPER_BIN"
+            fi
+            ;;
+    esac
+fi
+
+# ── TTS system dependencies (Linux only) ─────────────────────────────────────
+case "$(uname -s)" in
+    Linux*)
+        echo "Installing Linux audio dependency for Piper..."
+        if command -v pacman &>/dev/null; then
+            sudo pacman -S --noconfirm alsa-utils
+        elif command -v apt-get &>/dev/null; then
+            sudo apt-get install -y alsa-utils
+        elif command -v dnf &>/dev/null; then
+            sudo dnf install -y alsa-utils
+        elif command -v zypper &>/dev/null; then
+            sudo zypper install -y alsa-utils
+        fi
+        ;;
+esac
+
 # ── yt-dlp ────────────────────────────────────────────────────────────────────
 YTDLP_BIN="$BIN_DIR/yt-dlp-$TRIPLE$BIN_EXT"
 download_if_missing "$YTDLP_BIN" "$YTDLP_URL" "yt-dlp ($TRIPLE)"
@@ -81,7 +151,6 @@ MPV_BIN="$BIN_DIR/mpv-$TRIPLE$BIN_EXT"
 if [ -f "$MPV_BIN" ]; then
     echo "mpv already present, skipping"
 else
-    # Install via system package manager if not already installed
     if ! command -v mpv &>/dev/null; then
         echo "Installing mpv..."
         case "$(uname -s)" in
@@ -112,7 +181,6 @@ else
         esac
     fi
 
-    # Copy the installed binary to our binaries dir
     MPV_PATH=$(command -v mpv)
     if [ -n "$MPV_PATH" ]; then
         cp "$MPV_PATH" "$MPV_BIN"
@@ -123,35 +191,6 @@ else
         exit 1
     fi
 fi
-
-# ── Piper Alba voice model ────────────────────────────────────────────────────
-download_if_missing \
-    "$MODEL_DIR/en_GB-alba-medium.onnx" \
-    "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx" \
-    "Piper Alba voice (~60MB)"
-download_if_missing \
-    "$MODEL_DIR/en_GB-alba-medium.onnx.json" \
-    "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx.json" \
-    "Piper Alba config"
-
-# ── TTS (Linux only) ──────────────────────────────────────────────────────────
-case "$(uname -s)" in
-    Linux*)
-        echo "Installing Linux TTS dependencies..."
-        if command -v pacman &>/dev/null; then
-            sudo pacman -S --noconfirm speech-dispatcher espeak-ng alsa-utils
-            yay -S --noconfirm piper-tts-bin
-        elif command -v apt-get &>/dev/null; then
-            sudo apt-get install -y libspeechd-dev speech-dispatcher espeak-ng alsa-utils
-            mkdir -p ~/.local/bin
-            cd /tmp
-            wget -q https://github.com/rhasspy/piper/releases/latest/download/piper_linux_x86_64.tar.gz
-            tar -xzf piper_linux_x86_64.tar.gz
-            cp piper/piper ~/.local/bin/piper-tts
-            chmod +x ~/.local/bin/piper-tts
-        fi
-        ;;
-esac
 
 echo ""
 echo "All assets ready."
