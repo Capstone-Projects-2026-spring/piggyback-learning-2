@@ -6,15 +6,21 @@ use serde::Serialize;
 /// Includes common Whisper mishearings of "Jarvis" across accents.
 const WAKE_PHRASES: &[&str] = &[
     "hey jarvis",
+    "hey jargus",
     "hi jarvis",
+    "hi jargus",
     "hello jarvis",
+    "hello jargus",
     "okay jarvis",
+    "okay jargus",
     "ok jarvis",
+    "ok jargus",
     "jarvis",
+    "jargus",
 ];
 
 /// Single-token fallback for when Whisper drops the greeting word entirely.
-const WAKE_TOKENS: &[&str] = &["jarvis", "jarvas", "jarves", "jarvi", "jarviz"];
+const WAKE_TOKENS: &[&str] = &["jarvis", "jarvas", "jarves", "jarvi", "jarviz", "jargus"];
 
 #[derive(Debug, Serialize)]
 pub struct WakeWordResult {
