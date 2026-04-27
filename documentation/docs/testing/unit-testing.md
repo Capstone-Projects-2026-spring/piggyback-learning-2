@@ -22,7 +22,7 @@ Reduces a large set of frames to a manageable amount.
 
 ### build_transcript_formatting
 #### Purpose
-Validates that the program correctly converts database frameand subtitles into a single formatted string.
+Validates that the program correctly converts database frame and subtitles into a single formatted string.
 #### Expected Behavior
 Produces a transcript string with correct timestamp text formatting.
 
