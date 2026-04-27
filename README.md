@@ -124,7 +124,7 @@ Now, the project is ready. Click Frontend to see the project.
 Make sure to have Docker Desktop open while running the project!
 
 * **Frontend:** http://localhost:3000
-* **Backend:** http://localhost:3000
+* **Backend:** http://localhost:5150
 
 If you have followed the above steps, you may ignore the setups below.
 
