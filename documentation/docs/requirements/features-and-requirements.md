@@ -7,13 +7,13 @@ sidebar_position: 4
 ## Functional Requirements
 
 ### 1. Voice Recognition and STT
-- **Input Processing:** The system shall convert audio into UTF-8 text strings locally via the Vosk model.
-- **Feedback:** The Mascot character shall read questions aloud using Text-to-Speech (TTS) with a latency of less than 3 seconds from the time the question appears.
+- **Input Processing:** The system shall convert audio into UTF-8 text strings locally via local Vosk AI.
+- **Feedback:** The Mascot character shall read questions aloud using Text-to-Speech (TTS) with a latency of less than 3 seconds after the question appears.
 
 ### 2. Attention and Gaze Monitoring
-- **Technology:** Uses **Google MediaPipe FaceLandmarker** for client-side facial and eye tracking.
-- **Distraction Threshold:** If the child's gaze is detected outside the video viewport for a continuous period exceeding **2 seconds**, the system shall:
-    1. Automatically pause the video.
+- **Technology:** Uses **Google MediaPipe FaceLandmarker** for client side eye tracking.
+- **Distraction Threshold:** If the child's eyes is detected outside the video viewport for a period of time that exceeds **2 seconds**, the system should:
+    1. Auto pause the video.
     2. Display a "Focus" prompt with the Mascot.
     3. Give a WebSocket alert to the Parent Dashboard.
 
@@ -45,15 +45,15 @@ sidebar_position: 4
 ## Non-functional Requirements
 
 ### 1. Performance and Latency
-- **AI Response Time:** Generation of a full quiz set shall complete in under **10 seconds** for a 5 minute video segment.
-- **Data Retrieval:** Database queries for video lists or child stats shall return results in under **200ms**.
+- **AI Response Time:** Generation of a full quiz set shall complete in under **15 seconds** for a 5 minute video segment.
+- **Data Retrieval:** Database queries for video lists or child stats should return results in under **200ms**.
 - **UI Responsiveness:** Transitions between video and quizzes must happen in under **500ms** to keep child engaged.
 
 ### 2. Accuracy and Reliability
-- **Grading Accuracy:** The system shall correctly identify synonyms with a **90% match rate** using an internal thesaurus and fuzzy-matching.
-- **STT Robustness:** The Vosk engine must achieve at least **80% Word Error Rate accuracy** for children's speech.
-- **Gaze Detection Precision:** The eye tracker shall have a false positive rate of less than 5% in indoor lighting.
+- **Grading Accuracy:** The system should correctly identify synonyms with a **90% rate** using an internal thesaurus and fuzzy-matching.
+- **STT Robustness:** Vosk must achieve at least **80% Word Error Rate accuracy** for children's speech.
+- **Eye Detection Precision:** The eye tracker shall have a false positive rate of less than 5% in indoor lighting.
 
 ### 3. Security and Privacy
-- **Compliance:** 100% of raw audio samples must be purged from memory immediately after transcription is complete.
+- **Compliance:** 100% of raw audio samples must be removed from memory after transcription is complete.
 - **Data Isolation:** A child account shall have no ability to access to features reserved to the parent account as stated above.
