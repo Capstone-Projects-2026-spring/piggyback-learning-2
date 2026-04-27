@@ -32,22 +32,22 @@ Ensures the prompt sent to AI has all required segments and history.
 #### Expected Behavior
 Verified the inclusion of transcripts, duration metadata, and previously asked questions to avoid the ai repeating.
 
-## ```Model Integrity (tests/models/)```
+## ```Database, and Models (tests/models/)```
 Overview: Validates database constraints, relationships, and automated hooks.
 
-### ```test_video_update_timestamp_logic (hook.rs)```
+### ```video_update_timestamp_logic (hook.rs)```
 #### Purpose
 Verifies that the before_save hook automatically updates the updated_at timestamp.
 #### Expected Behavior
 The updated_at value after an update is strictly greater than the initial value.
 
-### ```test_kid_parent_relationship (kids.rs)```
+### ```kid_parent_relationship (kids.rs)```
 #### Purpose
 Ensures relationship between parents and kids is correct.
 #### Expected Behavior
 A child record stays linked to the parent ID after insertion and retrieval from the database.
 
-### ```test_video_assignment_json_storage (video_assignments.rs)```
+### ```video_assignment_json_storage (video_assignments.rs)```
 #### Purpose
 Validates that the JSON Answer blob is correctly stored in SQLite.
 #### Expected Behavior
