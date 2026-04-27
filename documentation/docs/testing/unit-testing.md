@@ -4,7 +4,7 @@ sidebar_position: 1
 # Unit tests
 You can run these tests yourself by running 
 ```python manage.py test``` 
-in the terminal (in the directory of the project)
+in the terminal (in the backend directory of the project)
 
 ### Overview
 #### ```These tests validate thec calculations, decision making logic, and data integrity of the application. The tests use Rust's standard #[test] and #[tokio::test] attributes, using insta for snapshot management when needed.```
