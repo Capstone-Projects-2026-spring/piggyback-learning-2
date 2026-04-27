@@ -21,7 +21,8 @@ sidebar_position: 3
 1. **Utility Tools:** Must use `yt-dlp` for video ingestion and `FFmpeg` for frame extraction.
 2. **AI Engine:** Question generation and answer grading must use **OpenAI** LLMs.
 3. **Privacy Based STT:** Speech-to-text must be performed using the **Vosk** library running locally to maintain COPPA compliance.
-4. **Hardware Permissions:** Frontend must request and receive browser authorization for `camera` and `microphone` access.
+4. **Children Compatible TTS:** Text-to-speech must be used to read out the questions for children using **Inworld**.
+5. **Hardware Permissions:** Frontend must request and receive browser authorization for `camera` and `microphone` access.
 
 ### Platform Compatibility
 1. **Browser Support:** Must support the latest versions of **Chrome**, **Edge**, and **Safari**.

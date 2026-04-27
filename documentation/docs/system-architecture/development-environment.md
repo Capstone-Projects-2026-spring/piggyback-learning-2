@@ -16,3 +16,4 @@ sidebar_position: 4
 - yt-dlp is used to fetch videos, metadata, and subtitles from a YouTube URL.
 - OpenAI is used for generating questions
 - FFmpeg is used to extract key frames from downloaded videos for AI to used during question generation.
+- Inworld is used for text to speech
