@@ -1,31 +1,37 @@
 use backend::app::App;
 use loco_rs::testing::prelude::*;
 use serial_test::serial;
-
-macro_rules! configure_insta {
-    ($($expr:expr),*) => {
-        let mut settings = insta::Settings::clone_current();
-        settings.set_prepend_module_to_snapshot(false);
-        let _guard = settings.bind_to_scope();
-    };
-}
+use backend::models::_entities::{parents, kids};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 
 #[tokio::test]
 #[serial]
-async fn test_model() {
-    configure_insta!();
-
+async fn kid_parent_relationship() {
     let boot = boot_test::<App>().await.unwrap();
-    seed::<App>(&boot.app_context).await.unwrap();
+    let ctx = &boot.app_context;
 
-    // query your model, e.g.:
-    //
-    // let item = models::posts::Model::find_by_pid(
-    //     &boot.app_context.db,
-    //     "11111111-1111-1111-1111-111111111111",
-    // )
-    // .await;
+    let parent = parents::ActiveModel {
+        name: Set("Parent Name".to_string()),
+        username: Set("parent_1".to_string()),
+        password_hash: Set("hash".to_string()),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .unwrap();
 
-    // snapshot the result:
-    // assert_debug_snapshot!(item);
+    let kid = kids::ActiveModel {
+        name: Set("Kid Name".to_string()),
+        username: Set("kid_1".to_string()),
+        password_hash: Set("hash".to_string()),
+        parent_id: Set(parent.id),
+        ..Default::default()
+    }
+    .insert(&ctx.db)
+    .await
+    .unwrap();
+
+    assert_eq!(kid.parent_id, parent.id);
+    let found_kid = kids::Entity::find_by_id(kid.id).one(&ctx.db).await.unwrap().unwrap();
+    assert_eq!(found_kid.username, "kid_1");
 }
