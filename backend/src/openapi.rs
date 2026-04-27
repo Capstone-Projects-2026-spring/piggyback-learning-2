@@ -3,6 +3,8 @@ use utoipa::OpenApi;
 use crate::controllers::{
     answers, auth, frames, kids, openai, parents, questions, tags, videos, ws,
 };
+use crate::utils::openai::{QuestionItem, SegmentResponse, QuestionsResponse};
+use crate::utils::structs::GenericSuccessResponse;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -26,6 +28,14 @@ use crate::controllers::{
         videos::get_video_tags,
         videos::add_video_tags,
         ws::ws_handler
+    ),
+    components(
+        schemas(
+            QuestionItem, 
+            SegmentResponse, 
+            QuestionsResponse, 
+            GenericSuccessResponse,
+        )
     ),
     tags(
         (name = "auth", description = "Auth endpoints"),
