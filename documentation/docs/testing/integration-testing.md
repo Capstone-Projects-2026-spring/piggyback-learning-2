@@ -5,162 +5,151 @@ sidebar_position: 2
 
 Tests to demonstrate each use-case based on the use-case descriptions and the sequence diagrams. External input should be provided via mock objects and results verified via mock objects. Integration tests should not require manual entry of data nor require manual interpretation of results.
 
-# Tests for user/views.py
+## Overview
+These tests validates :
+- The Axum routes interact correctly with the SQLite database
+- The expected status codes were returned
+- The expected JSON structures were returned.
+The tests use the loco-rs testing library, tokio::test to simulate asynchronous requests, and serial_test to keep the database state consistent.
 
-These test if user login works properly.
+### ```Authentication Tests (tests/requests/auth.rs)```
+#### 1. can_signup_parent
+##### Purpose
+Verifies that a new parent can register with valid login credentials.
+##### Expected Behavior
+Responds with status code 200 and success set to true.
 
-## 1. `test_verify_password_success_admin`
-**Objective**
-Verify user is able to login as admin if correct username and password was entered. 
+#### 2. can_signup_kid
+##### Purpose
+Ensures child accounts can be created when they are linked to a valid parent in the DB.
+##### Expected Behavior
+Parent is successfully queried in the database, and registering a child returns 200.
 
-**Results**
-200 OK, redirect and success returned.
-Passed
+#### 3. duplicate_parent_username_rejected
+##### Purpose
+To prevent multiple parent accounts from having the same username.
+##### Expected Behavior
+First request returns a 200 status code. second request with same payload returns 400 status code.
 
-## 2. `test_verify_password_success_expert`
-**Objective**
-Verify user is able to login as expert if correct username and password was entered.
+#### 4. duplicate_kid_username_rejected
+##### Purpose
+Prevents multiple child accounts from having the same username.
+##### Expected Behavior
+The system rejects an attempt at the second signup using the same username with a 400 status code.
 
-**Results**
-200 OK, redirect and success returned
-Passed
+#### 5. kid_signup_without_parent_id_rejected
+##### Purpose
+To ensure the functionality of the requirement that kids accounts must be connected to a parent account.
+##### Expected Behavior
+Request fails with 400 status code if the parent_id is missing.
 
-## 3. `test_verify_password_failure_invalid_password`
-**Objective**
-Verify user is unable to login if correct username and incorrect password was entered.
+#### 6. invalid_role_rejected
+##### Purpose
+Ensures that users can only register with specified roles. For security reasons.
+##### Expected Behavior
+Attempting to register with a role other than "parent" or "kid" returns 400 status code.
 
-**Results**
-400 BAD REQUEST and fail returned
-Passed
+#### 7. can_login_parent
+##### Purpose
+To verify that the parent can login and JWT generation.
+##### Expected Behavior
+Returns 200, a valid token, and the correct user role.
 
-# Tests for ai/views.py
+#### 8. can_login_kid
+##### Purpose 
+Verifies kid login and the parent_username is included in the response.
+##### Expected Behavio
+Returns 200, a valid token, and the linked parent's username.
 
-## 4. `test_check_answer_correct_exact_match`
-**Objective**
-Verifies that if the user answers correctly, the program recognizes it as correct.
+#### 9. login_wrong_password_rejected
+##### Purpose
+Ensures the authentication fails for incorrect passwords. Users can't login if they enter the wrong password.
+##### Expected Behavior
+Responds with status code 400.
 
-Example-
-Expected: car
-User Answer: car
-Program Response: correct
+#### 10.login_nonexistent_user_rejected
+##### Purpose
+Ensures login fails for users not present in the database.
+##### Expected Behavior
+Responds with status code 400.
 
-**Results**
-True returned
-Passed
 
-## 5. `test_check_answer_numeric_match`
-**Objective**
-Verifies correct numeric answers will work correctly. If user says "5", and the answer is "five" the code should process "five" as "5" thus seeing the answer as correct.
+### ```Questions (tests/requests/questions.rs)```
+#### 1. can_get_questions
+##### Purpose
+Verifies questions can be retrieved for a video segment.
+##### Expected Behavior
+Responds with 200 status code and seeded question data.
 
-Example-
-Expected: five
-User Answer: 5
-Program Response: correct
+#### 2. get_questions_returns_correct_shape
+##### Purpose
+Validates the JSON schema for the quiz player.
+##### Expected Behavior
+Response includes video_id and a segments array.
 
-**Results**
-200 OK and correct returned
-Passed
+#### 3. get_questions_unknown_video_returns_empty_segments
+##### Purpose
+Ensures the application correctly handles queries for missing video data.
+##### Expected Behavior
+Returns 200 with an empty list for segments.
 
-## 6. `test_check_answer_numeric_mismatch`
-**Objective**
-Verifies that if user answers with incorrect numeric answers then the program should process it as an incorrect answer.
+#### 4. can_update_question
+##### Purpose
+To verify that existing questions can be edited by the parent.
+##### Expected Behavior 
+PATCH request returns 200.
 
-Example-
-Expected: five
-User Answer: one
-Program Response: wrong
+#### 5. update_question_not_found
+##### Purpose
+Ensures correct behavior when trying to update a question that doesn't exist.
+##### Expected Behavior
+Responds with status code 404.
 
-**Results**
-200 OK and wrong returned
-Passed
+#### 6. can_update_segment_best_question
+##### Purpose
+Verifies update logic is correct for the "best question" field.
+##### Expected Behavior
+Responds with status code 200.
 
-## 7. `test_check_answer_missing_numeric_answer`
-**Objective**
-If non-numeric answer given when numeric answer expected, the program will consider it wrong.
+##### update_segment_best_question_not_found
+##### Purpose
+Ensures correct behavior when updating a missing segment.
+##### Expected Behavior
+Responds with status code 404.
 
-Example-
-Expected: one
-User Answer: many
-Program Response: wrong
+## ```User Interactions (tests/requests/kids.rs, parents.rs, tags.rs, videos.rs, answers.rs)```
+#### 1. can_get_answers
+##### Purpose
+To check if a child's quiz performance history for a specific video can be retrieved.
+##### Expected Behavior
+Returns status 200 and available JSON answer data.
 
-**Results**
-200 OK, wrong and Missing numeric answer returned
-Passed
+#### 2. can_get_recommendations
+##### Purpose
+Validates that the recommendation system with the tags function as expected.
+##### Expected Behavior
+Responds with status code 200.
 
-## 8. `test_check_answer_correct_non_numeric`
-**Objective**
-If user gives a correct non-numeric answer, the program should consider it correct.
+#### 3. can_get_kid_tags / can_get_video_tags
+##### Purpose
+To verify that specific tags linked to kid accounts or videos are successfully retrieved.
+##### Expected Behavior
+Responds with status code 200.
 
-Example-
-Expected: camera
-User Answer: camera
-Program Response: correct
+#### 4. can_get_videos_assigned
+##### Purpose
+To verify that videos assigned to a child can be retrieved.
+##### Expected Behavior
+Responds with status code 200.
 
-**Results**
-200 OK, correct, and Matched returned
-Passed
+#### 5. can_get_parent_kids
+##### Purpose
+To see if application can list all children associated with a parent ID.
+##### Expected Behavior
+Responds with status code 200.
 
-## 9. `test_check_answer_list_partial_items_matched`
-**Objective**
-If user gives partially correct answers, the program should consider it almost correct. For example:
-
-Example-
-Expected: cat and dog
-User Answer: dog
-Program Response: almost
-
-**Results**
-200 OK, almost returned
-Passed
-
-## 10. `test_check_answer_missing_input`
-**Objective**
-Verifies if no input from user as answer then the program should count it as incorrect.
-
-Example-
-Expected: cat
-User Answer: ""
-Program Response: wrong
-
-**Results**
-200 OK, wrong
-Passed
-
-## 11. `test_check_answer_high_similarity`
-**Objective**
-Verifies if the user's answer is very similar to correct answer then it will be counted as correct. (high similarity level)
-
-Example-
-Expected: beautiful
-User Answer: beautifully
-Program Response: almost
-
-**Results**
-200 OK, correct
-Passed
-
-## 12. `test_check_answer_low_similarity`
-**Objective**
-Verifies if the user's answer is not similar to correct answer then it will be counted as incorrect.(low similarity level)
-
-Example-
-Expected: cat
-User Answer: chicken
-Program Response: wrong
-
-**Results**
-200 OK, wrong
-Passed
-
-## 13. `test_check_answer_borderline_similarity`
-**Objective**
-Check if user answer is close to correct answer then it will be countd as almost correct. 
-
-Example-
-Expected: cat
-User Answer: car
-Program Response: almost
-
-**Results**
-200 OK, wrong
-Passed
+#### 6. can_get_all_tags
+##### Purpose
+Verifies that the global tag library is available.
+##### Expected Behavior
+Responds with status code 200.

@@ -6,82 +6,50 @@ You can run these tests yourself by running
 ```python manage.py test``` 
 in the terminal (in the directory of the project)
 
-## videos/tests.py
-
 ### Overview
-
-This test suite validates:
-
-- URL routing and endpoint availability
-- Correct JSON response structure
-- Data formatting logic (duration formatting)
-- Behavior when database is empty
-
-The tests use Django’s `TestCase` and Django REST Framework status codes.
-
----
-
-### Test Data Setup
-
-#### Method: `setUp()`
-
-##### Purpose
-Creates two `Video` objects in the test database before each test runs.
-
-##### Expected Behavior
-- Test database contains exactly two video records.
-- Each test starts with a clean database state.
-
----
-
-### Tests for videos/urls.py 
-
-#### 1. `test_kids_videos_endpoint`
-
-##### Purpose
-Verifies that the `kids-videos` endpoint is reachable.
-
-##### Expected Behavior
-- Endpoint exists
-- Endpoint responds successfully
-
----
-
-#### 2. `test_video_list_endpoint`
-
-##### Purpose
-Verifies that the `video-list` endpoint is reachable.
-
-##### Expected Behavior
-- Endpoint exists
-- Endpoint responds successfully
-
----
-
-### Tests for videos/views.py
-
-#### 1. `test_kids_videos_success`
-
-##### Purpose
-Ensures the `kids-videos` endpoint returns correct JSON structure and data.
-
-##### Expected behaviour
-`kids-videos` endpoint returns 2 videos and status code 200
+#### ```These tests validate thec calculations, decision making logic, and data integrity of the application. The tests use Rust's standard #[test] and #[tokio::test] attributes, using insta for snapshot management when needed.```
 
 
-#### 2. `test_kids_videos_duration_format`
+## ```AI Logic and Transcription Preparation (tests/utils/openai.rs)```
+### Overview
+Tests the preparation of data before it is sent to the AI.
 
-##### Purpose
-Verifies the property `duration` can be read as `minutes:seconds` or `2:05` for example
+### sample_frames_logic
+#### Purpose
+Checks if the algorithm that selects the frames to send to AI for assist it in question generation, is successful.
+#### Expected Behavior
+Reduces a large set of frames to a manageable amount.
 
-##### Expected behaviour
-The `duration` of the first video recieved is equal to `2:05`
+### build_transcript_formatting
+#### Purpose
+Validates that the program correctly converts database frameand subtitles into a single formatted string.
+#### Expected Behavior
+Produces a transcript string with correct timestamp text formatting.
 
+### build_prompt_structure
+#### Purpose
+Ensures the prompt sent to AI has all required segments and history.
+#### Expected Behavior
+Verified the inclusion of transcripts, duration metadata, and previously asked questions to avoid the ai repeating.
 
-#### 3. `test_kids_videos_empty_db`
+## ```Model Integrity (tests/models/)```
+Overview: Validates database constraints, relationships, and automated hooks.
 
-##### Purpose
-Verifies that `kids-videos` still returns 200 when there are no videos to return
+### ```test_video_update_timestamp_logic (hook.rs)```
+#### Purpose
+Verifies that the before_save hook automatically updates the updated_at timestamp.
+#### Expected Behavior
+The updated_at value after an update is strictly greater than the initial value.
 
-##### Expected behaviour
-There are 0 returned videos and the status code is 200
+### ```test_kid_parent_relationship (kids.rs)```
+#### Purpose
+Ensures relationship between parents and kids is correct.
+#### Expected Behavior
+A child record stays linked to the parent ID after insertion and retrieval from the database.
+
+### ```test_video_assignment_json_storage (video_assignments.rs)```
+#### Purpose
+Validates that the JSON Answer blob is correctly stored in SQLite.
+#### Expected Behavior
+The JSON retrieved from the database matches the structure of the Answer struct defined in controller.
+
