@@ -47,7 +47,7 @@ sidebar_position: 4
 ### 1. Performance and Latency
 - **AI Response Time:** Generation of a full quiz set shall complete in under **15 seconds** for a 5 minute video segment.
 - **Data Retrieval:** Database queries for video lists or child stats should return results in under **200ms**.
-- **UI Responsiveness:** Transitions between video and quizzes must happen in under **500ms** to keep child engaged.
+- **UI Responsiveness:** Transitions between video and quizzes must happen in under **500ms** to keep the child engaged.
 
 ### 2. Accuracy and Reliability
 - **Grading Accuracy:** The system should correctly identify synonyms with a **90% rate** using an internal thesaurus and fuzzy-matching.
@@ -56,4 +56,4 @@ sidebar_position: 4
 
 ### 3. Security and Privacy
 - **Compliance:** 100% of raw audio samples must be removed from memory after transcription is complete.
-- **Data Isolation:** A child account shall have no ability to access to features reserved to the parent account as stated above.
+- **Feature Isolation:** A child account shall have no ability to access to features reserved to the parent account as stated above.
