@@ -17,7 +17,7 @@ export default function SessionBadge() {
     const offSpeaker = commandBus.onSpeaker((data) => {
       if (data?.user_id) {
         setSpeaker(data);
-        speak(`Welcome back ${data.name}!`);
+        speak(`Welcome back ${data.name}! What do you want to do today?`);
       }
     });
 
