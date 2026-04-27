@@ -5,9 +5,8 @@ sidebar_position: 3
 # General Requirements
 
 ## System Requirements for Users
-- **Hardware:** Desktop or laptop with a front-facing camera and a microphone.
+- **Hardware:** Desktop or laptop with a front camera and a microphone.
 - **Connectivity:** Minimum stable internet connection for YouTube streaming and AI API calls.
-- **Configuration:** A valid OpenAI API key must be provided in the environment settings.
 
 ## Project Requirements
 
@@ -20,13 +19,13 @@ sidebar_position: 3
 
 ### Media and AI Requirements
 1. **Utility Tools:** Must use `yt-dlp` for video ingestion and `FFmpeg` for frame extraction.
-2. **AI Engine:** Question generation and answer grading must utilize **OpenAI** large language models.
+2. **AI Engine:** Question generation and answer grading must use **OpenAI** LLMs.
 3. **Privacy Based STT:** Speech-to-text must be performed using the **Vosk** library running locally to maintain COPPA compliance.
-4. **Hardware Permissions:** Frontend must request and receive browser-level authorization for `camera` and `microphone` access.
+4. **Hardware Permissions:** Frontend must request and receive browser authorization for `camera` and `microphone` access.
 
 ### Platform Compatibility
 1. **Browser Support:** Must support the latest versions of **Chrome**, **Edge**, and **Safari**.
-2. **Hardware Support:** Must function on any device providing a camera and audio inputs.
+2. **Hardware Support:** Must function on any device that has a camera and audio inputs.
 3. **Server OS:** Backend source code must compile and run on **Linux** and **macOS**.
 
 ### Legal and Regulatory Standards
