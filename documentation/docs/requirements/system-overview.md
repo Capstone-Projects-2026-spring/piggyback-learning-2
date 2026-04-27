@@ -23,7 +23,7 @@ The system must implement the following improvements:
 Piggyback Learning is a Next.js and Rust web application that automates the transformation of YouTube content into learning. It uses `yt-dlp` for video downloads, `FFmpeg` for analysis, and OpenAI to generate age appropriate educational questions.
 
 ## Background
-Piggyback Learning is designed for children ages 4-7. The system turns regular video watchin into learning by requiring them to demonstrate comprehension before the video continues.
+Piggyback Learning is designed for children ages 4-7. The system turns regular video watching into learning by requiring them to demonstrate comprehension before the video continues.
 
 ### Key Features and Differentiators:
 - **Automated AI Question Generation:** Removes the need to manually create quizzes by analyzing video transcripts and frames to generate questions automatically via AI.
