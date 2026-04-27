@@ -10,7 +10,7 @@ sidebar_position: 4
 - **Input Processing:** The system shall convert audio into UTF-8 text strings locally via local Vosk AI.
 - **Feedback:** The Mascot character shall read questions aloud using Text-to-Speech (TTS) with a latency of less than 3 seconds after the question appears.
 
-### 2. Attention and Gaze Monitoring
+### 2. Attention and Eye Monitoring
 - **Technology:** Uses **Google MediaPipe FaceLandmarker** for client side eye tracking.
 - **Distraction Threshold:** If the child's eyes is detected outside the video viewport for a period of time that exceeds **2 seconds**, the system should:
     1. Auto pause the video.
