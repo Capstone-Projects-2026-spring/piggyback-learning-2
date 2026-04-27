@@ -7,7 +7,7 @@ You can run these tests yourself by running
 in the terminal (in the backend directory of the project)
 
 ### Overview
-#### ```These tests validate thec calculations, decision making logic, and data integrity of the application. The tests use Rust's standard #[test] and #[tokio::test] attributes, using insta for snapshot management when needed.```
+#### ```These tests validate the calculations, decision making logic, and data integrity of the application. The tests use Rust's standard #[test] and #[tokio::test] attributes, using insta for snapshot management when needed.```
 
 
 ## ```AI Logic and Transcription Preparation (tests/utils/openai.rs)```
