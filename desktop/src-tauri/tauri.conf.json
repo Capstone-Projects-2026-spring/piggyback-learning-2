@@ -43,7 +43,7 @@
       "models/en_GB-alba-medium.onnx",
       "models/en_GB-alba-medium.onnx.json",
       "models/silero_vad.onnx",
-      "models/moonshine-tiny"
+      "models/moonshine-base"
     ]
   }
 }
