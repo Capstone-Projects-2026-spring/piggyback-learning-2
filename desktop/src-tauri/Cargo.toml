@@ -39,7 +39,7 @@ ndarray = "0.17.2"
 
 # Audio
 cpal = "0.15"
-webrtc-vad = "0.4"
+nnnoiseless = "0.5"
 rustfft = "6"
 
 # Vision
