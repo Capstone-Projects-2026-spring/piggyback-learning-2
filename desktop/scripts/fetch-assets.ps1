@@ -20,11 +20,15 @@ function Download-If-Missing {
 
 $Triple = "x86_64-pc-windows-msvc"
 
-# ── Whisper STT model ─────────────────────────────────────────────────────────
-Download-If-Missing `
-    -Path  "$ModelDir\ggml-base.en.bin" `
-    -Url   "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin" `
-    -Label "whisper base.en (~148MB)"
+# ── Moonshine Tiny ONNX ───────────────────────────────────────────────────────
+$MoonshineDir = "$ModelDir\moonshine-tiny"
+New-Item -ItemType Directory -Force -Path $MoonshineDir | Out-Null
+foreach ($f in @("preprocess.onnx","encode.onnx","uncached_decode.onnx","cached_decode.onnx")) {
+    Download-If-Missing `
+        -Path  "$MoonshineDir\$f" `
+        -Url   "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/tiny/$f" `
+        -Label "moonshine-tiny/$f"
+}
 
 Download-If-Missing `
     -Path  "$ModelDir\silero_vad.onnx" `

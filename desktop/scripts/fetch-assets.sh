@@ -44,11 +44,19 @@ case "$(uname -s)" in
         ;;
 esac
 
-# ── Whisper STT model ─────────────────────────────────────────────────────────
+# ── Moonshine Tiny ONNX + tokenizer ──────────────────────────────────────────
+MOONSHINE_DIR="$MODEL_DIR/moonshine-tiny"
+mkdir -p "$MOONSHINE_DIR"
+for f in preprocess.onnx encode.onnx uncached_decode.onnx cached_decode.onnx; do
+    download_if_missing \
+        "$MOONSHINE_DIR/$f" \
+        "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/tiny/$f" \
+        "moonshine-tiny/$f"
+done
 download_if_missing \
-    "$MODEL_DIR/ggml-base.en.bin" \
-    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin" \
-    "whisper base.en (~148MB)"
+    "$MOONSHINE_DIR/tokenizer.json" \
+    "https://huggingface.co/UsefulSensors/moonshine-tiny/resolve/main/tokenizer.json" \
+    "moonshine-tiny tokenizer"
 
 # ── Silero VAD ONNX (v5) ──────────────────────────────────────────────────────
 download_if_missing \
