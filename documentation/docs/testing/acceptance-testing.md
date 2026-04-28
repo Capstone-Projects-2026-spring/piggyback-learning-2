@@ -4,55 +4,12 @@ sidebar_position: 3
 
 # Acceptance Test
 
-### AT-01: Homepage Loads Successfully
-
-**Actions Taken:**
-curl -i http://127.0.0.1:3000/
-OR
-visit http://localhost:3000/ in your favorite browser
-
-**Observed Result:**
-
--   HTTP/1.1 200 OK
-
--   HTML page rendered successfully
-
--   Page title displayed: "Educational Video Platform"
-
-**Status:** PASS
-
-* * * * *
-
-### AT-02: Create an Account and Log In
-
-**Actions Taken:**
-- visit http://localhost:3000/
-- click "Sign up"
-- Create a new parent account
-- Sign into the account
-
-**Observed Result:**
-
--   Account is created and able to be logged in to
-
-**Status:** PASS
-
-* * * * *
-
-
-### AT-03: Mood Detection
-
-**Actions Taken:**
-
-- Begin watching a video with questions generated
-- Look away from the screen or leave the camera view. Video should pause
-- Do not answer a question or answer in a very low voice. Should be flagged as bored (will be able to check in video results).
-- Check the video results.
-
-**Observed Result:**
-
-- Video pauses when looking away from screen.
-- Answer is flagged as "Bored" in the results screen
-
-**Status:** PASS
-
+| Test ID | Action | Expected Result | Status |
+|---------|--------|-----------------|--------|
+| AT-01 | **Verify Mascot reads questions aloud within 3 seconds**<br/>1. Start a video assignment with quiz questions enabled<br/>2. Allow the video to reach a quiz trigger point<br/>3. Observe the moment a question appears on screen<br/>4. Note the time between question appearance and Mascot audio playback starting | The Mascot character begins reading the question aloud via TTS within 3 seconds of the question appearing on screen. Audio is audible and the question text matches the spoken content. | **PASSED** |
+| AT-02 | **Verify video auto-pauses on distraction detection**<br/>1. Start a video assignment as a child user<br/>2. While the video is playing, turn your face away from the camera so eyes leave the viewport<br/>3. Hold the eyes-away position for more than 2 seconds | The video automatically pauses within approximately 2 seconds of eyes leaving the viewport. | **PASSED** |
+| AT-03 | **Verify alert is sent to Parent Dashboard on distraction**<br/>1. Open the Parent Dashboard in a separate browser tab or device<br/>2. On the child view, trigger a distraction event (eyes away for 2+ seconds) as in AT-03<br/>3. Return to the Parent Dashboard | Within a few seconds of the distraction event, the Parent Dashboard displays a real-time alert indicating a distraction was detected for the child. | **PASSED** |
+| AT-04 | **Verify followup questions occur when selected upon question generation**<br/>1. Assign a video to a child, checking the Followup Question toggle in the question generation view. Note the two different followups per each question, one for a correct answer and one for an incorrect answer. <br/>2. Log in as the child the video is assigned to and begin watching the video. <br/>3. The correct followup question is present for both correct and incorrect answers. | Both followups for the given question occur; one for if the original question is answered correctly, one for if it is answered incorrectly. | **PASSED** |
+| AT-5 | **Verify results page shows accuracy metrics per video assignment**<br/>1. As a child, complete a quiz with a mix of correct and incorrect answers<br/>2. Log in as the parent and navigate to the video assignment. Click "View Results." | The dashboard displays all questions and if theyy were answered correctly or not. | **PASSED** |
+| AT-6 | **Verify results page shows percieved mood changes per assignment**<br/>1. As a child, trigger two questions. Ignore one, and answer the other in a very high volume. <br/>2. As a parent, navigate to the report for that assignment | The dashboard shows a detected mood for each answer. Bored for one and Excited fo the other. | **PASSED** |
+| AT-7 | **Verify speed in answer processing**<br/>1. As a child, answer a question. <br/>2. Note the time it takes for the system to process your answer and give you a result.  | The system shpuld take no longer than 1-2 seconds to process your answer and return a result. | **PASSED** |
