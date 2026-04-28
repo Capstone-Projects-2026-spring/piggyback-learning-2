@@ -1,9 +1,6 @@
-const SILENCE_THRESHOLD: f32 = 0.01;
+use nnnoiseless::DenoiseState;
+
 const PRE_EMPHASIS: f32 = 0.97;
-const MIN_RMS: f32 = 0.005;
-/// Minimum fraction of samples above threshold to count as real speech.
-/// Noise spikes briefly then drops,  real speech stays consistently above.
-const MIN_ACTIVE_RATIO: f32 = 0.08;
 
 /// Convert multi-channel interleaved samples to mono by averaging channels.
 pub fn to_mono(data: &[f32], channels: usize) -> Vec<f32> {
@@ -32,63 +29,46 @@ pub fn resample(samples: Vec<f32>, from: u32, to: u32) -> Vec<f32> {
         .collect()
 }
 
-/// Run the full processing pipeline on a mono 16kHz chunk:
-/// RMS gate -> pre-emphasis -> silence trim -> activity check -> normalize.
-/// Returns an empty vec if the chunk is rejected at any stage.
+/// Denoise audio using RNNoise. Runs frame by frame at 480 samples per frame.
+/// Should be called on 16kHz mono audio before VAD or transcription.
+pub fn denoise(samples: &[f32]) -> Vec<f32> {
+    let frame_size = DenoiseState::FRAME_SIZE; // 480 samples
+    let mut state = DenoiseState::new();
+    let mut out = vec![0.0f32; samples.len()];
+
+    for (in_chunk, out_chunk) in samples.chunks(frame_size).zip(out.chunks_mut(frame_size)) {
+        let mut frame = [0.0f32; 480];
+        frame[..in_chunk.len()].copy_from_slice(in_chunk);
+        let mut denoised = [0.0f32; 480];
+        state.process_frame(&mut denoised, &frame);
+        out_chunk.copy_from_slice(&denoised[..out_chunk.len()]);
+    }
+    out
+}
+
+/// Process a mono 16kHz chunk for STT input:
+/// denoise -> pre-emphasis -> peak normalize.
+/// Returns empty vec if the chunk is silent after denoising.
 pub fn process_f32(samples: Vec<f32>) -> Vec<f32> {
     if samples.is_empty() {
         return vec![];
     }
 
-    // RMS gate - reject background noise before doing any work
-    let rms = (samples.iter().map(|s| s * s).sum::<f32>() / samples.len() as f32).sqrt();
-    if rms < MIN_RMS {
-        eprintln!("[audio] rejected - rms={rms:.4} below threshold");
-        return vec![];
-    }
-    eprintln!("[audio] rms={rms:.4}");
+    let denoised = denoise(&samples);
 
-    // Pre-emphasis - boost high frequencies for cleaner Whisper input
-    let mut emphasized = Vec::with_capacity(samples.len());
-    emphasized.push(samples[0]);
-    for i in 1..samples.len() {
-        emphasized.push(samples[i] - PRE_EMPHASIS * samples[i - 1]);
-    }
-
-    // Trim leading/trailing silence
-    let start = emphasized
-        .iter()
-        .position(|s| s.abs() > SILENCE_THRESHOLD)
-        .unwrap_or(0);
-    let end = emphasized
-        .iter()
-        .rposition(|s| s.abs() > SILENCE_THRESHOLD)
-        .unwrap_or(0);
-
-    if start >= end {
-        eprintln!("[audio] rejected - nothing above silence threshold after trim");
-        return vec![];
-    }
-
-    let trimmed = &emphasized[start..end];
-
-    // Activity ratio check - filters out single noise spikes
-    let active_ratio = trimmed
-        .iter()
-        .filter(|s| s.abs() > SILENCE_THRESHOLD)
-        .count() as f32
-        / trimmed.len() as f32;
-
-    if active_ratio < MIN_ACTIVE_RATIO {
-        eprintln!("[audio] rejected - sparse activity (ratio={active_ratio:.2})");
-        return vec![];
+    // Pre-emphasis - boost high frequencies for cleaner STT input
+    let mut emphasized = Vec::with_capacity(denoised.len());
+    emphasized.push(denoised[0]);
+    for i in 1..denoised.len() {
+        emphasized.push(denoised[i] - PRE_EMPHASIS * denoised[i - 1]);
     }
 
     // Peak normalize
-    let max = trimmed.iter().map(|s| s.abs()).fold(0_f32, f32::max);
-    if max == 0.0 {
+    let max = emphasized.iter().map(|s| s.abs()).fold(0_f32, f32::max);
+    if max < 1e-6 {
+        eprintln!("[audio] rejected - silent after denoising");
         return vec![];
     }
 
-    trimmed.iter().map(|s| s / max).collect()
+    emphasized.iter().map(|s| s / max).collect()
 }
