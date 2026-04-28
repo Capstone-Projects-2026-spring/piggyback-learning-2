@@ -9,11 +9,11 @@ sidebar_position: 4
 - Docusaurus is used to host our documentation.
 - Docker is used to containerize environments
 - Axum is used for Web server and routing
-- SeaORM and SQLite is used for Database
+- SeaORM and SQLite is used for the database
 - WebSocket support (provided by Axum) is used for communication. 
 - Vosk is used for transcribing children's audio responses
 - Next.js is used for rendering pages using the App Router
 - yt-dlp is used to fetch videos, metadata, and subtitles from a YouTube URL.
 - OpenAI is used for generating questions
-- FFmpeg is used to extract key frames from downloaded videos for AI to used during question generation.
-- Inworld is used for text to speech
+- FFmpeg is used to extract key frames from downloaded videos for AI to use during question generation.
+- Inworld is used for text-to-speech
