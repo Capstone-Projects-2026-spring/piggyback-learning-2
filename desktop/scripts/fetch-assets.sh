@@ -123,15 +123,19 @@ fi
 # ── TTS system dependencies (Linux only) ─────────────────────────────────────
 case "$(uname -s)" in
     Linux*)
-        echo "Installing Linux audio dependency for Piper..."
-        if command -v pacman &>/dev/null; then
-            sudo pacman -S --noconfirm alsa-utils
-        elif command -v apt-get &>/dev/null; then
-            sudo apt-get install -y alsa-utils
-        elif command -v dnf &>/dev/null; then
-            sudo dnf install -y alsa-utils
-        elif command -v zypper &>/dev/null; then
-            sudo zypper install -y alsa-utils
+        if ! command -v aplay &>/dev/null; then
+            echo "Installing alsa-utils..."
+            if command -v pacman &>/dev/null; then
+                sudo pacman -S --noconfirm alsa-utils
+            elif command -v apt-get &>/dev/null; then
+                sudo apt-get install -y alsa-utils
+            elif command -v dnf &>/dev/null; then
+                sudo dnf install -y alsa-utils
+            elif command -v zypper &>/dev/null; then
+                sudo zypper install -y alsa-utils
+            fi
+        else
+            echo "alsa-utils already present, skipping"
         fi
         ;;
 esac
