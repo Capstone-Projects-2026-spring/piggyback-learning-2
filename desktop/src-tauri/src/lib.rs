@@ -14,12 +14,12 @@ use voice::{
 };
 
 fn load_models(res: &Path) {
-    let moonshine_dir = res.join("models/moonshine-tiny");
+    let moonshine_dir = res.join("models/moonshine-base");
     if moonshine_dir.exists() {
         moonshine::init_moonshine(&moonshine_dir);
-        eprintln!("[app] loaded moonshine-tiny");
+        eprintln!("[app] loaded moonshine-base");
     } else {
-        eprintln!("[app] moonshine-tiny not found - STT disabled");
+        eprintln!("[app] moonshine-base not found - STT disabled");
     }
 
     let models: &[(&str, fn(&Path))] = &[
