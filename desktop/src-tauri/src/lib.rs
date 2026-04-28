@@ -8,7 +8,7 @@ use voice::{
     capture, intent_classifier,
     onboarding::{self, OnboardingFlow},
     session, speaker,
-    state::init_whisper,
+    state::{init_silero, init_whisper},
     tts,
 };
 
@@ -21,6 +21,7 @@ fn load_models(res: &std::path::Path) {
         ("models/emotion-ferplus-8.onnx", |p| {
             utils::mood::init_mood(p)
         }),
+        ("models/silero_vad.onnx", |p| init_silero(p)),
     ];
 
     for (relative, init_fn) in models {
