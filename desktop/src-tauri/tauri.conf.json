@@ -42,7 +42,8 @@
       "models/emotion-ferplus-8.onnx",
       "models/ultraface.onnx",
       "models/en_GB-alba-medium.onnx",
-      "models/en_GB-alba-medium.onnx.json"
+      "models/en_GB-alba-medium.onnx.json",
+      "models/silero_vad.onnx"
     ]
   }
 }
