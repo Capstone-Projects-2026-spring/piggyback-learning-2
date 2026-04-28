@@ -34,7 +34,7 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"] }
 # ML / inference
 ort = { version = "2.0.0-rc.12", features = [] }
 fastembed = "5.13.3"
-whisper-rs = "0.16.0"
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
 ndarray = "0.17.2"
 
 # Audio
