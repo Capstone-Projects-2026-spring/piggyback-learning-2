@@ -44,19 +44,19 @@ case "$(uname -s)" in
         ;;
 esac
 
-# ── Moonshine Tiny ONNX + tokenizer ──────────────────────────────────────────
-MOONSHINE_DIR="$MODEL_DIR/moonshine-tiny"
-mkdir -p "$MOONSHINE_DIR"
+# ── Moonshine Base ONNX + tokenizer ──────────────────────────────────────────
+MOONSHINE_BASE_DIR="$MODEL_DIR/moonshine-base"
+mkdir -p "$MOONSHINE_BASE_DIR"
 for f in preprocess.onnx encode.onnx uncached_decode.onnx cached_decode.onnx; do
     download_if_missing \
-        "$MOONSHINE_DIR/$f" \
-        "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/tiny/$f" \
-        "moonshine-tiny/$f"
+        "$MOONSHINE_BASE_DIR/$f" \
+        "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/base/$f" \
+        "moonshine-base/$f"
 done
 download_if_missing \
-    "$MOONSHINE_DIR/tokenizer.json" \
-    "https://huggingface.co/UsefulSensors/moonshine-tiny/resolve/main/tokenizer.json" \
-    "moonshine-tiny tokenizer"
+    "$MOONSHINE_BASE_DIR/tokenizer.json" \
+    "https://huggingface.co/UsefulSensors/moonshine-base/resolve/main/tokenizer.json" \
+    "moonshine-base tokenizer"
 
 # ── Silero VAD ONNX (v5) ──────────────────────────────────────────────────────
 download_if_missing \
