@@ -6,51 +6,48 @@ use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 use tokenizers::Tokenizer;
 
-// ── Model sessions ────────────────────────────────────────────────────────────
-
+// Model sessions
 static PREPROCESS: OnceLock<Mutex<Session>> = OnceLock::new();
 static ENCODE: OnceLock<Mutex<Session>> = OnceLock::new();
 static UNCACHED_DECODE: OnceLock<Mutex<Session>> = OnceLock::new();
 static CACHED_DECODE: OnceLock<Mutex<Session>> = OnceLock::new();
 static TOKENIZER: OnceLock<Tokenizer> = OnceLock::new();
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
+// Constants
 const SOT: i32 = 1;
 const EOT: i32 = 2;
 const VOCAB_SIZE: usize = 32768;
-const HIDDEN_DIM: usize = 288;
 
-/// moonshine-tiny: 6 transformer layers × 4 KV tensors = 24 cache tensors
-const N_LAYERS: usize = 6;
-
-/// Max 6.5 tokens per second — prevents hallucination loops
+/// Max 6.5 tokens per second - prevents hallucination loops
 const TOKENS_PER_SECOND: f32 = 6.5;
 const MIN_TOKENS: usize = 10;
 
-// ── KV cache name tables (computed once at compile time via const arrays) ─────
+/// Number of transformer layers - base=8
+const N_LAYERS: usize = 8;
 
 /// Base names for uncached_decode KV cache outputs, one per layer
 const UNCACHED_BASES: [&str; N_LAYERS] = [
-    "functional_22",
-    "functional_25",
     "functional_28",
     "functional_31",
     "functional_34",
     "functional_37",
+    "functional_40",
+    "functional_43",
+    "functional_46",
+    "functional_49",
 ];
 
 /// (base_name, input_layer_index) for cached_decode KV cache outputs
 const CACHED_BASES: [(&str, usize); N_LAYERS] = [
-    ("functional_23", 102),
-    ("functional_26", 106),
-    ("functional_29", 110),
-    ("functional_32", 114),
-    ("functional_35", 118),
-    ("functional_38", 122),
+    ("functional_29", 132),
+    ("functional_32", 136),
+    ("functional_35", 140),
+    ("functional_38", 144),
+    ("functional_41", 148),
+    ("functional_44", 152),
+    ("functional_47", 156),
+    ("functional_50", 160),
 ];
-
-// ── Init ──────────────────────────────────────────────────────────────────────
 
 fn load_session(path: &Path) -> Mutex<Session> {
     Mutex::new(
@@ -82,8 +79,6 @@ pub fn init_moonshine(model_dir: &Path) {
     eprintln!("[moonshine] ready");
 }
 
-// ── Transcription ─────────────────────────────────────────────────────────────
-
 /// Transcribe raw 16kHz mono f32 samples.
 /// Returns an empty string on any failure.
 pub fn transcribe(samples: &[f32]) -> String {
@@ -91,10 +86,21 @@ pub fn transcribe(samples: &[f32]) -> String {
 }
 
 fn run(samples: &[f32]) -> Option<String> {
-    let (features_shape, features_data) = preprocess(samples)?;
-    let (encoded_shape, encoded_data) = encode(&features_shape, features_data)?;
-    let (first_token, mut kv_cache, mut kv_shapes) =
-        uncached_decode(&encoded_shape, &encoded_data)?;
+    let (features_shape, features_data) = preprocess(samples).or_else(|| {
+        eprintln!("[moonshine] preprocess failed");
+        None
+    })?;
+
+    let (encoded_shape, encoded_data) = encode(&features_shape, features_data).or_else(|| {
+        eprintln!("[moonshine] encode failed");
+        None
+    })?;
+
+    let (first_token, mut kv_cache, mut kv_shapes) = uncached_decode(&encoded_shape, &encoded_data)
+        .or_else(|| {
+            eprintln!("[moonshine] uncached_decode failed");
+            None
+        })?;
 
     let max_tokens = ((samples.len() as f32 / 16000.0) * TOKENS_PER_SECOND) as usize;
     let max_tokens = max_tokens.max(MIN_TOKENS);
@@ -103,8 +109,9 @@ fn run(samples: &[f32]) -> Option<String> {
     let mut current = first_token;
     let cache_names = cached_output_names();
 
-    for _ in 0..max_tokens {
+    for step in 0..max_tokens {
         if current == EOT {
+            eprintln!("[moonshine] EOT at step {step}");
             break;
         }
         let (next, new_cache, new_shapes) = cached_decode(
@@ -114,7 +121,11 @@ fn run(samples: &[f32]) -> Option<String> {
             &kv_cache,
             &kv_shapes,
             &cache_names,
-        )?;
+        )
+        .or_else(|| {
+            eprintln!("[moonshine] cached_decode failed at step {step}");
+            None
+        })?;
         current = next;
         generated.push(current);
         kv_cache = new_cache;
@@ -126,7 +137,7 @@ fn run(samples: &[f32]) -> Option<String> {
     Some(text)
 }
 
-// ── Pipeline stages ───────────────────────────────────────────────────────────
+// Pipeline stages
 
 fn preprocess(samples: &[f32]) -> Option<(Vec<usize>, Vec<f32>)> {
     let audio = Array2::from_shape_vec((1, samples.len()), samples.to_vec()).ok()?;
@@ -142,8 +153,10 @@ fn preprocess(samples: &[f32]) -> Option<(Vec<usize>, Vec<f32>)> {
 }
 
 fn encode(features_shape: &[usize], features_data: Vec<f32>) -> Option<(Vec<usize>, Vec<f32>)> {
+    // Hidden dim is read from the preprocess output shape - works for both tiny (288) and base (416)
+    let hidden_dim = features_shape[2];
     let enc_input = Array3::from_shape_vec(
-        (features_shape[0], features_shape[1], HIDDEN_DIM),
+        (features_shape[0], features_shape[1], hidden_dim),
         features_data,
     )
     .ok()?;
@@ -158,7 +171,7 @@ fn encode(features_shape: &[usize], features_data: Vec<f32>) -> Option<(Vec<usiz
             "args_1" => seq_tensor
         ])
         .ok()?;
-    let t = outputs["layer_normalization_12"]
+    let t = outputs["layer_normalization_16"]
         .try_extract_tensor::<f32>()
         .ok()?;
     Some((
@@ -171,10 +184,11 @@ fn uncached_decode(
     encoded_shape: &[usize],
     encoded_data: &[f32],
 ) -> Option<(i32, Vec<Vec<f32>>, Vec<Vec<usize>>)> {
+    let hidden_dim = encoded_shape[2];
     let tok_tensor = Tensor::from_array(Array2::from_shape_vec((1, 1), vec![SOT]).ok()?).ok()?;
     let enc_tensor = Tensor::from_array(
         Array3::from_shape_vec(
-            (encoded_shape[0], encoded_shape[1], HIDDEN_DIM),
+            (encoded_shape[0], encoded_shape[1], hidden_dim),
             encoded_data.to_vec(),
         )
         .ok()?,
@@ -209,13 +223,14 @@ fn cached_decode(
     kv_shapes: &[Vec<usize>],
     cache_names: &[String],
 ) -> Option<(i32, Vec<Vec<f32>>, Vec<Vec<usize>>)> {
+    let hidden_dim = encoded_shape[2];
     let tok_t: DynValue =
         Tensor::from_array(Array2::from_shape_vec((1, 1), vec![current_token]).ok()?)
             .ok()?
             .into();
     let enc_t: DynValue = Tensor::from_array(
         Array3::from_shape_vec(
-            (encoded_shape[0], encoded_shape[1], HIDDEN_DIM),
+            (encoded_shape[0], encoded_shape[1], hidden_dim),
             encoded_data.to_vec(),
         )
         .ok()?,
@@ -250,8 +265,7 @@ fn cached_decode(
     Some((next_token, new_cache, new_shapes))
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
+// Helpers
 fn extract_kv_cache(
     outputs: &ort::session::SessionOutputs,
     names: &[String],
