@@ -112,7 +112,7 @@ fn run_capture_loop(
     let mut chunker = VadChunker::new();
 
     loop {
-        std::thread::sleep(std::time::Duration::from_millis(30));
+        std::thread::sleep(std::time::Duration::from_millis(200));
 
         // Flush buffer and VAD while TTS is playing so audio doesn't
         // accumulate and fire the moment TTS mode exits.
