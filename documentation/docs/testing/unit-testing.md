@@ -23,46 +23,85 @@ cargo test --test <test_file>
 #### ```These tests validate the calculations, decision making logic, and data integrity of the application. The tests use Rust's standard #[test] and #[tokio::test] attributes, using insta for snapshot management when needed.```
 
 
-## ```AI Logic and Transcription Preparation (tests/utils/openai.rs)```
-### Overview
-Tests the preparation of data before it is sent to the AI.
+# Unit Test Summary
 
-### sample_frames_logic
-#### Purpose
-Checks if the algorithm that selects the frames to send to AI for assist it in question generation, is successful.
-#### Expected Behavior
-Reduces a large set of frames to a manageable amount.
+## Models
 
-### build_transcript_formatting
-#### Purpose
-Validates that the program correctly converts database frame and subtitles into a single formatted string.
-#### Expected Behavior
-Produces a transcript string with correct timestamp text formatting.
+| Test | Result |
+|------|--------|
+| `kid_tags::test_model` | ✅ ok |
+| `kids::kid_parent_relationship` | ✅ ok |
+| `parents::test_model` | ✅ ok |
+| `questions::test_model` | ✅ ok |
+| `frames::test_model` | ✅ ok |
+| `generated_questions::test_model` | ✅ ok |
+| `segments::test_model` | ✅ ok |
+| `tags::test_model` | ✅ ok |
+| `video_assignments::test_model` | ✅ ok |
+| `videos::test_model` | ✅ ok |
+| `video_tags::test_model` | ✅ ok |
 
-### build_prompt_structure
-#### Purpose
-Ensures the prompt sent to AI has all required segments and history.
-#### Expected Behavior
-Verified the inclusion of transcripts, duration metadata, and previously asked questions to avoid the ai repeating.
+## Requests
 
-## ```Database, and Models (tests/models/)```
-Overview: Validates database constraints, relationships, and automated hooks.
+### Auth
 
-### ```video_update_timestamp_logic (hook.rs)```
-#### Purpose
-Verifies that the before_save hook automatically updates the updated_at timestamp.
-#### Expected Behavior
-The updated_at value after an update is strictly greater than the initial value.
+| Test | Description | Result |
+|------|-------------|--------|
+| `can_signup_kid` | Kid signup succeeds | ✅ ok |
+| `can_signup_parent` | Parent signup succeeds | ✅ ok |
+| `can_login_kid` | Kid login succeeds | ✅ ok |
+| `can_login_parent` | Parent login succeeds | ✅ ok |
+| `login_wrong_password_rejected` | Rejects bad password | ✅ ok |
+| `login_nonexistent_user_rejected` | Rejects unknown user | ✅ ok |
+| `kid_signup_without_parent_id_rejected` | Kid signup requires parent ID | ✅ ok |
+| `duplicate_kid_username_rejected` | Rejects duplicate kid username | ✅ ok |
+| `duplicate_parent_username_rejected` | Rejects duplicate parent username | ✅ ok |
+| `invalid_role_rejected` | Rejects invalid role | ✅ ok |
 
-### ```kid_parent_relationship (kids.rs)```
-#### Purpose
-Ensures relationship between parents and kids is correct.
-#### Expected Behavior
-A child record stays linked to the parent ID after insertion and retrieval from the database.
+### Answers
 
-### ```video_assignment_json_storage (video_assignments.rs)```
-#### Purpose
-Validates that the JSON Answer blob is correctly stored in SQLite.
-#### Expected Behavior
-The JSON retrieved from the database matches the structure of the Answer struct defined in controller.
+| Test | Description | Result |
+|------|-------------|--------|
+| `can_get_answers` | Fetches answers successfully | ✅ ok |
 
+### Kids
+
+| Test | Description | Result |
+|------|-------------|--------|
+| `can_get_recommendations` | Fetches kid recommendations | ✅ ok |
+| `can_get_kid_tags` | Fetches tags for a kid | ✅ ok |
+| `can_get_videos_assigned` | Fetches assigned videos | ✅ ok |
+
+### Parents
+
+| Test | Description | Result |
+|------|-------------|--------|
+| `can_get_parent_kids` | Fetches kids for a parent | ✅ ok |
+
+### Questions
+
+| Test | Description | Result |
+|------|-------------|--------|
+| `can_get_questions` | Fetches questions successfully | ✅ ok |
+| `get_questions_returns_correct_shape` | Response shape is correct | ✅ ok |
+| `get_questions_unknown_video_returns_empty_segments` | Unknown video yields empty segments | ✅ ok |
+| `can_update_question` | Updates a question successfully | ✅ ok |
+| `update_question_not_found` | Handles missing question on update | ✅ ok |
+| `can_update_segment_best_question` | Updates best question for segment | ✅ ok |
+| `update_segment_best_question_not_found` | Handles missing segment on update | ✅ ok |
+
+### Tags
+
+| Test | Description | Result |
+|------|-------------|--------|
+| `can_get_all_tags` | Fetches all tags | ✅ ok |
+
+### Videos
+
+| Test | Description | Result |
+|------|-------------|--------|
+| `can_get_video_tags` | Fetches tags for a video | ✅ ok |
+
+---
+
+**Total: 35 passed, 0 failed** — finished in 8.11s
