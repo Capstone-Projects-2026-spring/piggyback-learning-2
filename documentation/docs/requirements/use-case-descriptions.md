@@ -11,8 +11,8 @@ _As a user, it is important that I can create an account so that I can maintain 
 1.  Upon accessing the web application for the first time, the user is directed to a dashboard. There are buttons for creating an account and logging in.
 2.  The user selects the 'Register' button to access the account registration form.
 3.  The user inputs their username, email address, password, and other optional fields, and clicks the 'Sign Up' button to submit the form. If the information is valid, the user is notified that their account creation was successful.
-4.  The user receives an email which contains a link that verifies their email account. (optional)
-5.  The user selects the 'Sign In' link to access the sign-in page, and enters in their email and password.
+4.  The user receives an email that contains a link that verifies their email account. (optional)
+5.  The user selects the 'Sign In' link to access the sign-in page, and enters their email and password.
 6.  Since the user is logging in for the first time, they are redirected to a landing page (tutorial?)
 
 --- -->
@@ -20,17 +20,17 @@ _As a user, it is important that I can create an account so that I can maintain 
 ## New use cases
 --- -->
 ### Use case 1 - Add children to my account and assign videos to them
-_As a parent I want to create a children's account attached to mine, so that I can download and assign videos to them._
+_As a parent, I want to create a children's account attached to mine, so that I can download and assign videos to them._
 
 1. Parent opens the 'Your Kids Dashboard' and enters the kid's details.
-2. Application then creates the kid account linked to the parent's account.
-3. Parent searches for a YouTube video and tell app to download it.
+2. Application then creates the kid's account linked to the parent's account.
+3. Parent searches for a YouTube video and tells the app to download it.
 4. The app downloads the video and extracts the frames.
 5. Parent sets time intervals for the quiz and starts question generation (OpenAI).
 6. Parent reviews the questions and assigns the video to their kid.
 
 ### Use case 2 - Detect if my child is paying attention to the video
-_As a parent I want to detect if my child is paying attention to the video, so that I can keep them on track._
+_As a parent, I want to detect if my child is paying attention to the video, so that I can keep them on track._
 
 1. The child starts watching an assigned video.
 2. The eye tracker monitors the child's eyes (locally).
@@ -39,24 +39,24 @@ _As a parent I want to detect if my child is paying attention to the video, so t
 5. The application sends a notification to the Parent.
 
 ### Use case 3 - Answering a Quiz Question with voice recognition
-_As a child I want to be able to answer questions based on the video, using my voice._
+_As a child, I want to be able to answer questions based on the video, using my voice._
 
 1. Video reaches a quiz timestamp and pauses.
 2. The Mascot uses text-to-speech (TTS) to read the question aloud.
 3. The child speaks their answer, which is recorded by the application.
 4. Audio is analyzed by the app for correctness.
 5. If correct, the Mascot gives feedback and the video resumes.
-6. If incorrect, the system will perform a fallback (replays the video segment or question layering).
+6. If incorrect, the system will perform a fallback (replay the video segment or question layering).
 
 ### Use case 4 - View Quiz Results for Kids
-_As a parent I want to view how well my kids did on the quizzes._
-1. Parent navigates to the dashboard and request data on Kid's quizzes.
+_As a parent, I want to view how well my kids did on the quizzes._
+1. Parent navigates to the dashboard and requests data on Kid's quizzes.
 2. The Application requests the history of answers for a specific child and video.
 3. The history of answers from the Database.
-4. The Parent sees child answers, quiz results, quiz answers, and detected mood.
+4. The Parent sees the child's answers, quiz results, quiz answers, and detected mood.
 
 ### Use case 5 - Add tags to Kids Accounts
-_As a parent, I want to add tags related to my kid's interests to their accounts so that I can see reccomended videos relevant to what my kid likes._
+_As a parent, I want to add tags related to my kid's interests to their accounts so that I can see recommended videos relevant to what my kid likes._
 1. Parent goes to the 'Kid Dashboard' of their kid.
 2. Parent goes to the 'Tags' tab.
 3. Parent adds tags to their kids.
