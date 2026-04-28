@@ -3,10 +3,10 @@ sidebar_position: 2
 ---
 # Integration tests
 
-Tests to demonstrate each use-case based on the use-case descriptions and the sequence diagrams. External input should be provided via mock objects and results verified via mock objects. Integration tests should not require manual entry of data nor require manual interpretation of results.
+Tests to demonstrate each use case based on the use-case descriptions and the sequence diagrams. External input should be provided via mock objects, and results verified via mock objects. Integration tests should not require manual entry of data nor require manual interpretation of results.
 
 ## Overview
-These tests validates :
+These tests validate:
 - The Axum routes interact correctly with the SQLite database
 - The expected status codes were returned
 - The expected JSON structures were returned.
@@ -29,7 +29,7 @@ Parent is successfully queried in the database, and registering a child returns 
 ##### Purpose
 To prevent multiple parent accounts from having the same username.
 ##### Expected Behavior
-First request returns a 200 status code. second request with same payload returns 400 status code.
+First request returns a 200 status code. The second request with the same payload returns a 400 status code.
 
 #### 4. duplicate_kid_username_rejected
 ##### Purpose
@@ -39,7 +39,7 @@ The system rejects an attempt at the second signup using the same username with 
 
 #### 5. kid_signup_without_parent_id_rejected
 ##### Purpose
-To ensure the functionality of the requirement that kids accounts must be connected to a parent account.
+To ensure the functionality of the requirement that kids' accounts must be connected to a parent account.
 ##### Expected Behavior
 Request fails with 400 status code if the parent_id is missing.
 
@@ -47,23 +47,23 @@ Request fails with 400 status code if the parent_id is missing.
 ##### Purpose
 Ensures that users can only register with specified roles. For security reasons.
 ##### Expected Behavior
-Attempting to register with a role other than "parent" or "kid" returns 400 status code.
+Attempting to register with a role other than "parent" or "kid" returns a 400 status code.
 
 #### 7. can_login_parent
 ##### Purpose
-To verify that the parent can login and JWT generation.
+To verify that the parent can log in and JWT generation.
 ##### Expected Behavior
 Returns 200, a valid token, and the correct user role.
 
 #### 8. can_login_kid
 ##### Purpose 
-Verifies kid login and the parent_username is included in the response.
-##### Expected Behavio
+Verifies kid login, and the parent_username is included in the response.
+##### Expected Behavior
 Returns 200, a valid token, and the linked parent's username.
 
 #### 9. login_wrong_password_rejected
 ##### Purpose
-Ensures the authentication fails for incorrect passwords. Users can't login if they enter the wrong password.
+Ensures the authentication fails for incorrect passwords. Users can't log in if they enter the wrong password.
 ##### Expected Behavior
 Responds with status code 400.
 
@@ -77,7 +77,7 @@ Responds with status code 400.
 ### ```Questions (tests/requests/questions.rs)```
 #### 1. can_get_questions
 ##### Purpose
-Verifies questions can be retrieved for a video segment.
+Verifies that questions can be retrieved for a video segment.
 ##### Expected Behavior
 Responds with 200 status code and seeded question data.
 
@@ -144,7 +144,7 @@ Responds with status code 200.
 
 #### 5. can_get_parent_kids
 ##### Purpose
-To see if application can list all children associated with a parent ID.
+To see if the application can list all children associated with a parent ID.
 ##### Expected Behavior
 Responds with status code 200.
 
