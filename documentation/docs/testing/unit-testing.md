@@ -29,17 +29,17 @@ cargo test --test <test_file>
 
 | Test | Result |
 |------|--------|
-| `kid_tags::test_model` | ✅ ok |
-| `kids::kid_parent_relationship` | ✅ ok |
-| `parents::test_model` | ✅ ok |
-| `questions::test_model` | ✅ ok |
-| `frames::test_model` | ✅ ok |
-| `generated_questions::test_model` | ✅ ok |
-| `segments::test_model` | ✅ ok |
-| `tags::test_model` | ✅ ok |
-| `video_assignments::test_model` | ✅ ok |
-| `videos::test_model` | ✅ ok |
-| `video_tags::test_model` | ✅ ok |
+| `kid_tags::test_model` | PASSED |
+| `kids::kid_parent_relationship` | PASSED |
+| `parents::test_model` | PASSED |
+| `questions::test_model` | PASSED |
+| `frames::test_model` | PASSED |
+| `generated_questions::test_model` | PASSED |
+| `segments::test_model` | PASSED |
+| `tags::test_model` | PASSED |
+| `video_assignments::test_model` | PASSED |
+| `videos::test_model` | PASSED |
+| `video_tags::test_model` | PASSED |
 
 ## Requests
 
@@ -47,61 +47,60 @@ cargo test --test <test_file>
 
 | Test | Description | Result |
 |------|-------------|--------|
-| `can_signup_kid` | Kid signup succeeds | ✅ ok |
-| `can_signup_parent` | Parent signup succeeds | ✅ ok |
-| `can_login_kid` | Kid login succeeds | ✅ ok |
-| `can_login_parent` | Parent login succeeds | ✅ ok |
-| `login_wrong_password_rejected` | Rejects bad password | ✅ ok |
-| `login_nonexistent_user_rejected` | Rejects unknown user | ✅ ok |
-| `kid_signup_without_parent_id_rejected` | Kid signup requires parent ID | ✅ ok |
-| `duplicate_kid_username_rejected` | Rejects duplicate kid username | ✅ ok |
-| `duplicate_parent_username_rejected` | Rejects duplicate parent username | ✅ ok |
-| `invalid_role_rejected` | Rejects invalid role | ✅ ok |
+| `can_signup_kid` | Kid signup succeeds | PASSED |
+| `can_signup_parent` | Parent signup succeeds | PASSED |
+| `can_login_kid` | Kid login succeeds | PASSED |
+| `can_login_parent` | Parent login succeeds | PASSED |
+| `login_wrong_password_rejected` | Rejects bad password | PASSED |
+| `login_nonexistent_user_rejected` | Rejects unknown user | PASSED |
+| `kid_signup_without_parent_id_rejected` | Kid signup requires parent ID | PASSED |
+| `duplicate_kid_username_rejected` | Rejects duplicate kid username | PASSED |
+| `duplicate_parent_username_rejected` | Rejects duplicate parent username | PASSED |
+| `invalid_role_rejected` | Rejects invalid role | PASSED |
 
 ### Answers
 
 | Test | Description | Result |
 |------|-------------|--------|
-| `can_get_answers` | Fetches answers successfully | ✅ ok |
+| `can_get_answers` | Fetches answers successfully | PASSED |
 
 ### Kids
 
 | Test | Description | Result |
 |------|-------------|--------|
-| `can_get_recommendations` | Fetches kid recommendations | ✅ ok |
-| `can_get_kid_tags` | Fetches tags for a kid | ✅ ok |
-| `can_get_videos_assigned` | Fetches assigned videos | ✅ ok |
+| `can_get_recommendations` | Fetches kid recommendations | PASSED |
+| `can_get_kid_tags` | Fetches tags for a kid | PASSED |
+| `can_get_videos_assigned` | Fetches assigned videos | PASSED |
 
 ### Parents
 
 | Test | Description | Result |
 |------|-------------|--------|
-| `can_get_parent_kids` | Fetches kids for a parent | ✅ ok |
+| `can_get_parent_kids` | Fetches kids for a parent | PASSED |
 
 ### Questions
 
 | Test | Description | Result |
 |------|-------------|--------|
-| `can_get_questions` | Fetches questions successfully | ✅ ok |
-| `get_questions_returns_correct_shape` | Response shape is correct | ✅ ok |
-| `get_questions_unknown_video_returns_empty_segments` | Unknown video yields empty segments | ✅ ok |
-| `can_update_question` | Updates a question successfully | ✅ ok |
-| `update_question_not_found` | Handles missing question on update | ✅ ok |
-| `can_update_segment_best_question` | Updates best question for segment | ✅ ok |
-| `update_segment_best_question_not_found` | Handles missing segment on update | ✅ ok |
+| `can_get_questions` | Fetches questions successfully | PASSED |
+| `get_questions_returns_correct_shape` | Response shape is correct | PASSED |
+| `get_questions_unknown_video_returns_empty_segments` | Unknown video yields empty segments | PASSED |
+| `can_update_question` | Updates a question successfully | PASSED |
+| `update_question_not_found` | Handles missing question on update | PASSED |
+| `can_update_segment_best_question` | Updates best question for segment | PASSED |
+| `update_segment_best_question_not_found` | Handles missing segment on update | PASSED |
 
 ### Tags
 
 | Test | Description | Result |
 |------|-------------|--------|
-| `can_get_all_tags` | Fetches all tags | ✅ ok |
+| `can_get_all_tags` | Fetches all tags | PASSED |
 
 ### Videos
 
 | Test | Description | Result |
 |------|-------------|--------|
-| `can_get_video_tags` | Fetches tags for a video | ✅ ok |
+| `can_get_video_tags` | Fetches tags for a video | PASSED |
 
 ---
 
-**Total: 35 passed, 0 failed** — finished in 8.11s
