@@ -26,6 +26,7 @@ graph TD
         Video_P["Video Processor (FFmpeg)"]
         AI["AI (OPENAI)"]
         Vosk["Speech Recognition And Transcription (Vosk)"]
+        TTS["Text-To-Speech (Inworld)"]
         Quiz["Quiz Logic"]
     end
 
@@ -38,6 +39,7 @@ graph TD
     subgraph External ["External APIs"]
         YT["YouTube API"]
         OPENAI_API["OpenAI API"]
+        INWORLD_API["Inworld API"]
     end
 
     UI --> API
@@ -63,6 +65,11 @@ graph TD
     Quiz --- AI
     Vosk --- AI
 
+    %% New Connections for TTS
+    API --- TTS
+    TTS --- INWORLD_API
+    Quiz --- TTS
+
     linkStyle 3 stroke:#37474f,stroke-width:3px;
     linkStyle 4 stroke:#37474f,stroke-width:3px;
     linkStyle 5 stroke:#800080,stroke-width:3px;
@@ -72,10 +79,14 @@ graph TD
     linkStyle 9 stroke:#37474f,stroke-width:3px;
     linkStyle 10 stroke:#00897b,stroke-width:3px;
     linkStyle 11 stroke:#800080,stroke-width:3px;
-    linkStyle 12 stroke:#37474fstroke-width:3px;
+    linkStyle 12 stroke:#37474f,stroke-width:3px;
     linkStyle 13 stroke:#00897b,stroke-width:3px;
     linkStyle 14 stroke:#00897b,stroke-width:3px; 
     linkStyle 15 stroke:#00897b,stroke-width:3px;
     linkStyle 16 stroke:#37474f,stroke-width:3px;
     linkStyle 17 stroke:#00897b,stroke-width:3px;
+    %% Styling for new Inworld connections
+    linkStyle 18 stroke:#37474f,stroke-width:3px;
+    linkStyle 19 stroke:#00897b,stroke-width:3px;
+    linkStyle 20 stroke:#37474f,stroke-width:3px;
 ```
