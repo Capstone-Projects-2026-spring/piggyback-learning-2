@@ -2,7 +2,7 @@ use crate::voice::state::get_silero;
 use ndarray::{Array2, Array3};
 use ort::value::Tensor;
 
-/// ~700ms of silence at 30ms frames triggers a flush
+/// ~256ms of silence at 32ms frames triggers a flush
 const SILENCE_FRAMES_THRESHOLD: usize = 8;
 /// 15s max before forced flush
 const MAX_SAMPLES: usize = 16000 * 15;
@@ -13,7 +13,6 @@ const FRAME_SIZE: usize = 512;
 /// Probability above which a frame is considered speech
 const SPEECH_THRESHOLD: f32 = 0.15;
 
-// change the hidden state size from 64 to 128, and merge h/c into single state:
 pub struct VadChunker {
     speech_buf: Vec<f32>,
     silent_frames: usize,
@@ -132,8 +131,6 @@ impl VadChunker {
                 return None;
             }
         };
-
-        eprintln!("[vad] prob={prob:.3}");
 
         self.state = match outputs["stateN"].try_extract_tensor::<f32>() {
             Ok(t) => t.1.iter().copied().collect(),
