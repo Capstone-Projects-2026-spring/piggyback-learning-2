@@ -2,9 +2,22 @@
 sidebar_position: 1
 ---
 # Unit tests
-You can run these tests yourself by running 
-```cargo test``` 
-in the terminal (in the backend directory of the project)
+You can run these tests yourself by going to the backend directory of our project in the terminal.
+Run the full test suite with:
+
+```bash
+cargo test
+```
+
+To run a specific test or module:
+
+```bash
+# Run tests matching a name pattern
+cargo test <test_name>
+
+# Run tests in a specific test file
+cargo test --test <test_file>
+```
 
 ### Overview
 #### ```These tests validate the calculations, decision making logic, and data integrity of the application. The tests use Rust's standard #[test] and #[tokio::test] attributes, using insta for snapshot management when needed.```
