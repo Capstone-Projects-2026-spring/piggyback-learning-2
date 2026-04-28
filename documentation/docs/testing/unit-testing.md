@@ -3,7 +3,7 @@ sidebar_position: 1
 ---
 # Unit tests
 You can run these tests yourself by running 
-```python manage.py test``` 
+```cargo test``` 
 in the terminal (in the backend directory of the project)
 
 ### Overview
