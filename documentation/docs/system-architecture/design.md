@@ -252,20 +252,20 @@ classDiagram
 
 **Backend**
 #### Built with Loco.rs, which integrates:
-- Axum – Used for Web server and routing
+- Axum – Used for the Web server and routing
 - SeaORM – Uses Database ORM for SQL queries
-- Database: Uses SQLite for lightweight, storage.
+- Database: Uses SQLite for lightweight storage.
 - WebSocket support is provided by Axum for real-time communication. 
 
 #### Authentication and Security
-- Role Access Control: Implements a system to login using Parent and Kid accounts which have separate roles.
+- Role Access Control: Implements a system to log in using Parent and Kid accounts, which have separate roles.
 - Linking Parent and Child: Kid accounts are linked to Parent IDs via foreign keys in the database. This allows parents to monitor and assign videos to their kids.
-- JWT Security: Uses JSON Web Tokens (JWT) for management pf secure sessions, with secrets managed via environment variables.
+- JWT Security: Uses JSON Web Tokens (JWT) for management of secure sessions, with secrets managed via environment variables.
 
 #### Video Processing
 - YouTube Downloading: Uses yt-dlp to fetch videos, metadata, and subtitles from a YouTube URL.
-- Frame Extraction: Uses FFmpeg to extract frames from downloaded videos for AI to used during question generation.
-- Processing is done with API endpoints and progress of processing is streamed to the frontend over WebSockets.
+- Frame Extraction: Uses FFmpeg to extract frames from downloaded videos for AI to use during question generation.
+- Processing is done with API endpoints, and the progress of processing is streamed to the frontend over WebSockets.
 
 ### AI Integration
 - Question Generation: Processes video metadata, transcripts/subtitles, and extracted frames to generate questions using AI.
@@ -276,10 +276,10 @@ classDiagram
 - Speech Recognition: Uses Vosk for transcribing children's audio responses without an internet connection, and to comply with COPPA and GDPR-K laws.
 - Model files are stored locally.
 - Text-to-Speech (TTS): Has endpoints for generating spoken prompts and feedback for the mascot to handle the quiz.
-- Mood Detection: After the child's audio response is transcribed to text. It analyzes physical properties of the transcribed audio in order to determine the child's mood. (Bored , Neutral, or Excited.) This is to comply with COPPA and GDPR-K laws.
+- Mood Detection: After the child's audio response is transcribed to text. It analyzes physical properties of the transcribed audio in order to determine the child's mood. (Bored, Neutral, or Excited.) This is to comply with COPPA and GDPR-K laws.
 
 ### Static / Media Serving
-Generated assets (the videos, extracted frames, question JSON files) are served statically, and can be access by URL for the frontend to use.
+Generated assets (the videos, extracted frames, and question JSON files) are served statically and can be accessed by URL for the frontend to use.
 
 **Frontend**
 ### Page rendering
@@ -292,7 +292,7 @@ Main entry pages (find them in /frontend/app):
 
 ### Frontend Logic:
 - The UI is built with Next.js (React) and TypeScript.
-- Pages are composed from reusable components located in components/.
+- Pages are composed of reusable components located in components/.
 - Styling is handled via Tailwind CSS and CSS files.
 - Shared logic (auth, WebSocket connections) is managed through React Context (context/) and custom hooks (hooks/).
 
@@ -311,23 +311,22 @@ Main entry pages (find them in /frontend/app):
 ### Kids page
 - Loads the video catalog and quiz data.
 - Calls TTS (text‑to‑speech) endpoints for spoken prompts and feedback.
-- Record audio responses and transcribes them with backend APIs.
+- Record audio responses and transcribe them with backend APIs.
 
 ### Attention and Gaze Tracking
  - Uses Google MediaPipe (FaceLandmarker) for local eye tracking.
 - Privacy Law Compliance: Processing is done entirely on the client side. Raw camera data is never sent to the server.
-- Attention Logic: If the application detects the child has looked away for a period of time,an automatic video pause os triggered and the app sends a distraction notification to the parent through the backend.
+- Attention Logic: If the application detects the child has looked away for a period of time, an automatic video pause is triggered, and the app sends a distraction notification to the parent through the backend.
 
 ### Static/Media Serving:
 - Static assets are reachable from the public/ directory (Next.js convention).
-- videos, extracted frames, question JSON can be reached by the backend and accessed via API routes.
+- videos, extracted frames, and question JSON can be reached by the backend and accessed via API routes.
 - Next.js serves static assets while Rust serves the generated content
 
 ---
 
 **Important Distinctions:**
 - Documentation/ is a different frontend project: Docusaurus + React.
-- That react site is for docs only and has it own build/runtime flow.
+- That React site is for docs only and has its own build/runtime flow.
 - The backend (Loco.rs / Axum) gives both REST APIs and WebSocket endpoints for the frontend. 
-
 ---
