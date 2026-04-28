@@ -41,7 +41,7 @@ Piggyback Learning is designed for children ages 4-7. The system turns regular v
 | **Target User** | Parent/Home | Teacher/Classroom | Student/Self-paced | Teacher/Classroom |
 
 ### Child Privacy and Legal Compliance
-All applications that may store and process data relating to children must comply to **COPPA** (USA) and **GDPR-K** (EU) laws. Especially if the applications use AI. The app ust obtain clear consent from the parent before collecting, using, or disclosing data of their children. The app must  implement strong security for data, and minimize data collection.
+All applications that may store and process data relating to children must comply to **COPPA** (USA) and **GDPR-K** (EU) laws. Especially if the applications use AI. The app must obtain clear consent from the parent before collecting, using, or disclosing data of their children. The app must  implement strong security for data, and minimize data collection.
 The system is designed to meet **COPPA** and **GDPR-K** standards through the following constraints:
 - **Local STT:** Audio transcription (Vosk) occurs entirely on the local machine. Raw audio files are not stored on the server.
 - **Client-Side Vision:** Eye detection (MediaPipe) processes frames locally in the browser. Camera feeds are never uploaded or stored.
