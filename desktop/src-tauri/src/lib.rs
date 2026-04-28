@@ -3,25 +3,32 @@ mod handlers;
 mod utils;
 mod voice;
 
+use std::path::Path;
 use tauri::Manager;
 use voice::{
-    capture, intent_classifier,
+    capture, intent_classifier, moonshine,
     onboarding::{self, OnboardingFlow},
     session, speaker,
-    state::{init_silero, init_whisper},
+    state::init_silero,
     tts,
 };
 
-fn load_models(res: &std::path::Path) {
-    init_whisper(&res.join("models/ggml-base.en.bin"));
+fn load_models(res: &Path) {
+    let moonshine_dir = res.join("models/moonshine-tiny");
+    if moonshine_dir.exists() {
+        moonshine::init_moonshine(&moonshine_dir);
+        eprintln!("[app] loaded moonshine-tiny");
+    } else {
+        eprintln!("[app] moonshine-tiny not found - STT disabled");
+    }
 
-    let models: &[(&str, fn(&std::path::Path))] = &[
+    let models: &[(&str, fn(&Path))] = &[
+        ("models/silero_vad.onnx", |p| init_silero(p)),
         ("models/wespeaker.onnx", |p| speaker::init_speaker(p)),
         ("models/ultraface.onnx", |p| utils::gaze::init_gaze(p)),
         ("models/emotion-ferplus-8.onnx", |p| {
             utils::mood::init_mood(p)
         }),
-        ("models/silero_vad.onnx", |p| init_silero(p)),
     ];
 
     for (relative, init_fn) in models {
