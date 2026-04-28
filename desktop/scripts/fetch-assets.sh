@@ -50,6 +50,12 @@ download_if_missing \
     "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin" \
     "whisper base.en (~148MB)"
 
+# ── Silero VAD ONNX (v5) ──────────────────────────────────────────────────────
+download_if_missing \
+    "$MODEL_DIR/silero_vad.onnx" \
+    "https://github.com/snakers4/silero-vad/raw/v5.1.2/src/silero_vad/data/silero_vad.onnx" \
+    "silero VAD ONNX v5 (~2MB)"
+
 # ── WeSpeaker ONNX ────────────────────────────────────────────────────────────
 download_if_missing \
     "$MODEL_DIR/wespeaker.onnx" \

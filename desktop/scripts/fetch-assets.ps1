@@ -26,6 +26,11 @@ Download-If-Missing `
     -Url   "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin" `
     -Label "whisper base.en (~148MB)"
 
+Download-If-Missing `
+    -Path  "$ModelDir\silero_vad.onnx" `
+    -Url   "https://github.com/snakers4/silero-vad/raw/v5.1.2/src/silero_vad/data/silero_vad.onnx" `
+    -Label "silero VAD ONNX v5 (~2MB)"
+
 # ── WeSpeaker ONNX ────────────────────────────────────────────────────────────
 Download-If-Missing `
     -Path  "$ModelDir\wespeaker.onnx" `
