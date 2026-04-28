@@ -1,7 +1,6 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, SampleRate, StreamConfig};
 use std::sync::{Arc, Mutex};
-use whisper_rs::{FullParams, SamplingStrategy};
 
 use super::enrollment::{create_user, emit_enrollment, EnrollmentEvent};
 use super::onboarding::{
@@ -14,11 +13,10 @@ use crate::voice::{
     command_resolver::ResolvedCommand,
     dispatcher,
     intent::Intent,
+    moonshine,
     onboarding::{self, SharedOnboarding},
     session::{SessionMode, SharedSession},
-    speaker,
-    state::get_whisper,
-    wake_word,
+    speaker, wake_word,
 };
 
 const TARGET_RATE: u32 = 16000;
@@ -260,34 +258,7 @@ fn run_capture_loop(
 }
 
 fn transcribe(samples: &[f32]) -> String {
-    let ctx = get_whisper();
-    let mut state = match ctx.create_state() {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("[capture] create_state: {e}");
-            return String::new();
-        }
-    };
-
-    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    params.set_language(Some("en"));
-    params.set_print_special(false);
-    params.set_print_progress(false);
-    params.set_print_realtime(false);
-    params.set_print_timestamps(false);
-
-    if let Err(e) = state.full(params, samples) {
-        eprintln!("[capture] whisper full: {e}");
-        return String::new();
-    }
-
-    let n = state.full_n_segments();
-    (0..n)
-        .filter_map(|i| state.get_segment(i).map(|s| s.to_string()))
-        .collect::<Vec<_>>()
-        .join(" ")
-        .trim()
-        .to_lowercase()
+    moonshine::transcribe(samples)
 }
 
 #[derive(serde::Serialize, Clone)]
