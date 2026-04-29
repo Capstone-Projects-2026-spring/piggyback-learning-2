@@ -70,36 +70,48 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Kid
-    participant WebApp as Next.js Frontend
+    participant WebApp as Frontend (Next.js) 
     participant Inworld as Inworld (TTS API)
     participant API as Backend (Rust/Axum)
     participant Vosk as Vosk STT (Local)
-    participant DB as SQLite DB
+    participant DB as SQLite (SeaORM)
 
     Note over WebApp: Video reaches Quiz Timestamp
     WebApp->>WebApp: Pause Video
     
+    Note right of WebApp: WebApp already has Question text from initial load
     WebApp->>Inworld: Request TTS (Question Text)
     Inworld-->>WebApp: Audio Stream
     WebApp->>WebApp: Mascot: Plays Question Audio
     
     Kid->>WebApp: Speaks Answer
+    
+    Note over WebApp, API: Analyze Audio
     WebApp->>API: POST /api/answers/analyze (audio.wav)
     
-    API->>Vosk: Process Audio Samples
-    Vosk-->>API: Transcribed Text
+    rect rgb(240, 240, 240)
+        Note over API, Vosk: Backend Processing
+        API->>Vosk: parse_wav() & transcribe()
+        Vosk-->>API: "transcribed_text"
+        API->>API: detect_mood() -> [mood, energy]
+        API->>API: compute_similarity() -> [is_correct, score]
+    end
     
-    Note over API: Logic: compute_similarity & detect_mood
+    API->>DB: Save to video_assignments (JSON blob)
     
     alt is_correct: true
-        API->>DB: Update JSON Answer Blob
-        API-->>WebApp: { correct: true, feedback_text: "Great job!", mood: "Excited" }
+        Note over API: Fetch 'followup_correct_question' from DB
+        API-->>WebApp: { correct: true, feedback: "Great!", mood: "Excited" }
         WebApp->>Inworld: Request TTS (Feedback Text)
         Inworld-->>WebApp: Audio Stream
         WebApp->>WebApp: Mascot: Plays Feedback & Resumes Video
     else is_correct: false
-        API-->>WebApp: { correct: false }
-        WebApp->>WebApp: Replay Video Segment (Fallback)
+        Note over API: Fetch 'followup_wrong_question' from DB
+        API-->>WebApp: { correct: false, scaffold_q: "Hint: ..." }
+        WebApp->>Inworld: Request TTS (scaffold_q)
+        Inworld-->>WebApp: Audio Stream
+        WebApp->>WebApp: Mascot: Plays Hint (Question Layering)
+        WebApp->>WebApp: (Optional) Replay Video Segment
     end
 ```
 ### Use Case 4 - View Quiz Results for Kids
