@@ -27,24 +27,40 @@ pub fn emit_enrollment(event: EnrollmentEvent) {
     }
 }
 
-pub async fn create_user(name: String, embedding: Vec<f32>, role: &str) -> Result<i32, String> {
+/// Create a user and store all enrollment embeddings individually.
+/// Each embedding is encrypted separately with a fresh nonce.
+pub async fn create_user(
+    name: String,
+    embeddings: Vec<Vec<f32>>,
+    role: &str,
+) -> Result<i32, String> {
     let key = crypto::get_voice_key();
-    let raw: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
-    let encrypted = crypto::encrypt(key, &raw)?;
 
-    let row = sqlx::query(
-        "INSERT INTO users (name, role, voice_embedding) VALUES (?, ?, ?) RETURNING id",
-    )
-    .bind(&name)
-    .bind(role)
-    .bind(encrypted)
-    .fetch_one(get_db())
-    .await
-    .map_err(|e| format!("[enrollment] insert failed: {e}"))?;
+    let row = sqlx::query("INSERT INTO users (name, role) VALUES (?, ?) RETURNING id")
+        .bind(&name)
+        .bind(role)
+        .fetch_one(get_db())
+        .await
+        .map_err(|e| format!("[enrollment] insert user failed: {e}"))?;
 
     let id: i64 =
         sqlx::Row::try_get(&row, "id").map_err(|e| format!("[enrollment] id fetch: {e}"))?;
 
-    eprintln!("[enrollment] created {role} id={id} name={name}");
+    for (i, embedding) in embeddings.iter().enumerate() {
+        let raw: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
+        let encrypted = crypto::encrypt(key, &raw)?;
+
+        sqlx::query("INSERT INTO voice_embeddings (user_id, embedding) VALUES (?, ?)")
+            .bind(id)
+            .bind(encrypted)
+            .execute(get_db())
+            .await
+            .map_err(|e| format!("[enrollment] insert embedding {i} failed: {e}"))?;
+    }
+
+    eprintln!(
+        "[enrollment] created {role} id={id} name={name} embeddings={}",
+        embeddings.len()
+    );
     Ok(id as i32)
 }
