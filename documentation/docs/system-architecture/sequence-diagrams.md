@@ -70,38 +70,36 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Kid
-    participant WebApp as Frontend (Next.js) 
+    participant WebApp as Next.js Frontend
+    participant Inworld as Inworld (TTS API)
     participant API as Backend (Rust/Axum)
-    participant Inworld as Inworld (TTS)
-    participant Vosk as Speech To Text (Vosk)
-    participant DB as SQLite (SeaORM)
+    participant Vosk as Vosk STT (Local)
+    participant DB as SQLite DB
 
-    WebApp->>WebApp: Video reaches Quiz Timestamp (Pauses Video)
+    Note over WebApp: Video reaches Quiz Timestamp
+    WebApp->>WebApp: Pause Video
     
-    Note over WebApp, Inworld: Mascot Reads Question
-    WebApp->>API: GET /api/tts/generate (Question Text)
-    API->>Inworld: Request Speech Synthesis
-    Inworld-->>API: Audio Data (WAV/MP3)
-    API-->>WebApp: Audio Stream
+    WebApp->>Inworld: Request TTS (Question Text)
+    Inworld-->>WebApp: Audio Stream
     WebApp->>WebApp: Mascot: Plays Question Audio
     
     Kid->>WebApp: Speaks Answer
+    WebApp->>API: POST /api/answers/analyze (audio.wav)
     
-    Note over WebApp, Vosk: Answer Analysis
-    WebApp->>API: POST /api/answers/analyze (Audio)
-    API->>Vosk: Process and Transcribe Audio Locally
+    API->>Vosk: Process Audio Samples
     Vosk-->>API: Transcribed Text
-    API->>API: compute_similarity() & detect_mood()
+    
+    Note over API: Logic: compute_similarity & detect_mood
     
     alt is_correct: true
-        API->>Inworld: Request "Correct" Feedback TTS
-        Inworld-->>API: Audio Data
-        API->>DB: Update VideoAssignment Answers
-        API-->>WebApp: { is_correct: true, feedback_audio: ... }
+        API->>DB: Update JSON Answer Blob
+        API-->>WebApp: { correct: true, feedback_text: "Great job!", mood: "Excited" }
+        WebApp->>Inworld: Request TTS (Feedback Text)
+        Inworld-->>WebApp: Audio Stream
         WebApp->>WebApp: Mascot: Plays Feedback & Resumes Video
     else is_correct: false
-        API-->>WebApp: { is_correct: false }
-        WebApp->>WebApp: Replay Video Segment or Start Question Layering
+        API-->>WebApp: { correct: false }
+        WebApp->>WebApp: Replay Video Segment (Fallback)
     end
 ```
 ### Use Case 4 - View Quiz Results for Kids
