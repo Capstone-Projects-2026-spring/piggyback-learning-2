@@ -110,8 +110,8 @@ fn run_capture_loop(
     loop {
         std::thread::sleep(std::time::Duration::from_millis(200));
 
-        // Flush buffer and VAD while TTS is playing so audio doesn't
-        // accumulate and fire the moment TTS mode exits.
+        // TTS gate - while TTS is active, drain and discard everything.
+        // This is the single source of truth. Nothing processes while TTS plays.
         {
             let s = session.lock().unwrap();
             if s.mode == SessionMode::Tts {
@@ -142,11 +142,11 @@ fn run_capture_loop(
             chunk.len() as f32 / TARGET_RATE as f32
         );
 
-        // Check TTS mode again after VAD - a chunk may have completed just as TTS started.
+        // Re-check after VAD - TTS may have started while accumulating.
         {
             let s = session.lock().unwrap();
             if s.mode == SessionMode::Tts {
-                eprintln!("[capture] TTS mode - dropping chunk");
+                eprintln!("[capture] TTS mode post-VAD - dropping chunk");
                 chunker.flush("tts active post-vad");
                 continue;
             }
@@ -164,8 +164,7 @@ fn run_capture_loop(
             continue;
         }
 
-        // Check TTS mode after transcription - whisper takes 1-3s so TTS
-        // may have started during inference.
+        // Re-check after transcription - Moonshine takes 1-3s.
         {
             let s = session.lock().unwrap();
             if s.mode == SessionMode::Tts {
@@ -284,8 +283,12 @@ fn handle_onboarding_audio(
                 eprintln!("[onboarding] name rejected - waiting");
                 return;
             }
-            std::thread::sleep(std::time::Duration::from_secs(2));
-            begin_voice_collection(onboarding);
+            // Spawn so the capture thread returns immediately and keeps
+            // hitting the TTS gate at the top of the loop.
+            let onboarding = onboarding.clone();
+            std::thread::spawn(move || {
+                begin_voice_collection(&onboarding);
+            });
         }
 
         OnboardingStage::CollectingVoice { prompt_index } => {
@@ -351,6 +354,9 @@ fn handle_onboarding_audio(
                     }
                 });
             }
+            // If not done: record_embedding already emitted the next prompt
+            // which triggers TTS on the frontend. The capture loop will
+            // discard everything via the TTS gate until TTS finishes.
         }
 
         other => eprintln!("[onboarding] unhandled stage: {other:?}"),
