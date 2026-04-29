@@ -1,9 +1,14 @@
 pub const CREATE_TABLES: &str = "
 CREATE TABLE IF NOT EXISTS users (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    name            TEXT    NOT NULL,
-    role            TEXT    NOT NULL CHECK(role IN ('parent', 'kid')),
-    voice_embedding BLOB
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    name    TEXT    NOT NULL,
+    role    TEXT    NOT NULL CHECK(role IN ('parent', 'kid'))
+);
+
+CREATE TABLE IF NOT EXISTS voice_embeddings (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    embedding BLOB    NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS tags (
