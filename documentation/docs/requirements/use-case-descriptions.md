@@ -45,7 +45,7 @@ _As a child, I want to be able to answer questions based on the video, using my 
 2. The Mascot uses text-to-speech (TTS) to read the question aloud.
 3. The child speaks their answer, which is recorded by the application.
 4. Audio is analyzed by the app for correctness.
-5. If correct, the Mascot gives feedback and the video resumes.
+5. If correct, the Mascot gives feedback (TTS) and the video resumes.
 6. If incorrect, the system will perform a fallback (replay the video segment or question layering).
 
 ### Use case 4 - View Quiz Results for Kids
