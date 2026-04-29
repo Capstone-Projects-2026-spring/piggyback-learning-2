@@ -3,9 +3,7 @@ use cpal::{SampleFormat, SampleRate, StreamConfig};
 use std::sync::{Arc, Mutex};
 
 use super::enrollment::{create_user, emit_enrollment, EnrollmentEvent};
-use super::onboarding::{
-    average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
-};
+use super::onboarding::{begin_voice_collection, record_embedding, OnboardingStage};
 use super::vad::VadChunker;
 use crate::utils::{app_handle, text::is_noise_transcript};
 use crate::voice::{
@@ -308,13 +306,13 @@ fn handle_onboarding_audio(
                 let o = onboarding.lock().unwrap();
                 let name = o.name.clone().unwrap_or_else(|| "User".to_string());
                 let role = o.flow.role().to_string();
-                let avg = average_embeddings(&o.embeddings);
+                let embeddings = o.embeddings.clone();
                 drop(o);
 
                 let session_clone = session.clone();
 
                 tauri::async_runtime::spawn(async move {
-                    match create_user(name.clone(), avg, &role).await {
+                    match create_user(name.clone(), embeddings, &role).await {
                         Ok(id) => {
                             if role == "parent" {
                                 session_clone.lock().unwrap().set_user(
