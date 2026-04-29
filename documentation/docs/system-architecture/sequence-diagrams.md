@@ -72,22 +72,33 @@ sequenceDiagram
     actor Kid
     participant WebApp as Frontend (Next.js) 
     participant API as Backend (Rust/Axum)
+    participant Inworld as Inworld (TTS)
     participant Vosk as Speech To Text (Vosk)
     participant DB as SQLite (SeaORM)
 
     WebApp->>WebApp: Video reaches Quiz Timestamp (Pauses Video)
-    WebApp->>WebApp: Mascot TTS: Reads Question
+    
+    Note over WebApp, Inworld: Mascot Reads Question
+    WebApp->>API: GET /api/tts/generate (Question Text)
+    API->>Inworld: Request Speech Synthesis
+    Inworld-->>API: Audio Data (WAV/MP3)
+    API-->>WebApp: Audio Stream
+    WebApp->>WebApp: Mascot: Plays Question Audio
+    
     Kid->>WebApp: Speaks Answer
     
-    WebApp->>API: POST /api/answers/analyze
+    Note over WebApp, Vosk: Answer Analysis
+    WebApp->>API: POST /api/answers/analyze (Audio)
     API->>Vosk: Process and Transcribe Audio Locally
     Vosk-->>API: Transcribed Text
-    API->>API: Check if Answers are Correct, and Detect Mood
+    API->>API: compute_similarity() & detect_mood()
     
     alt is_correct: true
-        API->>DB: Update VideoAssignment Answers.
-        API-->>WebApp: { is_correct: true }
-        WebApp->>WebApp: Mascot: Feedback and Resume the Video
+        API->>Inworld: Request "Correct" Feedback TTS
+        Inworld-->>API: Audio Data
+        API->>DB: Update VideoAssignment Answers
+        API-->>WebApp: { is_correct: true, feedback_audio: ... }
+        WebApp->>WebApp: Mascot: Plays Feedback & Resumes Video
     else is_correct: false
         API-->>WebApp: { is_correct: false }
         WebApp->>WebApp: Replay Video Segment or Start Question Layering
