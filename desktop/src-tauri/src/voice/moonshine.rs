@@ -85,6 +85,16 @@ pub fn transcribe(samples: &[f32]) -> String {
     run(samples).unwrap_or_default()
 }
 
+/// Returns true if the last `window` tokens equal the `window` tokens before them.
+fn has_repetition(tokens: &[i32], window: usize) -> bool {
+    if tokens.len() < window * 2 {
+        return false;
+    }
+    let last = &tokens[tokens.len() - window..];
+    let prev = &tokens[tokens.len() - window * 2..tokens.len() - window];
+    last == prev
+}
+
 fn run(samples: &[f32]) -> Option<String> {
     let (features_shape, features_data) = preprocess(samples).or_else(|| {
         eprintln!("[moonshine] preprocess failed");
@@ -114,6 +124,14 @@ fn run(samples: &[f32]) -> Option<String> {
             eprintln!("[moonshine] EOT at step {step}");
             break;
         }
+
+        // Detect repeating token sequences - truncate and bail.
+        if has_repetition(&generated, 4) {
+            eprintln!("[moonshine] repetition detected at step {step} - truncating");
+            generated.truncate(generated.len() - 4);
+            break;
+        }
+
         let (next, new_cache, new_shapes) = cached_decode(
             current,
             &encoded_shape,
@@ -126,6 +144,7 @@ fn run(samples: &[f32]) -> Option<String> {
             eprintln!("[moonshine] cached_decode failed at step {step}");
             None
         })?;
+
         current = next;
         generated.push(current);
         kv_cache = new_cache;
@@ -153,7 +172,6 @@ fn preprocess(samples: &[f32]) -> Option<(Vec<usize>, Vec<f32>)> {
 }
 
 fn encode(features_shape: &[usize], features_data: Vec<f32>) -> Option<(Vec<usize>, Vec<f32>)> {
-    // Hidden dim is read from the preprocess output shape - works for both tiny (288) and base (416)
     let hidden_dim = features_shape[2];
     let enc_input = Array3::from_shape_vec(
         (features_shape[0], features_shape[1], hidden_dim),
