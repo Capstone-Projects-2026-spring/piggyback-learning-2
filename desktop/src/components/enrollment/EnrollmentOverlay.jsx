@@ -1,12 +1,15 @@
 import { useEffect, useState, useRef } from "react";
-import { commandBus } from "@/lib";
 import orbPng from "@/assets/orb.png";
 import OrbDisplay from "./OrbDisplay.jsx";
 import PhraseList from "./PhraseList.jsx";
 import StatusFooter from "./StatusFooter.jsx";
 import { normaliseStage, speak, THEME } from "@/utils";
 
-export default function EnrollmentOverlay({ flow = "parent", onDone }) {
+export default function EnrollmentOverlay({
+  flow = "parent",
+  currentEvent,
+  onDone,
+}) {
   const [stage, setStage] = useState("greet");
   const [message, setMessage] = useState("");
   const [prompts, setPrompts] = useState([]);
@@ -21,33 +24,30 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
   const theme = THEME[flow] ?? THEME.parent;
 
   useEffect(() => {
-    return commandBus.onEnrollment((data) => {
-      if (data.flow !== flow) return;
+    if (!currentEvent) return;
+    if (currentEvent.flow !== flow) return;
 
-      const normalised = normaliseStage(data.stage);
-      setStage(normalised);
-      setMessage(data.message);
-      if (data.prompts?.length) setPrompts(data.prompts);
-      const idx = data.prompt_index ?? 0;
-      setActiveIdx(idx);
+    const normalised = normaliseStage(currentEvent.stage);
+    setStage(normalised);
+    setMessage(currentEvent.message);
+    if (currentEvent.prompts?.length) setPrompts(currentEvent.prompts);
+    const idx = currentEvent.prompt_index ?? 0;
+    setActiveIdx(idx);
 
-      // Speak exactly once per stage - no fallthrough, no else.
-      if (normalised === "name_confirmed") {
-        const match = data.message.match(/you,\s+([^!]+)!/);
-        if (match) setUserName(match[1].trim());
-        speak(data.message);
-      } else if (normalised === "prompt") {
-        const phrase = data.prompts?.[idx];
-        speak(phrase ? `Read this: ${phrase}` : data.message);
-      } else if (normalised === "done") {
-        speak(data.message);
-        setTimeout(() => onDoneRef.current?.(), 3000);
-      } else if (normalised === "greet") {
-        speak(data.message);
-      }
-      // error and unknown stages - no speak, just show message in UI
-    });
-  }, [flow]);
+    if (normalised === "name_confirmed") {
+      const match = currentEvent.message.match(/you,\s+([^!]+)!/);
+      if (match) setUserName(match[1].trim());
+      speak(currentEvent.message);
+    } else if (normalised === "prompt") {
+      const phrase = currentEvent.prompts?.[idx];
+      speak(phrase ? `Read this: ${phrase}` : currentEvent.message);
+    } else if (normalised === "done") {
+      speak(currentEvent.message);
+      setTimeout(() => onDoneRef.current?.(), 3000);
+    } else if (normalised === "greet") {
+      speak(currentEvent.message);
+    }
+  }, [currentEvent, flow]);
 
   const pillLabel = () => {
     if (stage === "greet")
@@ -60,8 +60,6 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
     return "";
   };
 
-  // Show waiting UI immediately - don't wait for the first enrollment event.
-  // For kid flow the greet event may have already fired before this mounted.
   if (!message) {
     return (
       <div
@@ -74,7 +72,7 @@ export default function EnrollmentOverlay({ flow = "parent", onDone }) {
           draggable={false}
         />
         <div className="mt-6 flex flex-col items-center gap-3">
-          <div className={`flex items-center gap-2`}>
+          <div className="flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full animate-pulse ${theme.dot}`}
             />

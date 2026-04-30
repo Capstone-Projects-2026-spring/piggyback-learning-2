@@ -1,31 +1,14 @@
 import { useEffect, useState } from "react";
-import { startOrb, stopOrb, commandBus } from "@/lib";
-import { speak } from "@/utils";
+import { commandBus } from "@/lib";
+import { speak, INTENT_RESPONSES } from "@/utils";
 import SessionBadge from "./SessionBadge.jsx";
 import OrbVisual from "./OrbVisual.jsx";
 import OrbTranscript from "./OrbTranscript.jsx";
-import { INTENT_RESPONSES, STARTUP_DELAY_MS } from "@/utils";
 
 export default function Orb() {
   const [status, setStatus] = useState("listening");
   const [transcript, setTranscript] = useState("");
   const [lastCommand, setLastCommand] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const init = async () => {
-      await new Promise((res) => setTimeout(res, STARTUP_DELAY_MS));
-      if (cancelled) return;
-      await startOrb().catch((err) =>
-        console.error("[orb] startOrb failed:", err),
-      );
-    };
-    init();
-    return () => {
-      cancelled = true;
-      stopOrb();
-    };
-  }, []);
 
   useEffect(() => {
     const offs = [
