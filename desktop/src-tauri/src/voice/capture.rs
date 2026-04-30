@@ -1,6 +1,9 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, SampleRate, StreamConfig};
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 
 use super::enrollment::{create_user, emit_enrollment, EnrollmentEvent};
 use super::onboarding::{begin_voice_collection, record_embedding, OnboardingStage};
@@ -51,12 +54,20 @@ pub fn start(
 
     let buffer: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
 
+    // This flag is checked in the mic callback itself - when true, incoming
+    // audio is simply discarded before it ever enters the buffer.
+    let mic_open = Arc::new(AtomicBool::new(true));
+
     let stream = {
         let buffer_w = buffer.clone();
+        let mic_open_w = mic_open.clone();
         match supported.sample_format() {
             SampleFormat::F32 => device.build_input_stream(
                 &config,
                 move |data: &[f32], _| {
+                    if !mic_open_w.load(Ordering::Relaxed) {
+                        return;
+                    }
                     let mono = audio_processor::to_mono(data, channels);
                     buffer_w.lock().unwrap().extend_from_slice(&mono);
                 },
@@ -66,6 +77,9 @@ pub fn start(
             SampleFormat::I16 => device.build_input_stream(
                 &config,
                 move |data: &[i16], _| {
+                    if !mic_open_w.load(Ordering::Relaxed) {
+                        return;
+                    }
                     let f: Vec<f32> = data.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
                     let mono = audio_processor::to_mono(&f, channels);
                     buffer_w.lock().unwrap().extend_from_slice(&mono);
@@ -76,6 +90,9 @@ pub fn start(
             SampleFormat::U8 => device.build_input_stream(
                 &config,
                 move |data: &[u8], _| {
+                    if !mic_open_w.load(Ordering::Relaxed) {
+                        return;
+                    }
                     let f: Vec<f32> = data.iter().map(|&s| (s as f32 - 128.0) / 128.0).collect();
                     let mono = audio_processor::to_mono(&f, channels);
                     buffer_w.lock().unwrap().extend_from_slice(&mono);
@@ -94,7 +111,9 @@ pub fn start(
         native_rate, channels
     );
 
-    std::thread::spawn(move || run_capture_loop(session, onboarding, buffer, native_rate));
+    std::thread::spawn(move || {
+        run_capture_loop(session, onboarding, buffer, native_rate, mic_open)
+    });
 
     Ok(CaptureHandle { _stream: stream })
 }
@@ -104,23 +123,25 @@ fn run_capture_loop(
     onboarding: SharedOnboarding,
     buffer: Arc<Mutex<Vec<f32>>>,
     native_rate: u32,
+    mic_open: Arc<AtomicBool>,
 ) {
     let mut chunker = VadChunker::new();
 
     loop {
         std::thread::sleep(std::time::Duration::from_millis(200));
 
-        // TTS gate - while TTS is active, drain and discard everything.
-        // This is the single source of truth. Nothing processes while TTS plays.
-        {
-            let s = session.lock().unwrap();
-            if s.mode == SessionMode::Tts {
-                drop(s);
-                buffer.lock().unwrap().clear();
-                chunker.flush("tts active");
-                continue;
-            }
+        // TTS gate - close the mic at the callback level so audio never
+        // even enters the buffer while TTS is active.
+        let in_tts = session.lock().unwrap().mode == SessionMode::Tts;
+        if in_tts {
+            mic_open.store(false, Ordering::Relaxed);
+            buffer.lock().unwrap().clear();
+            chunker.flush("tts active");
+            continue;
         }
+
+        // TTS done - reopen mic.
+        mic_open.store(true, Ordering::Relaxed);
 
         let raw: Vec<f32> = {
             let mut buf = buffer.lock().unwrap();
@@ -143,13 +164,12 @@ fn run_capture_loop(
         );
 
         // Re-check after VAD - TTS may have started while accumulating.
-        {
-            let s = session.lock().unwrap();
-            if s.mode == SessionMode::Tts {
-                eprintln!("[capture] TTS mode post-VAD - dropping chunk");
-                chunker.flush("tts active post-vad");
-                continue;
-            }
+        if session.lock().unwrap().mode == SessionMode::Tts {
+            eprintln!("[capture] TTS mode post-VAD - dropping chunk");
+            mic_open.store(false, Ordering::Relaxed);
+            buffer.lock().unwrap().clear();
+            chunker.flush("tts active post-vad");
+            continue;
         }
 
         let processed = audio_processor::process_f32(chunk.clone());
@@ -165,12 +185,9 @@ fn run_capture_loop(
         }
 
         // Re-check after transcription - Moonshine takes 1-3s.
-        {
-            let s = session.lock().unwrap();
-            if s.mode == SessionMode::Tts {
-                eprintln!("[capture] TTS mode post-transcription - dropping");
-                continue;
-            }
+        if session.lock().unwrap().mode == SessionMode::Tts {
+            eprintln!("[capture] TTS mode post-transcription - dropping");
+            continue;
         }
 
         // Onboarding - highest priority
@@ -283,12 +300,7 @@ fn handle_onboarding_audio(
                 eprintln!("[onboarding] name rejected - waiting");
                 return;
             }
-            // Spawn so the capture thread returns immediately and keeps
-            // hitting the TTS gate at the top of the loop.
-            let onboarding = onboarding.clone();
-            std::thread::spawn(move || {
-                begin_voice_collection(&onboarding);
-            });
+            begin_voice_collection(onboarding);
         }
 
         OnboardingStage::CollectingVoice { prompt_index } => {
@@ -354,9 +366,6 @@ fn handle_onboarding_audio(
                     }
                 });
             }
-            // If not done: record_embedding already emitted the next prompt
-            // which triggers TTS on the frontend. The capture loop will
-            // discard everything via the TTS gate until TTS finishes.
         }
 
         other => eprintln!("[onboarding] unhandled stage: {other:?}"),
