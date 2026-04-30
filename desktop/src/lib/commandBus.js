@@ -43,10 +43,7 @@ class CommandBus {
 
   onEnrollment(handler) {
     this.#enrollmentListeners.add(handler);
-    // Replay cached parent enrollment events - these can arrive before the
-    // subscriber registers since the overlay mounts after the Tauri event fires.
-    // Kid enrollment is always triggered while the overlay is already mounted.
-    if (this.#lastEnrollmentEvent?.flow === "parent") {
+    if (this.#lastEnrollmentEvent) {
       this.#call(handler, this.#lastEnrollmentEvent);
     }
     return () => this.#enrollmentListeners.delete(handler);

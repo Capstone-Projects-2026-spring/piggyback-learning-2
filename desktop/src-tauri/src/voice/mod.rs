@@ -6,6 +6,7 @@ pub mod enrollment;
 pub mod intent;
 pub mod intent_classifier;
 pub mod mel;
+pub mod moonshine;
 pub mod onboarding;
 pub mod session;
 pub mod speaker;

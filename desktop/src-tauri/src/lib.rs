@@ -3,19 +3,67 @@ mod handlers;
 mod utils;
 mod voice;
 
+use std::path::Path;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tauri::Manager;
 use voice::{
-    capture, intent_classifier,
-    onboarding::{self, OnboardingFlow},
+    capture, intent_classifier, moonshine,
+    onboarding::{self, OnboardingFlow, SharedOnboarding},
     session, speaker,
-    state::init_whisper,
+    state::init_silero,
     tts,
 };
 
-fn load_models(res: &std::path::Path) {
-    init_whisper(&res.join("models/ggml-base.en.bin"));
+#[derive(Clone)]
+struct Handshake {
+    backend_ready: Arc<AtomicBool>,
+    needs_onboarding: Arc<AtomicBool>,
+}
 
-    let models: &[(&str, fn(&std::path::Path))] = &[
+impl Handshake {
+    fn new(needs_onboarding: bool) -> Self {
+        Self {
+            backend_ready: Arc::new(AtomicBool::new(false)),
+            needs_onboarding: Arc::new(AtomicBool::new(needs_onboarding)),
+        }
+    }
+}
+
+#[tauri::command]
+fn is_backend_ready(handshake: tauri::State<Handshake>) -> bool {
+    handshake.backend_ready.load(Ordering::SeqCst)
+}
+
+#[tauri::command]
+fn frontend_ready(
+    handshake: tauri::State<Handshake>,
+    onboarding: tauri::State<SharedOnboarding>,
+) -> bool {
+    eprintln!("[app] frontend_ready received");
+    if handshake.needs_onboarding.load(Ordering::SeqCst) {
+        let onboarding_clone = onboarding.inner().clone();
+        tauri::async_runtime::spawn(async move {
+            eprintln!("[app] starting parent onboarding");
+            onboarding::start(&onboarding_clone, OnboardingFlow::Parent);
+        });
+    }
+    handshake.needs_onboarding.load(Ordering::SeqCst)
+}
+
+fn load_models(res: &Path) {
+    let moonshine_dir = res.join("models/moonshine-base");
+    if moonshine_dir.exists() {
+        moonshine::init_moonshine(&moonshine_dir);
+        eprintln!("[app] loaded moonshine-base");
+    } else {
+        eprintln!("[app] moonshine-base not found - STT disabled");
+    }
+
+    let models: &[(&str, fn(&Path))] = &[
+        ("models/silero_vad.onnx", |p| init_silero(p)),
         ("models/wespeaker.onnx", |p| speaker::init_speaker(p)),
         ("models/ultraface.onnx", |p| utils::gaze::init_gaze(p)),
         ("models/emotion-ferplus-8.onnx", |p| {
@@ -38,6 +86,8 @@ fn load_models(res: &std::path::Path) {
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            is_backend_ready,
+            frontend_ready,
             handlers::answers::set_answer_context,
             handlers::answers::clear_answer_context,
             handlers::videos::download_video_command,
@@ -83,26 +133,24 @@ pub fn run() {
 
             handlers::videos::init_session(session.clone());
             app.manage(session.clone());
+            app.manage(onboarding.clone());
 
             let needs_onboarding =
                 tauri::async_runtime::block_on(async { !db::init::has_parent_account().await });
 
-            if needs_onboarding {
-                let onboarding_clone = onboarding.clone();
-                tauri::async_runtime::spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    eprintln!("[app] starting parent onboarding");
-                    onboarding::start(&onboarding_clone, OnboardingFlow::Parent);
-                });
-            } else {
-                eprintln!("[app] parent account exists - skipping onboarding");
-            }
+            app.manage(Handshake::new(needs_onboarding));
 
             let handle = capture::start(session, onboarding)
                 .unwrap_or_else(|e| panic!("[app] audio capture failed: {e}"));
             Box::leak(Box::new(handle));
 
+            // Signal frontend that backend is ready.
             utils::app_handle::emit("orb://ready", ());
+            // Also set the flag for polling fallback.
+            app.state::<Handshake>()
+                .backend_ready
+                .store(true, Ordering::SeqCst);
+            eprintln!("[app] backend ready");
 
             Ok(())
         })

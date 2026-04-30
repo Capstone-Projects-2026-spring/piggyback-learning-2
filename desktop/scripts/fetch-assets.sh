@@ -44,11 +44,25 @@ case "$(uname -s)" in
         ;;
 esac
 
-# ── Whisper STT model ─────────────────────────────────────────────────────────
+# ── Moonshine Base ONNX + tokenizer ──────────────────────────────────────────
+MOONSHINE_BASE_DIR="$MODEL_DIR/moonshine-base"
+mkdir -p "$MOONSHINE_BASE_DIR"
+for f in preprocess.onnx encode.onnx uncached_decode.onnx cached_decode.onnx; do
+    download_if_missing \
+        "$MOONSHINE_BASE_DIR/$f" \
+        "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/base/$f" \
+        "moonshine-base/$f"
+done
 download_if_missing \
-    "$MODEL_DIR/ggml-base.en.bin" \
-    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin" \
-    "whisper base.en (~148MB)"
+    "$MOONSHINE_BASE_DIR/tokenizer.json" \
+    "https://huggingface.co/UsefulSensors/moonshine-base/resolve/main/tokenizer.json" \
+    "moonshine-base tokenizer"
+
+# ── Silero VAD ONNX (v5) ──────────────────────────────────────────────────────
+download_if_missing \
+    "$MODEL_DIR/silero_vad.onnx" \
+    "https://github.com/snakers4/silero-vad/raw/v5.1.2/src/silero_vad/data/silero_vad.onnx" \
+    "silero VAD ONNX v5 (~2MB)"
 
 # ── WeSpeaker ONNX ────────────────────────────────────────────────────────────
 download_if_missing \
@@ -123,15 +137,19 @@ fi
 # ── TTS system dependencies (Linux only) ─────────────────────────────────────
 case "$(uname -s)" in
     Linux*)
-        echo "Installing Linux audio dependency for Piper..."
-        if command -v pacman &>/dev/null; then
-            sudo pacman -S --noconfirm alsa-utils
-        elif command -v apt-get &>/dev/null; then
-            sudo apt-get install -y alsa-utils
-        elif command -v dnf &>/dev/null; then
-            sudo dnf install -y alsa-utils
-        elif command -v zypper &>/dev/null; then
-            sudo zypper install -y alsa-utils
+        if ! command -v aplay &>/dev/null; then
+            echo "Installing alsa-utils..."
+            if command -v pacman &>/dev/null; then
+                sudo pacman -S --noconfirm alsa-utils
+            elif command -v apt-get &>/dev/null; then
+                sudo apt-get install -y alsa-utils
+            elif command -v dnf &>/dev/null; then
+                sudo dnf install -y alsa-utils
+            elif command -v zypper &>/dev/null; then
+                sudo zypper install -y alsa-utils
+            fi
+        else
+            echo "alsa-utils already present, skipping"
         fi
         ;;
 esac

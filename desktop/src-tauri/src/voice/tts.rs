@@ -27,6 +27,14 @@ fn which_piper() -> bool {
         .unwrap_or(false)
 }
 
+fn kill_tts() {
+    Command::new("pkill")
+        .args(["-9", "piper-tts"])
+        .status()
+        .ok();
+    Command::new("pkill").args(["-9", "aplay"]).status().ok();
+}
+
 #[tauri::command]
 pub fn speak(text: String, state: tauri::State<TtsState>, session: tauri::State<SharedSession>) {
     let guard = state.0.lock().unwrap();
@@ -39,6 +47,10 @@ pub fn speak(text: String, state: tauri::State<TtsState>, session: tauri::State<
     let session = session.inner().clone();
 
     std::thread::spawn(move || {
+        // Kill any currently running TTS before starting a new one.
+        // This prevents two aplay processes running simultaneously.
+        kill_tts();
+
         session.lock().unwrap().mode = SessionMode::Tts;
         eprintln!("[tts] entering TTS mode");
 
@@ -80,7 +92,6 @@ pub fn speak(text: String, state: tauri::State<TtsState>, session: tauri::State<
 
 #[tauri::command]
 pub fn stop_speaking(_state: tauri::State<TtsState>, session: tauri::State<SharedSession>) {
-    Command::new("pkill").arg("piper-tts").status().ok();
-    Command::new("pkill").arg("aplay").status().ok();
+    kill_tts();
     session.lock().unwrap().mode = SessionMode::Command;
 }

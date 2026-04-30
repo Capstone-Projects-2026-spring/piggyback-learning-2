@@ -20,11 +20,25 @@ function Download-If-Missing {
 
 $Triple = "x86_64-pc-windows-msvc"
 
-# ── Whisper STT model ─────────────────────────────────────────────────────────
+# ── Moonshine Base ONNX + tokenizer ──────────────────────────────────────────
+$MoonshineBaseDir = "$ModelDir\moonshine-base"
+New-Item -ItemType Directory -Force -Path $MoonshineBaseDir | Out-Null
+foreach ($f in @("preprocess.onnx","encode.onnx","uncached_decode.onnx","cached_decode.onnx")) {
+    Download-If-Missing `
+        -Path  "$MoonshineBaseDir\$f" `
+        -Url   "https://huggingface.co/UsefulSensors/moonshine/resolve/main/onnx/base/$f" `
+        -Label "moonshine-base/$f"
+}
 Download-If-Missing `
-    -Path  "$ModelDir\ggml-base.en.bin" `
-    -Url   "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin" `
-    -Label "whisper base.en (~148MB)"
+    -Path  "$MoonshineBaseDir\tokenizer.json" `
+    -Url   "https://huggingface.co/UsefulSensors/moonshine-base/resolve/main/tokenizer.json" `
+    -Label "moonshine-base tokenizer"
+
+# ── Silero VAD ────────────────────────────────────────────────────────────
+Download-If-Missing `
+    -Path  "$ModelDir\silero_vad.onnx" `
+    -Url   "https://github.com/snakers4/silero-vad/raw/v5.1.2/src/silero_vad/data/silero_vad.onnx" `
+    -Label "silero VAD ONNX v5 (~2MB)"
 
 # ── WeSpeaker ONNX ────────────────────────────────────────────────────────────
 Download-If-Missing `

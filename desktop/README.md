@@ -1,6 +1,6 @@
 # Piggyback Learning (desktop)
 
-A voice-activated educational desktop app for kids. Parents enroll their children by voice, assign YouTube videos, and the app quizzes kids at segment boundaries — tracking answers, mood, and engagement via webcam.
+A voice-activated educational desktop app for kids. Parents enroll their children by voice, assign YouTube videos, and the app quizzes kids at segment boundaries - tracking answers, mood, and engagement via webcam.
 
 Built with **Tauri v2** (Rust) + **React** (Vite + Tailwind v4).
 
@@ -16,10 +16,15 @@ Built with **Tauri v2** (Rust) + **React** (Vite + Tailwind v4).
 - [Wake Word](#wake-word)
 - [Intent System](#intent-system)
 - [Tauri Events](#tauri-events)
+- [Tauri Commands](#tauri-commands)
 - [Database Schema](#database-schema)
 - [TTS System](#tts-system)
+- [STT System](#stt-system)
+- [VAD System](#vad-system)
+- [Audio Processing](#audio-processing)
 - [Enrollment Flow](#enrollment-flow)
 - [Voice Enrollment & Speaker Identification](#voice-enrollment--speaker-identification)
+- [Frontend / Startup Handshake](#frontend--startup-handshake)
 - [Key Dependencies](#key-dependencies)
 - [Learn More](#learn-more)
 
@@ -33,7 +38,7 @@ Built with **Tauri v2** (Rust) + **React** (Vite + Tailwind v4).
 | Node.js | 18+ | |
 | npm | any | |
 | piper-tts | latest | must be on system `PATH` |
-| aplay | any | Linux only — part of `alsa-utils` |
+| aplay | any | Linux only - part of `alsa-utils` |
 
 > **macOS / Windows:** TTS playback (`aplay`) is Linux-only for now. The `speak` command is wired up but audio output on other platforms is not tested yet and may or may not work.
 
@@ -50,7 +55,7 @@ cd piggyback-learning/desktop
 
 ### 2. Fetch models and binaries
 
-This downloads all ONNX models, Whisper weights, and platform binaries (yt-dlp, ffmpeg, mpv). Run once before your first build.
+Downloads all ONNX models and platform binaries (yt-dlp, ffmpeg, mpv). Run once before your first build.
 
 **Linux / macOS:**
 ```bash
@@ -63,20 +68,18 @@ bash scripts/fetch-assets.sh
 ```
 
 The script places files into:
-- `src-tauri/models/` — Whisper, WeSpeaker, UltraFace, emotion, TTS models
-- `src-tauri/binaries/` — yt-dlp, ffmpeg, mpv (platform-suffixed sidecars)
+- `src-tauri/models/` - Moonshine, WeSpeaker, Silero VAD, UltraFace, emotion, TTS models
+- `src-tauri/binaries/` - yt-dlp, ffmpeg, mpv (platform-suffixed sidecars)
 
 It also installs `alsa-utils` on Linux (needed for `aplay`).
 
 ### 3. Configure environment
 
-Copy the example Cargo config and fill in your API key:
-
 ```bash
 cp src-tauri/.cargo/config.toml.example src-tauri/.cargo/config.toml
 ```
 
-Then open `src-tauri/.cargo/config.toml` and set your OpenAI API key:
+Open `src-tauri/.cargo/config.toml` and set your OpenAI API key:
 
 ```toml
 [env]
@@ -91,7 +94,7 @@ npm install
 
 ### 5. Install piper-tts
 
-Piper is not bundled as a Tauri sidecar yet — it must be available on your `PATH`.
+Piper is not bundled as a Tauri sidecar yet - it must be available on your `PATH`.
 
 ```bash
 # Example (Linux, adjust for your distro / release)
@@ -138,17 +141,18 @@ desktop/
 ├── src/                   # React frontend
 │   ├── components/        # UI, orb, enrollment, video, watch, questions, results
 │   ├── hooks/             # useGazeTracker, usePlaybackPoller, useSegments, useTauriListener
-│   ├── lib/stt/           # commandBus, recorder
+│   ├── lib/               # commandBus, recorder (startOrb/stopOrb)
 │   └── utils/             # enrollment, orb, questions, tts, videoPanel helpers
 ├── src-tauri/
 │   ├── .cargo/
-│   │   └── config.toml.example   # copy to config.toml and add your API key
-│   ├── src/               # Rust backend
-│   │   ├── voice/         # Wake word, VAD, Whisper STT, speaker ID, intent pipeline
-│   │   ├── handlers/      # Tauri command handlers (videos, questions, answers)
+│   │   └── config.toml.example
+│   ├── src/
+│   │   ├── voice/         # Capture, VAD, Moonshine STT, speaker ID, intent pipeline
+│   │   ├── handlers/      # Tauri command handlers (videos, questions, answers, kids)
 │   │   ├── utils/         # Gaze, mood, OpenAI client, crypto, text helpers
 │   │   ├── db/            # SQLite init + schema
-│   │   └── tts.rs         # Piper TTS integration
+│   │   ├── tts.rs         # Piper TTS integration
+│   │   └── lib.rs         # App entry point, handshake, model loading
 │   ├── models/            # ML models (populated by fetch-assets script)
 │   └── binaries/          # yt-dlp, ffmpeg, mpv sidecars
 └── scripts/               # fetch-assets.sh / .ps1
@@ -175,23 +179,21 @@ Say **"Jarvis"** (also recognised: *Jarvas, Jarves, Jarvi, Jarviz*) to activate 
 
 ## Intent System
 
-Intents are classified using [fastembed](https://github.com/Anush008/fastembed-rs). At startup, `init_classifier()` pre-embeds a set of example phrases for each intent. Incoming transcripts are embedded and compared via cosine similarity, with a keyword fallback for obvious patterns.
+Intents are classified using [fastembed](https://github.com/Anush008/fastembed-rs). At startup, `init_classifier()` pre-embeds example phrases for each intent. Incoming transcripts are embedded and compared via cosine similarity, with a keyword fallback for obvious patterns.
 
-```rust
-pub enum Intent {
-    Search,
-    AddKid,
-    KidResults,
-    AddTag,
-    MyVideos,
-    AssignVideo,
-    WatchVideo,
-    Recommendations,
-    DownloadVideo,
-    WakeOnly,
-    Unhandled,
-}
-```
+| Intent | Example phrases |
+|--------|----------------|
+| `Search` | "search for dinosaur videos", "find videos about space", "look up minecraft videos", "show me videos about animals" |
+| `AddKid` | "add a kid", "create a kid account", "enroll a kid", "make an account for my child", "add my son" |
+| `KidResults` | "show me adam's results", "how did sarah do", "what were emma's answers", "pull up sarah's results" |
+| `AddTag` | "my kid likes dinosaurs", "she loves painting", "he is really into space", "remember that i like cooking" |
+| `MyVideos` | "my videos", "show my assigned videos", "what videos do i have", "list my assignments" |
+| `AssignVideo` | "assign this to jake", "give it to emma", "this one is for jake", "assign this video to emma" |
+| `WatchVideo` | "watch this", "play the first one", "let's watch this", "play the second one" |
+| `Recommendations` | "show me recommendations for emma", "what should jake watch", "suggest videos for my son" |
+| `DownloadVideo` | "download this", "save this video", "download video" |
+| `WakeOnly` | wake word detected but no actionable intent |
+| `Unhandled` | no intent matched above threshold |
 
 Resolved intents are dispatched to:
 
@@ -203,7 +205,7 @@ Resolved intents are dispatched to:
 | `MyVideos` | `handlers::kids::get_video_assignments` |
 | `AssignVideo` | `handlers::kids::assign_video` |
 | `Recommendations` | `handlers::kids::get_recommendations` |
-| `KidResults` | `handlers::answers::get_kids_answers` (parent only — extracts kid name from transcript) |
+| `KidResults` | `handlers::answers::get_kids_answers` |
 | `WatchVideo` | emits `orb://watch-video` |
 | `DownloadVideo` | handled by frontend |
 
@@ -215,10 +217,10 @@ Events flow from the Rust backend to the React frontend via Tauri's event system
 
 | Event | Payload | Purpose |
 |-------|---------|---------|
-| `orb://ready` | `{}` | App fully initialised |
-| `orb://voice-result` | `{ transcript, wake_detected, command }` | All voice pipeline output |
-| `orb://speaker-identified` | `{ user_id, name, role, score }` | After speaker ID |
-| `orb://enrollment` | `{ flow, stage, message, prompts, prompt_index }` | Onboarding progress |
+| `orb://ready` | `{}` | Backend fully initialised |
+| `orb://voice-result` | `{ transcript, wake_detected, command }` | Voice pipeline output |
+| `orb://speaker-identified` | `{ user_id, name, role, score }` | Speaker ID result |
+| `orb://enrollment` | `{ flow, stage, message, prompts, prompt_index, total_prompts }` | Onboarding progress |
 | `orb://search-status` | `{ status, query }` | Search in progress |
 | `orb://search-results` | `{ results, query }` | Video search results |
 | `orb://recommendations` | `{ kid_name, tags, recommendations }` | Kid recommendations |
@@ -230,9 +232,24 @@ Events flow from the Rust backend to the React frontend via Tauri's event system
 | `orb://mpv-tick` | `{ position }` | Playback position |
 | `orb://segment-end` | `{}` | Segment boundary reached |
 | `orb://answer-result` | `{ is_correct, similarity_score, mood, segment_id, transcript, video_id }` | Quiz answer evaluation |
-| `orb://answers` | `{ answers, kid_id }` | All answers for a kid across all videos |
+| `orb://answers` | `{ answers, kid_id }` | All answers for a kid |
 | `orb://answers-error` | `{ message }` | Kid name not resolved |
 | `orb://gaze-status` | `{ status: "away" \| "present" }` | Gaze tracking |
+
+---
+
+## Tauri Commands
+
+Invoked from the frontend via `invoke()`.
+
+| Command | Returns | Purpose |
+|---------|---------|---------|
+| `is_backend_ready` | `bool` | Poll until backend is fully initialised |
+| `frontend_ready` | `bool` (needs_onboarding) | Signal backend that frontend has mounted; triggers onboarding if needed |
+| `speak` | - | Speak text via Piper TTS |
+| `stop_speaking` | - | Kill any active TTS immediately |
+| `gaze_start` / `gaze_stop` | - | Start/stop webcam gaze tracking |
+| `gaze_pause` / `gaze_resume` | - | Pause/resume gaze tracking |
 
 ---
 
@@ -241,22 +258,21 @@ Events flow from the Rust backend to the React frontend via Tauri's event system
 SQLite, managed via `sqlx`. The database is initialised on first launch.
 
 ```sql
-users          (id, name, role, voice_embedding)
-tags           (id, name)
-kid_tags       (kid_id, tag_id)
-videos         (id, title, thumbnail_url, duration_seconds, local_video_path)
-video_tags     (video_id, tag_id)
-video_assignments (kid_id, video_id, answers)
-segments       (id, video_id, start_seconds, end_seconds, best_question)
-questions      (id, segment_id, qtype, question, answer,
-                followup_correct_question, followup_correct_answer,
-                followup_wrong_question, followup_wrong_answer, rank)
-answers        (id, kid_id, video_id, segment_id, transcript,
-                is_correct, similarity_score, mood)
-frames         (id, video_id, frame_number, timestamp_seconds,
-                timestamp_formatted, filename, file_path, is_keyframe)
-app_meta       (key, value)
+users              (id, name, role)
+voice_embeddings   (id, user_id, embedding)
+tags               (id, name)
+kid_tags           (kid_id, tag_id)
+videos             (id, title, thumbnail_url, duration_seconds, local_video_path)
+video_tags         (video_id, tag_id)
+video_assignments  (kid_id, video_id, answers)
+segments           (id, video_id, start_seconds, end_seconds, best_question)
+questions          (id, segment_id, qtype, question, answer, followup_correct_question, followup_correct_answer, followup_wrong_question, followup_wrong_answer, rank)
+answers            (id, kid_id, video_id, segment_id, transcript, is_correct, similarity_score, mood)
+frames             (id, video_id, frame_number, timestamp_seconds, timestamp_formatted, filename, file_path, is_keyframe)
+app_meta           (key, value)
 ```
+
+`voice_embedding BLOB` has been removed from `users`. Embeddings are now stored individually in the `voice_embeddings` table - one row per enrollment phrase per user - and encrypted separately.
 
 ---
 
@@ -264,21 +280,75 @@ app_meta       (key, value)
 
 Text-to-speech uses [Piper TTS](https://github.com/rhasspy/piper) with the `en_GB-alba-medium` voice.
 
-When `speak` is called the backend sets `SessionMode::Tts`, spawns `piper-tts` piped to `aplay`, waits for a 300ms reverb buffer to clear, then resets back to `SessionMode::Command`. While in `Tts` mode the capture loop flushes its buffer and drops all incoming audio chunks, preventing the mic from picking up speaker output.
+- Each call to `speak` kills any currently running `piper-tts` / `aplay` process before starting a new one, preventing overlapping playback
+- A `Mutex` inside `TtsState` ensures only one TTS thread runs at a time
+- `SessionMode::Tts` is set before piper spawns and cleared after a 300ms post-playback buffer
+- While `SessionMode::Tts` is active, an `AtomicBool` gate in the mic callback discards all incoming audio before it ever enters the buffer - the capture loop has nothing to process
+- The frontend always calls `stop_speaking` before `speak` as an additional safety net
 
-On the frontend, `utils/tts.js` always calls `stop_speaking` before `speak` to prevent overlapping playback.
+---
+
+## STT System
+
+Speech-to-text uses **Moonshine base** (ONNX), loaded via `ort`. Four ONNX files are required:
+
+```
+models/moonshine-base/preprocess.onnx
+models/moonshine-base/encode.onnx
+models/moonshine-base/uncached_decode.onnx
+models/moonshine-base/cached_decode.onnx
+models/moonshine-base/tokenizer.json
+```
+
+The pipeline:
+1. `preprocess` - converts raw 16 kHz mono f32 samples to mel features
+2. `encode` - transformer encoder over mel features
+3. `uncached_decode` - single forward pass with `SOT` token to get the first predicted token and initialise the KV cache
+4. `cached_decode` - autoregressive decode loop using cached cross-attention
+
+Token generation is capped at **6.5 tokens/second** of audio (minimum 10 tokens) to prevent hallucination loops. A **repetition detector** checks for repeating 4-token windows and truncates early if a loop is detected.
+
+All output is lowercased and trimmed before being passed to the intent pipeline.
+
+---
+
+## VAD System
+
+Voice Activity Detection uses **Silero VAD v5** (ONNX), loaded via `ort`.
+
+- 512-sample frames at 16 kHz (32ms per frame)
+- Speech probability threshold: **0.15**
+- **8 consecutive silent frames** (~256ms) triggers a flush
+- Maximum chunk duration: **15 seconds** (forced flush)
+- Minimum chunk duration: **0.5 seconds** (shorter chunks discarded as noise)
+- The Silero RNN hidden state is carried between frames within an utterance and reset on flush
+
+---
+
+## Audio Processing
+
+The mic capture pipeline:
+
+1. **`to_mono`** - average all channels to mono
+2. **`resample`** - linear interpolation to 16 kHz if the device native rate differs
+3. **`process_f32`** - peak normalize; reject if max amplitude < 1e-6 (silence)
+
+Pre-emphasis and RNNoise denoising have been removed. Moonshine is a transformer trained on natural audio - pre-emphasis distorts the signal and causes mis-prediction and hallucination loops. Peak normalization alone produces the best transcription quality.
 
 ---
 
 ## Enrollment Flow
 
-Both parent and kid enrollment use the same `EnrollmentOverlay` component, driven by `orb://enrollment` events.
+Both parent and kid enrollment use the same `EnrollmentOverlay` component. Enrollment events flow from Rust -> `orb://enrollment` -> `commandBus.dispatchEnrollment` -> `App.jsx` -> prop -> `EnrollmentOverlay`.
 
-**Parent flow:** `greet` → `name_confirmed` → `prompt` ×N → `done`
+**Parent flow:** `greet` -> `name_confirmed` -> `prompt` ×5 -> `done`
 
-**Kid flow:** identical stages on the Rust side, prefixed `kid_`. The frontend's `normaliseStage()` strips the prefix so both flows share the same component logic. Pass `flow="parent"` or `flow="kid"` to `EnrollmentOverlay` to control copy and styling.
+**Kid flow:** identical stages, prefixed `kid_` on the Rust side. `normaliseStage()` strips the prefix so both flows share the same component logic.
 
-The `commandBus.onEnrollment` handler caches the last parent enrollment event so that the overlay receives it correctly even if it mounts after the event was emitted.
+Key implementation details:
+- `App.jsx` is the single `commandBus.onEnrollment` subscriber - it stores the event in state and passes it down as a `currentEvent` prop, ensuring `speak()` is called exactly once per event with no duplicate TTS calls
+- `startOrb()` (which registers Tauri event listeners) is called unconditionally in `App.jsx` so enrollment events are never missed even before `Orb.jsx` mounts
+- The capture thread relies on `SessionMode::Tts` and the `AtomicBool` mic gate as the sole mechanism for suppressing audio during TTS - no fixed sleeps or energy thresholds
 
 ---
 
@@ -286,7 +356,7 @@ The `commandBus.onEnrollment` handler caches the last parent enrollment event so
 
 ### Enrollment
 
-When a user enrolls, they are prompted to read 5 phrases aloud:
+Users are prompted to read 5 phrases:
 
 ```
 "The quick brown fox jumps over the lazy dog."
@@ -296,17 +366,30 @@ When a user enrolls, they are prompted to read 5 phrases aloud:
 "Around the rugged rocks the ragged rascal ran."
 ```
 
-The recorded audio from each phrase is passed through the WeSpeaker ONNX model (`wespeaker.onnx`) to produce a speaker embedding from 80-mel filter bank features computed over the raw 16 kHz mono samples. That embedding is then encrypted and stored in the `users` table. Crucially, **the raw audio is never persisted** — only the embedding is stored, and only in encrypted form.
+Each phrase produces a **256-dimensional speaker embedding** via the WeSpeaker ONNX model, computed from 80-mel filter bank features over the raw 16 kHz mono audio. All 5 embeddings are stored individually in the `voice_embeddings` table - one encrypted row per phrase. Raw audio is never persisted.
 
-During quizzes, the webcam detects the child's mood in real time via the `emotion-ferplus-8.onnx` model, classifying each answer moment into one of 8 states: **happy, sad, angry, surprised, neutral, fearful, disgusted, or contempt**. The detected mood is stored alongside each answer in the `answers` table.
+### Speaker Identification
+
+At runtime a live embedding is extracted from each captured chunk and compared against all enrolled users by:
+
+1. Fetching all rows from `voice_embeddings` for each user
+2. Decrypting and deserialising each embedding
+3. Computing **cosine similarity** between the live embedding and each stored embedding
+4. **Averaging** the similarity scores across all stored embeddings per user (using 3-second windows with 1-second hop for more stable results on longer chunks)
+
+The user with the highest average score wins. Thresholds:
+- Minimum score: **0.82**
+- Minimum margin over second-best: **0.08**
 
 ### Encryption
 
-Voice embeddings are encrypted with **AES-256-GCM** before being written to the database.
+Voice embeddings are encrypted with **AES-256-GCM** before being written to the database. A fresh 12-byte random nonce is generated per write. The on-disk format is:
 
-AES-256-GCM is an authenticated encryption scheme, meaning it provides both confidentiality and integrity guarantees — an attacker who tampers with the ciphertext in the database will cause decryption to fail rather than silently produce garbage data. The 256-bit key size means there are 2²⁵⁶ possible keys, which is considered computationally infeasible to brute-force with any foreseeable hardware.
+```
+[ 12-byte nonce ][ AES-256-GCM ciphertext + 16-byte auth tag ]
+```
 
-The encryption key is a **32-byte cryptographically random key** generated on first launch using the OS CSPRNG and stored in the **OS keychain** via the `keyring` crate:
+The 32-byte key is generated on first launch via the OS CSPRNG and stored in the OS keychain via the `keyring` crate:
 
 | Platform | Storage |
 |----------|---------|
@@ -314,42 +397,32 @@ The encryption key is a **32-byte cryptographically random key** generated on fi
 | Windows | Credential Manager |
 | Linux | libsecret / GNOME Keyring |
 
-This means the key is never written to disk in plaintext and is protected by the OS's own access control — other processes running as a different user cannot read it. On subsequent launches the key is loaded from the keychain and cached in a `OnceLock` for the lifetime of the process.
+The key never touches disk in plaintext. If an attacker obtains a copy of the SQLite database they have only encrypted blobs - decryption requires the keychain key which never leaves the OS secure store.
 
-A **fresh 12-byte random nonce** is generated for every write using `OsRng`, so even if the same embedding were stored twice the ciphertexts would differ. The on-disk format stored in `users.voice_embedding` is:
+---
 
-```
-[ 12-byte nonce ][ AES-256-GCM ciphertext + 16-byte auth tag ]
-```
+## Frontend / Startup Handshake
 
-Decryption splits at byte 12, reconstructs the nonce, and verifies the auth tag before returning plaintext. If the tag check fails — whether due to corruption or tampering — decryption is aborted and the user is skipped during identification.
+The backend emits `orb://ready` and sets an `is_backend_ready` flag when fully initialised. The frontend polls `is_backend_ready` on 100ms intervals, then calls `frontend_ready` once the backend is up.
 
-In practice this means that even if an attacker obtained a full copy of the SQLite database file, they would have an encrypted blob they cannot decrypt without the keychain key, which never leaves the OS secure store.
+`frontend_ready` returns `needs_onboarding: bool` - if true, the backend immediately starts parent onboarding and the frontend stays on the loading screen until the `greet` enrollment event arrives. If false, the frontend transitions directly to the ready state and speaks the welcome message.
 
-### Speaker Identification
-
-At runtime, each captured audio chunk is run through the same WeSpeaker pipeline to produce a live embedding. That embedding is compared against every enrolled user by:
-
-1. Fetching all rows from `users` where `voice_embedding IS NOT NULL`
-2. Decrypting each blob with the cached key and verifying the auth tag
-3. Deserialising the raw bytes back into a `Vec<f32>`
-4. Computing **cosine similarity** between the live embedding and the stored one
-
-The user with the highest similarity score wins. If that score is **≥ 0.75** the speaker is considered matched, the session is updated with their `user_id`, `name`, and `role`, and an `orb://speaker-identified` event is emitted to the frontend. If no user clears the threshold, the event is emitted with all fields set to `null`.
+This replaces the previous hardcoded 3-second delay.
 
 ---
 
 ## Key Dependencies
 
 **Rust**
-- `tauri 2` — desktop shell
-- `whisper-rs` — on-device speech-to-text (Whisper base.en)
-- `ort` — ONNX runtime (speaker ID, face detection, emotion)
-- `cpal` — cross-platform audio capture
-- `sqlx` — async SQLite
-- `async-openai` — question generation via GPT
-- `aes-gcm` — AES-256-GCM voice embedding encryption
-- `keyring` — OS keychain integration
+- `tauri 2` - desktop shell
+- `ort` - ONNX runtime (Moonshine STT, Silero VAD, WeSpeaker, face detection, emotion)
+- `cpal` - cross-platform audio capture
+- `sqlx` - async SQLite
+- `async-openai` - question generation via GPT
+- `aes-gcm` - AES-256-GCM voice embedding encryption
+- `keyring` - OS keychain integration
+- `fastembed` - intent embedding & classification
+- `tokenizers` - Moonshine tokenizer
 
 **Frontend**
 - React 19, Vite 6, Tailwind v4
@@ -360,40 +433,40 @@ The user with the highest similarity score wins. If that score is **≥ 0.75** t
 ## Learn More
 
 **Core framework**
-- [Tauri v2](https://v2.tauri.app/start/) — desktop app framework
-- [Tauri v2 Events](https://v2.tauri.app/develop/inter-process/events/) — Rust <-> frontend communication
-- [Tauri v2 Commands](https://v2.tauri.app/develop/inter-process/commands/) — invoking Rust from JS
+- [Tauri v2](https://v2.tauri.app/start/)
+- [Tauri v2 Events](https://v2.tauri.app/develop/inter-process/events/)
+- [Tauri v2 Commands](https://v2.tauri.app/develop/inter-process/commands/)
 
 **Speech & audio**
-- [Whisper](https://github.com/openai/whisper) — speech recognition model
-- [whisper-rs](https://github.com/tazz4843/whisper-rs) — Rust bindings
-- [WeSpeaker](https://github.com/wenet-e2e/wespeaker) — speaker embedding model
-- [Piper TTS](https://github.com/rhasspy/piper) — text-to-speech engine
-- [cpal](https://github.com/RustAudio/cpal) — cross-platform audio capture
+- [Moonshine](https://github.com/usefulsensors/moonshine) - speech recognition model
+- [Silero VAD](https://github.com/snakers4/silero-vad) - voice activity detection
+- [WeSpeaker](https://github.com/wenet-e2e/wespeaker) - speaker embedding model
+- [Piper TTS](https://github.com/rhasspy/piper) - text-to-speech engine
+- [cpal](https://github.com/RustAudio/cpal) - cross-platform audio capture
 
 **ML inference**
-- [ONNX Runtime](https://onnxruntime.ai/docs/) — model inference
-- [ort](https://github.com/pykeio/ort) — Rust bindings for ONNX Runtime
-- [fastembed](https://github.com/Anush008/fastembed-rs) — intent embedding & classification
+- [ONNX Runtime](https://onnxruntime.ai/docs/)
+- [ort](https://github.com/pykeio/ort) - Rust bindings for ONNX Runtime
+- [fastembed](https://github.com/Anush008/fastembed-rs) - intent classification
 
 **Encryption**
-- [AES-256-GCM (aes-gcm crate)](https://docs.rs/aes-gcm) — authenticated encryption
-- [keyring](https://github.com/hwchen/keyring-rs) — OS keychain integration
+- [aes-gcm](https://docs.rs/aes-gcm) - authenticated encryption
+- [keyring](https://github.com/hwchen/keyring-rs) - OS keychain integration
 
 **Database**
-- [SQLx](https://github.com/launchbadge/sqlx) — async SQLite
-- [SQLite](https://www.sqlite.org/docs.html) — embedded database
+- [SQLx](https://github.com/launchbadge/sqlx)
+- [SQLite](https://www.sqlite.org/docs.html)
 
 **Frontend**
-- [React 19](https://react.dev/) — UI framework
-- [Vite](https://vitejs.dev/) — frontend build tool
-- [Tailwind CSS v4](https://tailwindcss.com/docs) — styling
+- [React 19](https://react.dev/)
+- [Vite](https://vitejs.dev/)
+- [Tailwind CSS v4](https://tailwindcss.com/docs)
 
 **Media**
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — video download
-- [ffmpeg](https://ffmpeg.org/documentation.html) — frame extraction
-- [mpv](https://mpv.io/manual/stable/) — video playback
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+- [ffmpeg](https://ffmpeg.org/documentation.html)
+- [mpv](https://mpv.io/manual/stable/)
 
 **OpenAI**
-- [async-openai](https://github.com/64bit/async-openai) — Rust OpenAI client
-- [OpenAI API](https://platform.openai.com/docs/) — question generation
+- [async-openai](https://github.com/64bit/async-openai)
+- [OpenAI API](https://platform.openai.com/docs/)

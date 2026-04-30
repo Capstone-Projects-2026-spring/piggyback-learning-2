@@ -1,12 +1,12 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{SampleFormat, SampleRate, StreamConfig};
-use std::sync::{Arc, Mutex};
-use whisper_rs::{FullParams, SamplingStrategy};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 
 use super::enrollment::{create_user, emit_enrollment, EnrollmentEvent};
-use super::onboarding::{
-    average_embeddings, begin_voice_collection, record_embedding, OnboardingStage,
-};
+use super::onboarding::{begin_voice_collection, record_embedding, OnboardingStage};
 use super::vad::VadChunker;
 use crate::utils::{app_handle, text::is_noise_transcript};
 use crate::voice::{
@@ -14,11 +14,10 @@ use crate::voice::{
     command_resolver::ResolvedCommand,
     dispatcher,
     intent::Intent,
+    moonshine,
     onboarding::{self, SharedOnboarding},
     session::{SessionMode, SharedSession},
-    speaker,
-    state::get_whisper,
-    wake_word,
+    speaker, wake_word,
 };
 
 const TARGET_RATE: u32 = 16000;
@@ -55,12 +54,20 @@ pub fn start(
 
     let buffer: Arc<Mutex<Vec<f32>>> = Arc::new(Mutex::new(Vec::new()));
 
+    // This flag is checked in the mic callback itself - when true, incoming
+    // audio is simply discarded before it ever enters the buffer.
+    let mic_open = Arc::new(AtomicBool::new(true));
+
     let stream = {
         let buffer_w = buffer.clone();
+        let mic_open_w = mic_open.clone();
         match supported.sample_format() {
             SampleFormat::F32 => device.build_input_stream(
                 &config,
                 move |data: &[f32], _| {
+                    if !mic_open_w.load(Ordering::Relaxed) {
+                        return;
+                    }
                     let mono = audio_processor::to_mono(data, channels);
                     buffer_w.lock().unwrap().extend_from_slice(&mono);
                 },
@@ -70,6 +77,9 @@ pub fn start(
             SampleFormat::I16 => device.build_input_stream(
                 &config,
                 move |data: &[i16], _| {
+                    if !mic_open_w.load(Ordering::Relaxed) {
+                        return;
+                    }
                     let f: Vec<f32> = data.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
                     let mono = audio_processor::to_mono(&f, channels);
                     buffer_w.lock().unwrap().extend_from_slice(&mono);
@@ -80,6 +90,9 @@ pub fn start(
             SampleFormat::U8 => device.build_input_stream(
                 &config,
                 move |data: &[u8], _| {
+                    if !mic_open_w.load(Ordering::Relaxed) {
+                        return;
+                    }
                     let f: Vec<f32> = data.iter().map(|&s| (s as f32 - 128.0) / 128.0).collect();
                     let mono = audio_processor::to_mono(&f, channels);
                     buffer_w.lock().unwrap().extend_from_slice(&mono);
@@ -98,7 +111,9 @@ pub fn start(
         native_rate, channels
     );
 
-    std::thread::spawn(move || run_capture_loop(session, onboarding, buffer, native_rate));
+    std::thread::spawn(move || {
+        run_capture_loop(session, onboarding, buffer, native_rate, mic_open)
+    });
 
     Ok(CaptureHandle { _stream: stream })
 }
@@ -108,23 +123,25 @@ fn run_capture_loop(
     onboarding: SharedOnboarding,
     buffer: Arc<Mutex<Vec<f32>>>,
     native_rate: u32,
+    mic_open: Arc<AtomicBool>,
 ) {
     let mut chunker = VadChunker::new();
 
     loop {
-        std::thread::sleep(std::time::Duration::from_millis(30));
+        std::thread::sleep(std::time::Duration::from_millis(200));
 
-        // Flush buffer and VAD while TTS is playing so audio doesn't
-        // accumulate and fire the moment TTS mode exits.
-        {
-            let s = session.lock().unwrap();
-            if s.mode == SessionMode::Tts {
-                drop(s);
-                buffer.lock().unwrap().clear();
-                chunker.flush("tts active");
-                continue;
-            }
+        // TTS gate - close the mic at the callback level so audio never
+        // even enters the buffer while TTS is active.
+        let in_tts = session.lock().unwrap().mode == SessionMode::Tts;
+        if in_tts {
+            mic_open.store(false, Ordering::Relaxed);
+            buffer.lock().unwrap().clear();
+            chunker.flush("tts active");
+            continue;
         }
+
+        // TTS done - reopen mic.
+        mic_open.store(true, Ordering::Relaxed);
 
         let raw: Vec<f32> = {
             let mut buf = buffer.lock().unwrap();
@@ -146,14 +163,13 @@ fn run_capture_loop(
             chunk.len() as f32 / TARGET_RATE as f32
         );
 
-        // Check TTS mode again after VAD - a chunk may have completed just as TTS started.
-        {
-            let s = session.lock().unwrap();
-            if s.mode == SessionMode::Tts {
-                eprintln!("[capture] TTS mode - dropping chunk");
-                chunker.flush("tts active post-vad");
-                continue;
-            }
+        // Re-check after VAD - TTS may have started while accumulating.
+        if session.lock().unwrap().mode == SessionMode::Tts {
+            eprintln!("[capture] TTS mode post-VAD - dropping chunk");
+            mic_open.store(false, Ordering::Relaxed);
+            buffer.lock().unwrap().clear();
+            chunker.flush("tts active post-vad");
+            continue;
         }
 
         let processed = audio_processor::process_f32(chunk.clone());
@@ -168,14 +184,10 @@ fn run_capture_loop(
             continue;
         }
 
-        // Check TTS mode after transcription - whisper takes 1-3s so TTS
-        // may have started during inference.
-        {
-            let s = session.lock().unwrap();
-            if s.mode == SessionMode::Tts {
-                eprintln!("[capture] TTS mode post-transcription - dropping");
-                continue;
-            }
+        // Re-check after transcription - Moonshine takes 1-3s.
+        if session.lock().unwrap().mode == SessionMode::Tts {
+            eprintln!("[capture] TTS mode post-transcription - dropping");
+            continue;
         }
 
         // Onboarding - highest priority
@@ -260,34 +272,7 @@ fn run_capture_loop(
 }
 
 fn transcribe(samples: &[f32]) -> String {
-    let ctx = get_whisper();
-    let mut state = match ctx.create_state() {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("[capture] create_state: {e}");
-            return String::new();
-        }
-    };
-
-    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    params.set_language(Some("en"));
-    params.set_print_special(false);
-    params.set_print_progress(false);
-    params.set_print_realtime(false);
-    params.set_print_timestamps(false);
-
-    if let Err(e) = state.full(params, samples) {
-        eprintln!("[capture] whisper full: {e}");
-        return String::new();
-    }
-
-    let n = state.full_n_segments();
-    (0..n)
-        .filter_map(|i| state.get_segment(i).map(|s| s.to_string()))
-        .collect::<Vec<_>>()
-        .join(" ")
-        .trim()
-        .to_lowercase()
+    moonshine::transcribe(samples)
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -315,7 +300,6 @@ fn handle_onboarding_audio(
                 eprintln!("[onboarding] name rejected - waiting");
                 return;
             }
-            std::thread::sleep(std::time::Duration::from_secs(2));
             begin_voice_collection(onboarding);
         }
 
@@ -337,13 +321,13 @@ fn handle_onboarding_audio(
                 let o = onboarding.lock().unwrap();
                 let name = o.name.clone().unwrap_or_else(|| "User".to_string());
                 let role = o.flow.role().to_string();
-                let avg = average_embeddings(&o.embeddings);
+                let embeddings = o.embeddings.clone();
                 drop(o);
 
                 let session_clone = session.clone();
 
                 tauri::async_runtime::spawn(async move {
-                    match create_user(name.clone(), avg, &role).await {
+                    match create_user(name.clone(), embeddings, &role).await {
                         Ok(id) => {
                             if role == "parent" {
                                 session_clone.lock().unwrap().set_user(

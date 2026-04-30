@@ -165,22 +165,6 @@ pub fn record_embedding(onboarding: &SharedOnboarding, embedding: Vec<f32>) -> b
     false
 }
 
-pub fn average_embeddings(embeddings: &[Vec<f32>]) -> Vec<f32> {
-    if embeddings.is_empty() {
-        return vec![];
-    }
-    let len = embeddings[0].len();
-    let n = embeddings.len() as f32;
-    let mut avg = vec![0.0_f32; len];
-    for emb in embeddings {
-        for (i, v) in emb.iter().enumerate() {
-            avg[i] += v;
-        }
-    }
-    avg.iter_mut().for_each(|v| *v /= n);
-    avg
-}
-
 /// Build an EnrollmentEvent from the current onboarding state.
 /// Centralises the repetitive prompt list construction.
 fn enrollment_event(
