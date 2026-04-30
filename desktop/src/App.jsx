@@ -1,4 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { startOrb, stopOrb, commandBus } from "@/lib";
 import { useTauriListener } from "@/hooks";
 import { speak } from "@/utils";
@@ -10,8 +11,6 @@ const ResultsPanel = lazy(
   () => import("@/components/results/ResultsPanel.jsx"),
 );
 
-const LOADING_FALLBACK_MS = 2000;
-
 export default function App() {
   const [mode, setMode] = useState("loading");
   const [role, setRole] = useState(null);
@@ -22,6 +21,7 @@ export default function App() {
   const [kidEnrollmentEvent, setKidEnrollmentEvent] = useState(null);
 
   useEffect(() => {
+    // Start listeners immediately so enrollment events are never missed.
     startOrb();
 
     const offEnrollment = commandBus.onEnrollment((data) => {
@@ -47,34 +47,34 @@ export default function App() {
     const offSearch = commandBus.on("search", () => setShowVideos(true));
     const offMyVideos = commandBus.on("my_videos", () => setShowVideos(true));
 
-    const fallback = setTimeout(() => {
-      setMode((m) => {
-        if (m === "loading") {
-          speak("Hey I'm Jarvis. Say my name to get started.");
-          return "ready";
-        }
-        return m;
-      });
-    }, LOADING_FALLBACK_MS);
+    const init = async () => {
+      // Poll until backend is fully initialised.
+      while (!(await invoke("is_backend_ready").catch(() => false))) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+
+      // Handshake - backend starts onboarding if needed and returns whether
+      // onboarding is required so we know what to show.
+      const needsOnboarding = await invoke("frontend_ready").catch(() => false);
+      console.log("[app] frontend_ready — needsOnboarding:", needsOnboarding);
+
+      if (!needsOnboarding) {
+        speak("Hey! I'm Jarvis. Say my name to get started.");
+        setMode("ready");
+      }
+      // If onboarding needed, stay in "loading" until the greet enrollment
+      // event arrives and the onEnrollment handler sets mode to "enrolling".
+    };
+
+    init();
 
     return () => {
       stopOrb();
       offEnrollment();
       offSearch();
       offMyVideos();
-      clearTimeout(fallback);
     };
   }, []);
-
-  useTauriListener("orb://ready", () => {
-    setMode((m) => {
-      if (m === "loading") {
-        speak("Hey! I'm Jarvis. Say my name to get started.");
-        return "ready";
-      }
-      return m;
-    });
-  });
 
   useTauriListener("orb://my-videos", () => setShowVideos(true));
   useTauriListener("orb://recommendations", () => setShowVideos(true));

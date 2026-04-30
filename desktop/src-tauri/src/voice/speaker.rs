@@ -65,7 +65,7 @@ pub fn extract_embedding(samples: &[f32]) -> Option<Vec<f32>> {
             .filter_map(|w| extract_embedding_window(w))
             .collect()
     } else {
-        // Audio shorter than one window — use it directly
+        // Audio shorter than one window - use it directly
         extract_embedding_window(samples)
             .map(|e| vec![e])
             .unwrap_or_default()
