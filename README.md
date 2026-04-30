@@ -47,6 +47,7 @@ The project is split into three main parts:
 - Voice-activated interface with wake word detection ("Jarvis")
 - On-device speaker identification and enrollment
 - Encrypted voice embedding storage via OS keychain
+- On-device STT via Moonshine (ONNX) with Silero VAD
 - Gaze tracking and mood detection via webcam
 
 ### System Capabilities
@@ -193,8 +194,9 @@ piggyback-learning-2/
 **Desktop**
 - Tauri v2 (Rust)
 - React + Vite + Tailwind v4
-- Whisper (on-device STT)
-- WeSpeaker (speaker identification)
+- Moonshine base (on-device STT, ONNX)
+- Silero VAD v5 (voice activity detection, ONNX)
+- WeSpeaker (speaker identification, ONNX)
 - Piper TTS
 - AES-256-GCM + OS keychain (voice encryption)
 
